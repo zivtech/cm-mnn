@@ -1,0 +1,13 @@
+name = "Airing Conflict"
+description = "Defines Airing conflict entity and provides some starter Views."
+package = "Community Media"
+php = "5.2.4"
+core = "7.x"
+
+dependencies[] = "entity"
+
+files[] = "cm_airing_conflict.controller.inc"
+
+configure = admin/structure/cm-airing-conflict/manage/fields
+
+

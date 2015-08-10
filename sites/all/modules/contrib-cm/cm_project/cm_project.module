@@ -1,0 +1,268 @@
+<?php
+/**
+ * @file
+ * Community Media Project Module
+ */
+
+
+/**
+ * Implements hook_help().
+ */
+function cm_project_help($section) {
+  switch ($section) {
+    case 'admin/help#cm_project':
+      return t('Core project functionality.');
+      break;
+  }
+}
+
+/**
+ * Implements hook_init().
+ */
+function cm_project_init() {
+  //drupal_add_css(drupal_get_path('module', 'cm_project') . '/cm_project.css');
+  //drupal_add_js(drupal_get_path('module', 'cm_project') .'/cm_project.js');
+}
+
+/**
+ * Implements hook_node_info().
+ */
+function cm_project_node_info() {
+  return array(
+    // Project nodes.
+    'cm_project' => array(
+      'name' => t('Project'),
+      'base' => 'cm_project',
+      'description' => t('<b>Community Media</b> - This content type is used to group Shows and Reservations to related a series or project.  Users who are members of the Project have permission to add Shows and make Reservations associated to the Project.'),
+      'has_title' => TRUE,
+      'title_label' => 'Title',
+      'has_body' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implement hook_form() with the standard default form.
+ */
+function cm_project_form($node, $form_state) {
+  return node_content_form($node, $form_state);
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function cm_project_menu() {
+  $items = array();
+
+  $items['admin/config/communitymedia/project'] = array(
+    'title' => 'Project Configuration',
+    'description' => 'Configuration options for the Community Media Project.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cm_project_admin_settings'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  
+  if (module_exists('cm_show')) {
+    $items['node/%node/shows'] = array(
+      'title' => 'Shows',
+      'description' => 'Takes node object and returns shows',
+      'page callback' => 'cm_project_shows',
+      'page arguments' => array(1),
+      'access callback' => 'cm_project_display_show_tab',
+      'access arguments' => array(1),  
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 12,
+    );
+  }
+  if (module_exists('reservations')) {
+    $items['node/%node/reservations'] = array(
+      'title' => 'Reservations',
+      'description' => 'Takes node object and returns reservations',
+      'page callback' => 'cm_project_reservations',
+      'page arguments' => array(1),
+      'access callback' => 'cm_project_display_reservations_tab',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 13,
+    );
+  }
+  return $items;
+
+}
+
+/**
+ * Builds the cm_project admininstration settings form.
+ */
+function cm_project_admin_settings($form, &$form_state) {
+  $form = array();
+  
+  $requirements = array();
+   
+  $cm_project_status = cm_project_status();
+  $requirements['cm_project']['title'] = 'Project';
+  $requirements['cm_project']['value'] = 'Installed';
+  $requirements['cm_project']['severity'] = $cm_project_status['severity']; 
+  $requirements['cm_project']['description'] = $cm_project_status['description'];
+    
+  $status = theme('status_report', array('requirements' => $requirements));
+
+  $form['cm_project_status'] = array(
+    '#markup' => $status,
+  );
+
+  if (module_exists('reservations')) {
+    $form['cm_project_reservations_require_project'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Reservations Require Project'),
+      '#default_value' => variable_get('cm_project_reservations_require_project', 0),
+      '#description' => t('This option will eventually be deprecated, but Organic Groups fails to correctly interpret the Required setting on the groups_groups field.'),
+    );
+  }
+  
+  if (module_exists('cm_show')) {
+    $form['cm_project_shows_require_project'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Shows Require Project'),
+      '#default_value' => variable_get('cm_project_shows_require_project', 0),
+      '#description' => t('This option will eventually be deprecated, but Organic Groups fails to correctly interpret the Required setting on the groups_groups field.'),
+    );
+  
+    $form['cm_project_autopopulate_show_fields'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Auto Populate Show Fields'),
+      '#default_value' => variable_get('cm_project_autopopulate_show_fields', 0),
+      '#description' => t('This option only works when Add Show is selected from the Show tab or the user only has one Project.  Field are not auto-populated if the user is a member of multiple projects and chooses the Project from a select list.'),
+    );
+  }
+  
+  return system_settings_form($form);
+}
+
+/**
+ * returns TRUE or FALSE controlling display of Shows Tab  
+ * on Project content type
+ */
+function cm_project_display_show_tab($node) {
+ 
+  if($node->type == 'cm_project') {
+    return user_access('access content');
+  }
+  return FALSE;
+}
+
+
+/**
+ * Adds Tab to Project nodes with list of related Shows nodes
+ * if criteria from cm_project_access_shows_tab returns TRUE
+ */
+function cm_project_shows($node) {
+  //TODO FIXME TO WORK WITH USER SUBMITTED SHOWS
+  //SPECIFICALLY PERMISSIONS TO ADD AND VIEW
+  //BASED ON USER ROLE AND PROJECT STATUS
+  
+
+  $query = isset($node->nid) ? array('gid' => $node->nid) : NULL;
+  // check to see if the current user is a member of the project
+  // AND has permission to create Show
+  // OR has permission to manage Show
+  
+  $output = '<ul class="action-links">';
+  $output .= '<li>'; 
+  $output .= l('Add Show', 'node/add/cm-show', array('query' => $query));
+  $output .= '</li>';
+  $output .= '</ul>';
+  
+  $view = views_get_view('cm_project_shows');
+  $output .= $view->execute_display('default');
+
+  return $output;
+}
+
+/**
+ * returns TRUE or FALSE controlling display of Reservations Tab  
+ * on Project content type
+ */
+function cm_project_display_reservations_tab($node) {
+  if($node->type == 'cm_project') {
+    return user_access('access content');
+  }
+  return FALSE;
+}
+
+/**
+ * Adds Tab to Project nodes with list of related Reservation nodes 
+ * if criteria from cm_project_display_reservations_tab returns TRUE
+ */
+function cm_project_reservations($node) {
+
+  //TODO MAKE WORK CORRECTLY WITH USER DRIVEN RESERVATIONS
+  //SPECIFICALLY PERMISSIONS TO ADD AND VIEW
+  //BASED ON USER ROLE AND PROJECT STATUS
+  $view = views_get_view('cm_project_reservations');
+  $output .= $view->execute_display('default');
+
+  return $output;
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function cm_project_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'cm_project'),
+  );
+}
+
+
+function cm_project_synch_fields_for_child(&$form, $project_node){
+  $nid = (isset($form['nid']) && isset($form['nid']['value'])) ?
+    $form['nid']['value'] : NULL;
+
+  if (variable_get('cm_project_autopopulate_show_fields', 0) && !$nid ) {
+    $result = 
+      db_query("SELECT field_name, entity_type 
+                    FROM {field_config_instance} 
+                    WHERE bundle = :bundle", array(':bundle' => 'cm_project'));
+    
+    $project_fields = $result->fetchAll();
+
+    foreach ($project_fields as $field) {
+      //check to see if the field matches
+      $result = 
+	db_query("SELECT field_name, entity_type 
+                  FROM {field_config_instance} 
+                  WHERE bundle = 'cm_show' AND 
+                  field_name = :field_name", 
+		 array(':field_name' => $field->field_name));
+      
+      $show_field_match = $result->fetchAll();
+
+      if ($show_field_match) {
+	$match = $show_field_match[0]->field_name;
+	$default_value = $project_node->$match;
+        
+	$language = $form[$match]['#language'];
+	if (isset($form[$match][$language][0])) {
+	  if($form[$match][$language][0]['value']['#type'] == 'textarea'){
+	    $form[$match][$language][0]['value']['#default_value'] = 
+	      $default_value[$language][0]['value'];
+	  }
+	  if($form[$match][$language][0]['value']['#type'] == 'text') {
+	    $form[$match][$language][0]['value']['#default_value'] = 
+	      $default_value[$language][0]['value'];
+	  }
+	} 
+	else {
+	  if ($form[$match][$language]['#type'] == 'select' || 
+	      $form[$match][$language]['#type'] == 'checkbox') {
+	    $value_key = $form[$match][$language]['#value_key'];
+	    $form[$match][$language]['#default_value']  = 
+	      array($default_value[$language][0][$value_key]);
+	  }
+	}	
+      }
+    }   
+  }
+}

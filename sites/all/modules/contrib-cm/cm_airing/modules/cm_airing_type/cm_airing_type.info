@@ -1,0 +1,16 @@
+name = "Airing Type"
+description = "Provides Airing Type Field."
+package = "Community Media"
+php = "5.2.4"
+core = "7.x"
+
+dependencies[] = "cm_airing"
+
+
+
+; Information added by drupal.org packaging script on 2013-03-07
+version = "7.x-3.x-dev"
+core = "7.x"
+project = "cm_airing"
+datestamp = "1362617114"
+

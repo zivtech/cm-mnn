@@ -1,0 +1,9 @@
+name = MNN User ID
+package = MNN Custom
+description = "Allows staff to manually set the UID"
+
+core = 7.x
+files[] = mnn_user_id.module
+
+
+

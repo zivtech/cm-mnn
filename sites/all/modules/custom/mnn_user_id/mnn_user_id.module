@@ -1,0 +1,29 @@
+<?php
+/**
+ * @file
+ * Code for the MNN User ID.
+ */
+ 
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mnn_user_id_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_register_form') {
+  
+  
+  $form['account']['uid'] = array(
+    '#type' => 'textfield',
+    '#title' => 'UID',
+    '#required' => TRUE,
+    '#weight' => '-11', 
+    '#description' => 'Create the user in Access Center 1.0 first, then copy the ID into this field so the user ids match',
+  );
+  $form['account']['is_new'] = array(
+    '#type' => 'hidden',
+    '#title' => 'is_new',
+    '#value' => TRUE, 
+  );
+  
+  //dsm($form);
+  }
+}

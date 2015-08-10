@@ -1,0 +1,53 @@
+<?php
+/**
+ * @file
+ * Code for the MNN User Page.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function mnn_user_page_init() {
+  drupal_add_css(drupal_get_path('module', 'mnn_user_page') . 
+		 '/mnn_user_page.css');
+}
+
+function mnn_user_page_user_view_alter(&$build) {
+  if (user_access('access CiviCRM')) {
+    $build['urls']['#markup'] = "<h3> CiviCRM Links</h3>".
+      $build['urls']['#markup'];
+  }
+  else {
+    unset($build['Verification Info']);	
+  }
+
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mnn_user_page_form_alter(&$form, &$form_state, $form_id) {  
+  if ($form_id == 'document_node_form') {
+    $uid = arg(3);
+    $user = user_load($uid);
+    if ($user) {
+      $form['field_user'][LANGUAGE_NONE][0]['uid']['#default_value'] = $uid;
+    }
+  }
+}
+
+function mnn_user_page_menu_alter(&$items) { 
+  $items['user/%user/edit']['access callback'] = 
+    'mnn_user_page_edit_link_access';
+  $items['user/%user_category/edit/Name and Address']['access callback'] = 
+    'mnn_user_page_edit_link_access';
+  $items['user/%user_category/edit/account']['access callback'] = 
+    'mnn_user_page_edit_link_access';
+}
+
+/**
+ * Callback to disallow access for the anonymous user.
+ */
+function mnn_user_page_edit_link_access(){
+  return user_access('administer users');
+}

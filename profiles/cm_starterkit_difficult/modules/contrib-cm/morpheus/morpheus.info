@@ -1,0 +1,19 @@
+name = Morpheus
+description = "Adds XLM export in Morpheus format."
+package = "Community Media"
+core = 7.x
+
+configure = admin/config/system/morpheus
+
+dependencies[] = cm_airing
+dependencies[] = cm_show_airings
+dependencies[] = cm_project_airings
+dependencies[] = taxonomy
+
+
+; Information added by drupal.org packaging script on 2013-10-01
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "morpheus"
+datestamp = "1380592039"
+

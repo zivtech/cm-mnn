@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the MNN Class Import feature.
+ */
+
+include_once('mnn_class_import.features.inc');

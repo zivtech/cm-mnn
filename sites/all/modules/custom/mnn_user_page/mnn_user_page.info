@@ -1,0 +1,9 @@
+name = MNN User Page
+package = MNN Custom
+description = "Customizations to the user page"
+
+core = 7.x
+files[] = mnn_user_page.module
+
+
+

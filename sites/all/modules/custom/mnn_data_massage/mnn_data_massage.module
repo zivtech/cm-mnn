@@ -1,0 +1,3153 @@
+<?php
+define("MNN_DATA_MASSAGE_PATH", "admin/mnn_data_massage");
+
+define("MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES", "MNN_DM_AAC");
+define("MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES", "MNN_DM_AAD");
+define("MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES", "MNN_DM_AAU");
+define("MNN_DATA_MASSAGE_AIRING_AUDIT_LAST_ID", "MNN_DM_LAST_ID");
+define("MNN_DATA_MASSAGE_AIRING_AUDIT_LAST_UPDATE_ID", "MNN_DM_LAST_UID");
+
+
+define("MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES", "MNN_DM_SAD");
+define("MNN_DATA_MASSAGE_SHOW_AUDIT_UPDATES", "MNN_DM_SAU");
+define("MNN_DATA_MASSAGE_SHOW_AUDIT_LAST_ID", "MNN_DM_LAST_SID");
+
+define("MNN_DATA_MASSAGE_CERTIFICATION_LAST_ID", "MNN_DM_LAST_CPID");
+
+define("MNN_DATA_MASSAGE_FACILITY_UPDATE_CREATES", "MNN_DM_UAC");
+define("MNN_DATA_MASSAGE_FACILITY_UPDATE_UPDATES", "MNN_DM_UAU");
+define("MNN_DATA_MASSAGE_FACILITY_UPDATE_LAST_ID", "MNN_DM_LAST_FID");
+
+define("MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_CREATES", 'MNN_DM_EUC');
+define("MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_UPDATES", 'MNN_DM_EAU');
+define("MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_LAST_ID", 'MNN_DM_LAST_EID');
+
+/**
+ * Implements hook_menu().
+ */
+function mnn_data_massage_menu() {
+  $items = array();
+  $items[MNN_DATA_MASSAGE_PATH] = 
+    array(
+	  'title' => t("MNN Data Massage"),
+	  'page callback'    => 'mnn_data_massage_page',    
+	  'access arguments' => array('access content'),
+  );
+  return $items;
+}
+function mnn_data_massage_page($function) {
+  $functions = array(//"civicrm_uf_match_update",
+		     //"new_entity_field_default_update",
+		     "function_tester",
+		     //"project_update",
+		     //"project_member_update",
+		     //"profile_image_synch",
+		     //"dual_use_project_report",
+		     //"dual_use_user_report",
+		     //"airing_data_delete",
+		     //"airing_audit",
+		     //"airing_delete_audit",
+		     //"audit_report",
+		     //"airing_audit_reset",
+		     //"airing_audit_updates_handler",
+		     //"show_audit",
+		     //"show_patch_sql",
+		     //"facility_update",
+		     //"equipment_update",
+		     "reservation_node_subtype_update",
+		     //"producer_certification_data_check",
+		     //"replication_data_import",
+		     //"remove_show_from_airing",
+                     //"update_project_less_shows",
+		     //"reservation_import",
+		     //"reservation_discrepency",
+		     //"reservation_deleter",
+		     //"producer_role_check",
+		     //"producer_role_update",
+		     "duplicate_inventory",
+		     );
+
+  $ret = "";
+  if ($function && in_array($function, $functions)) {
+    $html = call_user_func("mnn_data_massage_".$function);
+    if ($html) {
+      return $html;
+    }
+  }
+  drupal_set_message("Warning, clicking the links below will start the , ".
+		     "processes you should back up the database first .");
+
+  foreach($functions as $function) {
+    $ret .= l($function, MNN_DATA_MASSAGE_PATH."/".$function)."</br>";
+  }
+  return $ret;
+}
+function mnn_data_massage_function_tester() {
+  dsm("hi mom!");
+  
+  // $project = node_load(6);
+  
+  $sql = "
+SELECT node.nid AS nid, users_node.name AS users_node_name, users_node.uid AS users_node_uid, node.uid AS node_uid, 
+node.vid AS node_vid, reservations_reservation.reservations_reservation_status AS reservations_reservation_reservations_reservation_status, 
+node.type AS node_type, 'node' AS field_data_field_reservation_id_node_entity_type, 'node' AS field_data_field_reservations_date_node_entity_type
+FROM 
+node node
+LEFT JOIN users users_node ON node.uid = users_node.uid
+LEFT JOIN field_data_field_reservations_date field_data_field_reservations_date 
+  ON node.nid = field_data_field_reservations_date.entity_id AND (field_data_field_reservations_date.entity_type = 'node' 
+    AND field_data_field_reservations_date.deleted = '0')
+LEFT JOIN field_data_field_reservations_inventory field_data_field_reservations_inventory 
+  ON node.nid = field_data_field_reservations_inventory.entity_id AND (field_data_field_reservations_inventory.entity_type = 'node' 
+    AND field_data_field_reservations_inventory.deleted = '0')
+INNER JOIN reservations_reservation reservations_reservation ON node.vid = reservations_reservation.vid
+WHERE (( (field_data_field_reservations_inventory.field_reservations_inventory_tid = '1043' ) )
+AND(( (node.type IN  ('reservations_reservation')) 
+AND (DATE_FORMAT(ADDTIME(field_data_field_reservations_date.field_reservations_date_value, SEC_TO_TIME(-14400)), '%Y-%m-%d') = '2014-07-01') )))
+  ";
+
+  $sql = "
+SELECT node.nid AS nid, users_node.name AS users_node_name, users_node.uid AS users_node_uid, node.uid AS node_uid, 
+node.vid AS node_vid, reservations_reservation.reservations_reservation_status AS reservations_reservation_reservations_reservation_status, 
+node.type AS node_type, 'node' AS field_data_field_reservation_id_node_entity_type, 'node' AS field_data_field_reservations_date_node_entity_type,
+field_data_field_reservations_date.*,field_data_field_reservations_inventory.field_reservations_inventory_tid
+FROM 
+node node
+LEFT JOIN users users_node ON node.uid = users_node.uid
+LEFT JOIN field_data_field_reservations_date field_data_field_reservations_date 
+  ON node.nid = field_data_field_reservations_date.entity_id AND (field_data_field_reservations_date.entity_type = 'node' 
+    AND field_data_field_reservations_date.deleted = '0')
+LEFT JOIN field_data_field_reservations_inventory field_data_field_reservations_inventory 
+  ON node.nid = field_data_field_reservations_inventory.entity_id AND (field_data_field_reservations_inventory.entity_type = 'node' 
+    AND field_data_field_reservations_inventory.deleted = '0')
+INNER JOIN reservations_reservation reservations_reservation ON node.vid = reservations_reservation.vid
+WHERE ((( (field_data_field_reservations_inventory.field_reservations_inventory_tid = '1043' ) )
+  AND(( ( TRUE                                     ) 
+  AND (DATE_FORMAT(ADDTIME(field_data_field_reservations_date.field_reservations_date_value, SEC_TO_TIME(-14400)), '%Y-%m-%d') = '2014-07-01') )))) 
+OR (node.nid=680868)
+  ";
+
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()){
+    dsm($result, $result->users_node_name."-".$result->nid);
+  }
+
+}
+
+function mnn_data_massage_duplicate_inventory() {
+  $sql = "
+select n1.nid as id1, n1.title as title1, n2.nid as id2, n2.title as title2, i1.field_inventory_number_value as inv_num1, i2.field_inventory_number_value as inv_num2 from node n1 inner join field_data_field_inventory_number i1 ON i1.entity_id=n1.nid inner join field_data_field_inventory_number i2 on (i1.field_inventory_number_value = i2.field_inventory_number_value AND i1.entity_id!=i2.entity_id) inner join node n2 on n2.nid=i2.entity_id;
+";
+
+  $results = db_query($sql);
+  while($result = $results->fetchObject()) {
+    drupal_set_message($result->inv_num1." -- ".
+		       l($result->title1, "node/".$result->id1."/edit")." -- ".
+		       l($result->title2, "node/".$result->id2."/edit"));
+  }
+}
+function mnn_data_massage_reservation_discrepency() {
+  $min = 1;
+  $max = 150000;
+
+  $cur = mktime();
+  dsm(date('r', $cur));
+
+
+  $sql = "
+    SELECT guid, entity_id 
+    FROM feeds_item f
+    INNER JOIN node n on f.entity_id=n.nid
+    WHERE entity_type='node'
+    AND type='reservations_reservation'
+    AND guid>=$min
+    AND guid<=$max
+    ORDER by guid;
+  ";
+
+  
+  $results = db_query($sql);
+
+  $guids = array();
+  while($result = $results->fetchObject()) {
+    $guids[$result->guid] = $result->entity_id;
+  }
+
+  $guid_keys = array_keys($guids);
+
+  $sql = "
+    SELECT reservation_id
+    FROM ac_report_reservation_cache 
+    WHERE reservation_id>=$min
+    AND reservation_id<=$max
+  ";
+
+  $results = mnn_data_massage_run_crumbine_query($sql);
+  $rids = array();
+  while($result = $results->fetchObject()) {
+    $rids[] = $result->reservation_id;
+    unset($guids[$result->reservation_id]);
+  }
+  $missing = array_diff($rids, $guid_keys);
+
+  dsm(count($guid_keys), ' 2.0 reservations ');
+  //dsm($guid_keys);
+
+  dsm(count($rids), ' 1.0 reservations');
+  //dsm($rids);
+
+  dsm(count($guids), ' 2.0 only reservations');
+  dsm($guids);
+
+  dsm(count($missing), ' 1.0 only reservations');
+  dsm($missing);
+
+  $end = mktime();
+  dsm(date('r', $end));
+  dsm($end-$cur);
+
+  /**
+  $counter = 0;
+  foreach($guids as $guid=>$nid) {
+    node_delete($nid);
+    $counter++;
+  }
+  dsm("deleted $counter nodes");
+  */
+}
+function mnn_data_massage_reservation_import() {
+
+  
+  //$min = 99006;
+  $min =   115630;
+  $max =   126658;
+  //$max =  126658 ;
+
+  $checked_in_status = 4;
+  $deleted_status = 5;
+  $inv_map = array(
+		   'mnn facilities'=>804,
+		   'production'=>806,
+		   'youth channel'=>796,
+		   'community media'=>800,
+		   'technology'=>797,
+		   'firehouse'=>1040,
+		   'firehouse facilities'=>1043,
+		   );
+
+  $cur = mktime();
+  dsm(date('r', $cur));
+
+  /////////////////////////////////////////////////////////////////////////
+  //FETCH THE RESERVATION NIDS 
+  $sql = "
+    SELECT entity_id, guid 
+    FROM feeds_item f
+    INNER JOIN node r on r.nid=f.entity_id
+    WHERE f.entity_type='node'
+    AND f.guid >= $min
+    AND f.guid <= $max
+    AND r.type = 'reservations_reservation'
+  ";
+
+  $results = db_query($sql);
+  $nids = array();
+  $guids = array();
+  while($result = $results->fetchObject()) {
+    $nids[] = $result->entity_id;
+    $guids[] = $result->guid;
+  }
+
+  dsm(count($guids), 'reservations that already exist');
+
+  $guids = $guids ? implode(',', $guids) : NULL;
+
+  $sql = "
+    SELECT * 
+    FROM ac_report_reservation_cache r
+    INNER JOIN ac_report_item_reservation_cache ir
+      ON ir.reservation_id=r.reservation_id
+    
+WHERE r.reservation_id >= $min
+    AND r.reservation_id <= $max
+    AND r.reserve_start_time < '2014-01' ";
+
+  if ($guids) {
+    $sql .= " AND r.reservation_id NOT IN ($guids) ";
+  }
+
+  $sql .= " ORDER BY r.reservation_id asc ";
+
+  $results = mnn_data_massage_run_crumbine_query($sql);
+
+  $source_reservations = array();
+  $bad_buckets = array();
+  $bad_rezzes = array();
+  $counter = 0;
+  while($res_item = $results->fetchObject()) {
+    if (!isset($source_reservations[$res_item->reservation_id])) {
+      $source_reservations[$res_item->reservation_id] = array();
+      $source_reservations[$res_item->reservation_id]['res_items'] =
+	array();
+
+      $res_status = $res_item->deleted ? $deleted_status :$checked_in_status;
+      $res_inventory = $inv_map[$res_item->inventory_name];
+
+      if (!$res_inventory) {
+	dsm($res_item, 'missing inventory, skipping@!!!!!!!');
+	continue;
+      }
+      $source_reservation = array(
+				  'uid' => $res_item->producer_id,
+				  'status' => $res_status,
+				  'start' => $res_item->reserve_start_time,
+				  'end' => $res_item->reserve_end_time,
+				  'id' => $res_item->reservation_id,
+				  'inventory' => $res_inventory,
+				  'project_id' => $res_item->project_id,
+				  'type' => $res_item->type,
+				  'guid' => $res_item->reservation_id,
+				  );
+
+      $source_reservations[$res_item->reservation_id]['source'] =
+	$source_reservation;
+    }
+    $sql = "
+      SELECT entity_id
+      FROM feeds_item f
+      INNER JOIN node n on n.nid=f.entity_id
+      WHERE entity_type = 'node'
+      AND n.type!='reservations_reservation'
+      AND n.type!='cm_project'
+      AND n.type!='civicrm_multiday_event'
+      AND guid = " . $res_item->item_id; 
+
+    $result = db_query($sql)->fetchObject();
+    $item_id = $result ? $result->entity_id : NULL;
+
+    $reservation_item = new stdClass();
+    $reservation_item->item_type = $res_item->type;
+    $reservation_item->bucket_id = 
+      mnn_data_massage_bucket_map($res_item->bucket_id);
+
+    if (!$reservation_item->bucket_id) {
+      $bad_buckets[$res_item->bucket_id]++;
+      continue;
+    }
+    $reservation_item->item_id = $item_id;
+
+    $source_reservations[$res_item->reservation_id]['res_items'][] = 
+      $reservation_item;
+  }
+
+  dsm(count($source_reservations), 'rezzes');
+  //dsm($source_reservations, 'rezzes');
+  dsm($bad_buckets, 'bad buckets');
+  //return;
+
+  foreach ($source_reservations as $source_reservation_info) {
+    $target_reservation = mnn_data_massage_get_reservation_template_node();
+
+    $source_reservation = $source_reservation_info['source'];
+
+    $reservation_dd_items = array();
+    
+    foreach ($source_reservation_info['res_items'] as $res_item) {
+      $value = $res_item->item_id ? $res_item->item_id : $res_item->bucket_id; 
+      $reservation_dd_items[] = array(
+				      'reservations_item_nid'=>$value,
+				      );
+    }
+
+    if(!$reservation_dd_items) {
+      $bad_rezzes[] = $source_reservation_info;
+      continue;
+    }
+
+    $project = node_load($source_reservation['project_id']);
+    if ($project->type != 'cm_project') {
+      $project_id = 29999;
+    }
+    else {
+      $project_id = $project->nid;
+    }
+    
+    $target_reservation->uid = $source_reservation['uid'];
+    $target_reservation->reservations_reservation_status = 
+      $source_reservation['status'];
+    $target_reservation->field_reservations_date[LANGUAGE_NONE][0]['value']=
+      $source_reservation['start'];
+    $target_reservation->field_reservations_date[LANGUAGE_NONE][0]['value2']=
+      $source_reservation['end'];
+    $target_reservation->field_reservation_id[LANGUAGE_NONE][0]['value'] =
+      $source_reservation['id'];
+    $target_reservation->field_reservations_inventory[LANGUAGE_NONE][0]['tid']=
+      $source_reservation['inventory'];
+    $target_reservation->og_node1[LANGUAGE_NONE][0]['target_id'] = $project_id;
+
+    $target_reservation->reservations_reservation_items = 
+      $reservation_dd_items;
+
+    node_save($target_reservation);
+
+    $sql = "
+      INSERT INTO feeds_item
+        (entity_type, entity_id, id, feed_nid, imported, url, guid)
+      VALUES
+        ('node', ".$target_reservation->nid.", 
+         'mnn_reservations_import_libkuman', 0, UNIX_TIMESTAMP(), '', ".
+        $source_reservation['guid'].")
+    ";
+    
+    unset($target_reservation);
+    
+    db_query($sql);
+    $counter++;
+  }
+
+  dsm($bad_rezzes, 'bad rezzes');
+  dsm($counter, 'counter rezzies saved');
+
+  $end = mktime();
+  dsm(date('r', $end));
+  dsm($end-$cur);
+}
+
+function mnn_data_massage_get_reservation_template_node() {
+  $reservation_template = new stdClass();
+  $reservation_template->status = 1;
+  $reservation_template->comment = 0;
+  $reservation_template->promote= 0;
+  $reservation_template->sticky= 0;
+  $reservation_template->type='reservations_reservation';
+  $reservation_template->language=LANGUAGE_NONE;
+  $reservation_template->tnid=0;
+  $reservation_template->translate=0;
+  $reservation_template->reservation_reservation_items=array();
+  $reservation_template->reservations_date=array();
+  $reservation_template->og_node1 = array();
+  $reservation_template->field_reservations_inventory = array();
+  $reservation_template->field_reservations_id = array();
+
+  return $reservation_template;
+}
+
+
+function mnn_data_massage_reservation_deleter() {
+  /**
+  $sql = "select r.nid from node r LEFT JOIN feeds_item f on (f.entity_id=r.nid AND f.entity_type='node') INNER JOIN field_data_field_reservations_date d on d.entity_id=r.nid WHERE r.type='reservations_reservation' and f.entity_id is null and field_reservations_date_value<'2013-10'";
+  */
+
+  //$sql = "SELECT r.nid from node r LEFT join reservations_reservation_detail d ON r.nid=d.nid where d.did is NULL and r.type='reservations_reservation'";
+
+  $sql = 
+    "select max(entity_id) as delete_nid,count(1), guid from node n inner join feeds_item f on f.entity_id=n.nid where type='reservations_reservation' and f.guid<=150000 and entity_type='node' group by guid having count(1) > 1 order by cast(guid as unsigned)";
+
+  $results = db_query($sql);
+  $counter = 0;
+  while ($result = $results->fetchObject()) {
+    if (!$result->delete_nid) {
+      dsm("woah");
+    }
+    else {
+      node_delete($result->delete_nid);
+      
+    }
+    $counter ++;
+  }
+  dsm("deleted $counter reservations");
+}
+
+
+function mnn_data_massage_update_project_less_shows() {
+  $cur_time = mktime();
+  dsm(date('r',$cur_time));
+  $sql = "
+    SELECT n.nid AS target_show_nid, guid AS source_show_nid 
+    FROM node n left join og_membership m 
+      ON (m.etid=n.nid and entity_type='node') 
+    INNER JOIN feeds_item f on (f.entity_id=n.nid and f.entity_type='node') 
+    WHERE n.type='cm_show' 
+    AND m.gid IS NULL
+    AND guid IS NOT NULL
+    ORDER BY cast(guid as UNSIGNED) desc
+   ;";
+  
+  $results = db_query($sql);
+
+  $nids = array();
+  $mappings = array();
+  while($result = $results->fetchObject()) {
+    $mappings[$result->source_show_nid] = $result->target_show_nid;
+    if($result->source_show_nid) {
+      $nids[] = $result->source_show_nid;
+    }
+
+  }
+  dsm(count($nids), 'count of nids');
+  $arg = implode(',',$nids);
+
+  $sql = "
+    SELECT episode_id, project_id 
+    FROM ac_report_episode_cache 
+    WHERE episode_id IN ($arg)
+  ";
+  $results = mnn_data_massage_run_crumbine_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $target_show_nid = $mappings[$result->episode_id];
+    if ($result->project_id) {
+      $sql = "
+        INSERT INTO og_membership (type, etid, entity_type, gid,
+        state, created, group_type, field_name, language)    
+        VALUES ( 'og_membership_type_default', $target_show_nid, 'node', 
+        $result->project_id, 1, UNIX_TIMESTAMP(), 'node', 'og_node2', 'en')  
+      ";
+    }
+    db_query($sql);
+  }
+  $end_time = mktime();
+  dsm($end_time-$cur_time);
+  dsm(date('r',$end_time));
+}
+
+function mnn_data_massage_remove_show_from_airing() {
+  $sql = "select entity_id from  field_data_field_airing_show_ref where entity_id IN (select airing_id from cm_airing a inner join field_data_field_airing_show_ref s on a.airing_id=s.entity_id inner join field_data_field_airing_date d on d.entity_id=s.entity_id where field_airing_date_value >= '2013-12-22')";
+  $results = db_query($sql);
+  $counter = 0;
+  while ($result = $results->fetchObject()) {
+    $counter ++;
+    $airings = entity_load('airing', array($result->entity_id));
+    if ($airings) {
+      $airing = array_shift($airings);
+      $airing->field_airing_show_ref = array();
+      entity_save('airing', $airing);
+      dsm($result->entity_id);
+    }
+  }
+  dsm("removed $counter shows from airings");
+}
+
+function mnn_data_massage_replication_data_import() {
+  $script_time = strtotime('now');
+  //fetch to get all airings for a quarter
+  $view = views_get_view(MNN_QUARTERLY_AIRINGS_VIEW);
+  
+  //SET ARGUMENTS
+  $args = array('2013-09-22--2013-12-21');
+  $view->set_arguments($args);
+
+  //execute view
+  $view->execute();
+  $airings = $view->result;
+  $counter = 0;
+  $projects = array();
+  $airing_data = array();
+  $counter = 0;
+  foreach($airings as $airing) {
+    $project = $airing->field_field_airing_project_ref[0]['raw']['entity'];
+    $projects[$project->nid] = $project;
+    $interval = $project->field_interval[LANGUAGE_NONE][0]['tid'];
+
+    $airing_data[$project->nid] = isset($airing_data[$project->nid]) ?
+      $airing_data[$project->nid] : array();
+   
+    $start = strtotime($airing->field_field_airing_date[0]['raw']['value']);
+
+    $slot_time_string = ($interval == 771) ? "DAILY" : date('D', $start); 
+
+    $slot_index = $slot_time_string.'-'.date('G:i:s', $start).'-CH-TID'.
+      $airing->field_field_airing_channel[0]['raw']['tid'];
+    
+    $quarter_string = '2013-09-22--2013-12-21';
+
+    $airing_data[$project->nid][$quarter_string] = 
+      isset($airing_data[$project->nid][$quarter_string]) ? 
+      $airing_data[$project->nid][$quarter_string] : array();
+
+    $airing_data[$project->nid][$quarter_string][$slot_index] = 
+      isset($airing_data[$project->nid][$quarter_string][$slot_index]) ? 
+      $airing_data[$project->nid][$quarter_string][$slot_index] : array();
+    
+    $airing_data[$project->nid][$quarter_string][$slot_index][$start]
+      = $airing->airing_id; 
+    $counter++;
+  }
+  $mid_time = strtotime('now');
+  dsm($counter.' airings in '.(($mid_time-$script_time)/60));
+
+  $counter = 0;
+  foreach($airing_data as $project_nid => $airings) {
+    if (count($airings[$quarter_string]) > 1) {
+      dsm($airings, "Airings for project id: $project_nid");
+    }
+    $project = $projects[$project_nid];
+    $project->field_replication_history[LANGUAGE_NONE][0] = 
+      array('value' => serialize($airings));
+    $project->field_replicated_quarters[LANGUAGE_NONE][0] = 
+      array('value'=>'2013-09-22--2013-12-21');
+    node_save($project);
+    $counter++;
+  }
+  $end_time = strtotime('now');
+  dsm($counter.' projects in '.(($end_time-$mid_time)/60));
+}
+
+function mnn_data_massage_producer_certification_data_check() {
+  $sql = "
+    SELECT * 
+    FROM ac_report_producer_certification_cache pc
+    ORDER BY certification
+  ";
+
+  $results = mnn_data_massage_run_crumbine_query($sql);
+  $producer_cert_data = array();
+  while ($result = $results->fetchObject()) {
+    $uid = $result->producer_id;
+    $producer_cert_data[$uid] = isset($producer_cert_data[$uid]) ? 
+      $producer_cert_data[$uid] : array();
+    $producer_cert_data[$uid][] = $result->certification;
+  }
+
+  foreach ($producer_cert_data as $uid=>$certs) {
+    $user = user_load(array($uid));
+
+    $activity_dates = array();
+    $sql = "
+      SELECT max(reserve_start_time) as activity_date
+      FROM ac_report_reservation_cache 
+      WHERE producer_id=$uid";
+    
+    $result = mnn_data_massage_run_crumbine_query($sql)->fetchObject();
+    if ($result) {
+      $activity_dates[] = strtotime($result->activity_date);
+    }
+
+    $sql = "
+      SELECT max(created) as activity_date
+      FROM ac_report_project_cache 
+      WHERE exec_producer_id=$uid";
+    
+    $result = mnn_data_massage_run_crumbine_query($sql)->fetchObject();
+    if ($result) {
+      $activity_dates[] = strtotime($result->activity_date);
+    }
+
+    $sql = "
+      SELECT max(created) as activity_date
+      FROM ac_report_episode_cache 
+      WHERE exec_producer_id=$uid";
+    
+    $result = mnn_data_massage_run_crumbine_query($sql)->fetchObject();
+    if ($result) {
+      $activity_dates[] = strtotime($result->activity_date);
+    }
+
+    $sql = "
+      SELECT max(created) as activity_date
+      FROM ac_report_producer_cache 
+      WHERE producer_id=$uid";
+    
+    $result = mnn_data_massage_run_crumbine_query($sql)->fetchObject();
+    if ($result) {
+      $activity_dates[] = $result->activity_date;
+    }
+    $activity_date = max($activity_dates);
+    $user->field_been_audited[LANGUAGE_NONE][0]['value'] = 'no';
+    $user->field_last_activity_date[LANGUAGE_NONE][0]['value'] = 
+      date('Y-m-d H:i:s',$activity_date);
+    $user->field_1_0_certs[LANGUAGE_NONE][0]['value'] = implode(',',$certs);
+    user_save($user);
+
+    variable_set(MNN_DATA_MASSAGE_CERTIFICATION_LAST_ID, $uid);
+  }
+}
+
+function mnn_data_massage_reservation_node_subtype_update() {
+  $log = array();
+  $sql = "
+    SELECT n.type, n.nid, n.vid, td.name AS availability, 
+      rnt.reservations_type_setting AS  item_type ,
+      rnt.reservations_late_fee_per_hour,
+      rnt.reservations_rate_per_hour,
+      rnt.reservations_fee_free_hours,
+      rnt.reservations_min_cancel_hours,
+      rnt.reservations_autocheckout,
+      rnt.reservations_autocheckin,
+      rnt.reservations_selfcheckout
+    FROM node n 
+    LEFT JOIN reservations_node_type rnt 
+      ON rnt.type=n.type 
+    LEFT JOIN reservations_reservation_item_node rrin 
+      ON rrin.vid=n.vid 
+    INNER JOIN field_data_field_equipment_item_status eis 
+      ON eis.revision_id=n.vid
+    INNER JOIN taxonomy_term_data td 
+      ON td.tid=field_equipment_item_status_tid 
+    WHERE rnt.type IS NOT NULL 
+    AND reservations_type_setting!='disabled' 
+    AND rrin.vid is null
+    ";
+
+  //FIXME ONLY HERE FOR TESTING
+  //$sql .= "    AND n.nid=35813";
+  dsm($sql);
+  //return "bla";
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $log[$result->type] = $result;
+    $insert_sql = "
+      INSERT INTO reservations_reservation_item_node
+      (nid, vid, reservations_default_availability, 
+       reservations_sub_type, reservations_item_status)
+      VALUES (:nid,:vid,:availability,:subtype,:item_status)
+      ";
+
+    $item_status = ($result->availability == 'Reservable') ? 1 : 2;
+    $params = array(
+		    ':nid' => $result->nid,
+		    ':vid' => $result->vid,
+		    ':availability' =>$item_status,
+		    ':subtype' => RESERVATIONS_SUB_TYPE_ITEM,
+		    ':item_status' => 0,
+		    );
+    db_query($insert_sql, $params);
+
+    $table_name = ($result->item_type == 'bucket') ?
+      'reservations_bucket_node' : 'reservations_resource_node';
+    
+    $insert_sql = "
+      INSERT INTO $table_name
+       (nid, vid,
+       reservations_default_availability,
+       reservations_late_fee_per_hour,
+       reservations_rate_per_hour,
+       reservations_fee_free_hours,
+       reservations_min_cancel_hours,
+       reservations_autocheckout,
+       reservations_autocheckin,
+       reservations_selfcheckout,
+       reservations_sub_type)
+      VALUES
+       (:nid, :vid,
+       :reservations_default_availability,
+       :reservations_late_fee_per_hour,
+       :reservations_rate_per_hour,
+       :reservations_fee_free_hours,
+       :reservations_min_cancel_hours,
+       :reservations_autocheckout,
+       :reservations_autocheckin,
+       :reservations_selfcheckout,
+       :reservations_sub_type)
+      ";
+
+    $params = array(
+		  
+		    ':nid' => $result->nid,
+		    ':vid' => $result->vid,
+		    ':reservations_default_availability' => $item_status,
+		    ':reservations_late_fee_per_hour' => 
+		    $result->reservations_late_fee_per_hour,
+		    ':reservations_rate_per_hour' => 
+		    $result->reservations_rate_per_hour,
+		    ':reservations_fee_free_hours' => 
+		    $result->reservations_fee_free_hours,
+		    ':reservations_min_cancel_hours' => 
+		    $result->reservations_min_cancel_hours,
+		    ':reservations_autocheckout' => 
+		    $result->reservations_autocheckout,
+		    ':reservations_autocheckin' => 
+		    $result->reservations_autocheckin,
+		    ':reservations_selfcheckout' => 
+		    $result->reservations_selfcheckout,
+		    ':reservations_sub_type' => RESERVATIONS_SUB_TYPE_ITEM,
+		    );
+    db_query($insert_sql,$params);
+  }
+
+  dsm($log, "here is the log");
+}
+function mnn_data_massage_airing_delete_audit() {
+  $last_import_id = 466238;
+
+  $sql = 
+    "SELECT a.airing_id 
+     FROM cm_airing a
+     WHERE airing_id>$last_import_id";
+
+  $results = db_query($sql);
+  $count = 0;
+  while ($result = $results->fetchObject()) {
+    $count ++;
+    $airings = entity_load('airing', array($result->airing_id));
+    if ($airings) {
+      $airing = array_shift($airings);
+      $ret .= l($airing->airing_id, "airing/".$airing->airing_id."/delete").
+	"<br/>";
+    }
+    if (!$airing) {
+      dsm("no airing for $result->airing_id");
+    }
+  }
+  drupal_set_message("Found $count airings");
+  drupal_set_message($ret);
+ 
+}
+
+
+
+function mnn_data_massage_equipment_update() {
+  dsm(date('r'), 'starting equipment update');
+  $creates = $updates = array();
+  $last_id = 0;
+
+  $sql = 
+    "SELECT i.*, b.title as bucket_title 
+     FROM ac_report_item_cache i
+     LEFT JOIN ac_report_bucket_cache b USING(bucket_id)
+     WHERE i.item_type = 'equipment'
+
+     AND b.bucket_id is null
+     
+     ORDER BY i.item_id asc 
+     ";
+  
+  $results = mnn_data_massage_run_crumbine_query($sql);
+  $type_transforms = 
+    array('sony_trv_900_pd150_batteries_yc_' => 'sony_trv_900_pd150_yc_',
+	  'beach_tek_xlr_pro_p_' =>  'beach_tek_xlr___pro_p_',
+	  'beach_tek_xlr_pro_fh_' => 'beach_tek_xlr___pro_fh_',
+	  'beyerdynamic_m58_handheld_mic_fh' => 'beyerdynamic_m58_fh_',
+	  'firehouse_director_s_chair_tall_' => "equipment_non_reservable_",
+	  'firehouse_director_s_chair_short' => "equipment_non_reservable_",
+         );
+  
+  while ($ac_equipment = $results->fetchObject()) {
+    if ($ac_equipment->bucket_title) {
+      $ac_type = 
+	substr(strtolower(preg_replace("![^a-z0-9]+!i", "_", 
+				       $ac_equipment->bucket_title)),
+	       0, 32);
+      $ac_type = $type_transforms[$ac_type] ? $type_transforms[$ac_type] :
+	$ac_type;
+
+      $sql = "SELECT count(1) as `match` from node_type where type='$ac_type'";
+      $result = db_query($sql)->fetchObject()->match;
+      
+      $found_bad_type = ($result == 0) ? TRUE : FALSE;
+    }
+    else {
+      $ac_type = 'equipment_non_reservable_';
+    }
+
+    //dsm("sorting $ac_equipment->title $ac_equipment->item_id with $ac_type");
+    $sql = 
+      "SELECT entity_id
+       FROM feeds_item
+       WHERE guid = $ac_equipment->item_id
+       AND entity_type='node'";
+
+    $entity_id = db_query($sql)->fetchObject()->entity_id;
+    $ac_equipment->entity_id = $entity_id;
+
+    if ($entity_id) {
+      $cm_equipment = node_load($entity_id);
+      //dsm($cm_equipment, 'just fetched');
+
+      if ($found_bad_type && ($ac_type != $cm_equipment->type)) {
+	dsm("'$ac_type' => '$cm_equipment->type'");
+      }
+      else if ($ac_type != $cm_equipment->type) {
+	//dsm($ac_type.' will override  '.$cm_equipment->type);
+	
+      }
+      $cm_equipment->type = $ac_type;
+      $cm_equipment->title = $ac_equipment->title;
+      $cm_equipment->changed = strtotime('now');
+      $cm_equipment->reservations_sub_type = 1;
+
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->department_name, 14)){
+
+	$cm_equipment->field_department[LANGUAGE_NONE][0]['tid'] = 
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->department_name, 14);
+      }
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->item_status, 13)) {
+	$cm_equipment->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->item_status, 13);
+      }
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->inventory_name, 10)){
+	$cm_equipment->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->inventory_name, 10);
+      }
+      
+
+      $cm_equipment->field_accessories[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->accessories) ? $ac_equipment->accessories : "";
+
+      $cm_equipment->field_cost[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->price) ? $ac_equipment->price : 0;
+
+      if ($ac_equipment->in_service_date) {
+	$cm_equipment->field_in_service_ate[LANGUAGE_NONE][0]['value'] = 
+	  date('Y-m-d H:i:s',strtotime($ac_equipment->in_service_date));
+      }
+      
+      $cm_equipment->field_inventory_number[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->inventory_number) ? 
+	$ac_equipment->inventory_number : "";
+
+      $cm_equipment->field_manufacturer[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->manufacturer) ? $ac_equipment->manufacturer : "";
+
+      $cm_equipment->field_model[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->model) ? $ac_equipment->model : "";
+
+      $cm_equipment->field_serial_number[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->serial_number) ? $ac_equipment->serial_number : "";
+
+      //fetch associated facility id
+      $facility_id = $ac_equipment->location_item_id;
+      if ($facility_id) {
+	$sql = 
+	  "SELECT entity_id 
+           FROM feeds_item 
+           WHERE guid=$facility_id 
+           AND entity_type='node'";
+	$f_nid = db_query($sql)->fetchObject()->entity_id;
+	if ($f_nid) {
+	  $cm_equipment->field_associated_facility[LANGUAGE_NONE][0]['nid']
+	    = $f_nid;
+	}
+      }
+
+      $cm_equipment->body[LANGUAGE_NONE][0]['value'] = 
+	$ac_equipment->description ? $ac_equipment->description : "";
+
+      $cm_equipment->reservations_default_availability = 	
+	($ac_type != 'equipment_non_reservable_' &&
+	 $ac_equipment->item_status == 'Reservable') ? 1: 2;
+
+      //dsm($cm_equipment, 'about to update');
+      //dsm($ac_equipment, 'ac');
+      //drupal_set_message(l($ac_equipment->title.":".$ac_equipment->item_id,
+      //			   "node/$cm_equipment->nid"));
+
+      node_save($cm_equipment);
+ 
+      $updates[$ac_equipment->title.":".$ac_equipment->item_id]['ac'] = 
+	$ac_equipment;
+      $updates[$ac_equipment->title.":".$ac_equipment->item_id]['cm'] = 
+	$cm_equipment;
+
+    }
+    else {
+      $sql = 
+	"SELECT n.nid, n.title 
+         FROM node n
+         INNER JOIN field_data_field_inventory_number i on i.revision_id=n.vid
+         WHERE field_inventory_number_value = '$ac_equipment->inventory_number'
+        ";
+
+      $placeholders = db_query($sql);
+      $existing_nid = 0;
+      while($placeholder = $placeholders->fetchObject()){
+	$existing_nid = $placeholder->nid;
+	break;
+      }      
+
+      $cm_equipment = new stdClass();
+      if ($existing_nid) {
+	$cm_equipment->nid = $existing_nid;
+	//$cm_equipment->is_new = TRUE;
+	//dsm("$ac_equipment->title $ac_equipment->item_id has 
+        //     existing_nid = $existing_nid");
+      }
+      $cm_equipment->uid = 4;
+      $cm_equipment->title = $ac_equipment->title;
+      $cm_equipment->log = 'inserted by mnn_data_massage_equipment_update';
+    
+      $cm_equipment->status = 1;
+      $cm_equipment->comment = 2;
+      $cm_equipment->promote = 0;
+      $cm_equipment->sticky = 0;
+      $cm_equipment->type = $ac_type;
+      $cm_equipment->language = LANGUAGE_NONE;
+      $cm_equipment->created = strtotime('now');
+      $cm_equipment->changed = strtotime('now');
+      $cm_equipment->reservations_sub_type = 1;
+
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->department_name, 14)){
+
+	$cm_equipment->field_department[LANGUAGE_NONE][0]['tid'] = 
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->department_name, 14);
+      }
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->item_status, 13)) {
+	$cm_equipment->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->item_status, 13);
+      }
+      if (mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->inventory_name, 10)){
+	$cm_equipment->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name
+	  ($ac_equipment->inventory_name, 10);
+      }
+      
+
+      $cm_equipment->field_accessories[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->accessories) ? $ac_equipment->accessories : "";
+
+      $cm_equipment->field_cost[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->price) ? $ac_equipment->price : 0;
+
+      if ($ac_equipment->in_service_date) {
+	$cm_equipment->field_in_service_ate[LANGUAGE_NONE][0]['value'] = 
+	  date('Y-m-d H:i:s',strtotime($ac_equipment->in_service_date));
+      }
+      
+      $cm_equipment->field_inventory_number[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->inventory_number) ? 
+	$ac_equipment->inventory_number : "";
+
+      $cm_equipment->field_manufacturer[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->manufacturer) ? $ac_equipment->manufacturer : "";
+
+      $cm_equipment->field_model[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->model) ? $ac_equipment->model : "";
+
+      $cm_equipment->field_serial_number[LANGUAGE_NONE][0]['value'] = 
+	($ac_equipment->serial_number) ? $ac_equipment->serial_number : "";
+      
+            //fetch associated facility id
+      $facility_id = $ac_equipment->location_item_id;
+      if ($facility_id) {
+	$sql = 
+	  "SELECT entity_id 
+           FROM feeds_item 
+           WHERE guid=$facility_id 
+           AND entity_type='node'";
+	$f_nid = db_query($sql)->fetchObject()->entity_id;
+	if ($f_nid) {
+	  $cm_equipment->field_associated_facility[LANGUAGE_NONE][0]['nid']
+	    = $f_nid;
+	}
+      }
+
+      $cm_equipment->body = $ac_equipment->description ? 
+	$ac_equipment->description : "";
+
+      $cm_equipment->reservations_default_availability = 	
+	($ac_type != 'equipment_non_reservable_' &&
+	 $ac_equipment->item_status == 'Reservable') ? 1: 2;
+
+      //dsm($cm_equipment, 'about to save cm');
+      //dsm($ac_equipment, 'the original');
+      //drupal_set_message(l($ac_equipment->title.":".$ac_equipment->item_id,
+      //		   "node/$cm_equipment->nid"));
+
+      node_save($cm_equipment);
+
+      if (!$existing_nid) {
+	$feed_id = ($ac_type == 'equipment_non_reservable_') ? 
+	  'non_reservable_equipment_import' :
+	  'reservable_equipment_import';
+	$now = strtotime('now');
+	$guid = $ac_equipment->item_id;
+	$sql = 
+	  "INSERT INTO feeds_item 
+           (entity_type, entity_id, id, feed_nid, imported, url, guid, hash) 
+           VALUES
+           ('node', $cm_equipment->nid, '$feed_id', 0, $now, '',$guid ,'')
+          ";
+      
+	//dsm($sql);
+	db_query($sql);
+      }
+      
+      $creates[$ac_equipment->title.":".$ac_equipment->item_id]['ac'] = 
+	$ac_equipment;
+      $creates[$ac_equipment->title.":".$ac_equipment->item_id]['cm'] = 
+	$cm_equipment;
+    }
+    $last_id = $ac_equipment->item_id;
+
+  }
+  dsm(date('r'), 'finishing equipment update');
+  //dsm($creates, 'creates');
+  //dsm($updates, 'updates');
+  //dsm($last_id, 'last id');
+  //variable_set(MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_CREATES, $creates);
+  //variable_set(MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_UPDATES, $updates);
+  //variable_set(MNN_DATA_MASSAGE_EQUIPMENT_ITEM_UPDATE_LAST_ID, $last_id);
+}
+
+function mnn_data_massage_facility_update() {
+  $creates = $updates = array();
+  $last_id = 0;
+
+  $sql = 
+    "SELECT i.*, b.title as bucket_title 
+     FROM ac_report_item_cache i
+     LEFT JOIN ac_report_bucket_cache b USING(bucket_id)
+     WHERE i.item_type = 'facility'
+     ORDER BY i.item_id asc ";
+
+  $results = mnn_data_massage_run_crumbine_query($sql);
+  $type_transforms = array('editing_bays_cm__' => 'editing_bays_cm_',
+			   'tripod_large_p_' => 'facility_non_reservable_',
+			   );
+
+  $delete_mistake_nids = 
+    array(
+	  'ES0004-EDIT SUITE AA'           => 36748,//303721
+	  'ES0002-EDIT SUITE B'            => 36749,//303770
+	  'TR0001-2ND FL. CONFERENCE ROOM' => 36776,//303549
+	  'TR0002-3RD FL. CONFERENCE AREA' => 36777,//303556
+	  'Public Internet Kiosk #1'       => 36791,//334990
+	  'Public Internet Kiosk #6'       => 36796,//335404
+	  );
+  while ($ac_facility = $results->fetchObject()) {
+    //dsm("sorting $ac_facility->title");
+    if ($ac_facility->bucket_title) {
+      $ac_type = substr(strtolower(preg_replace("![^a-z0-9]+!i", "_", 
+						$ac_facility->bucket_title)),
+			0, 32);
+      $ac_type = $type_transforms[$ac_type] ? $type_transforms[$ac_type] :
+	$ac_type;
+    }
+    else {
+      $ac_type = 'facility_non_reservable_';
+    }
+
+    $sql = 
+      "SELECT entity_id
+       FROM feeds_item
+       WHERE guid = $ac_facility->item_id
+       AND entity_type='node'";
+
+    $entity_id = db_query($sql)->fetchObject()->entity_id;
+    $ac_facility->entity_id = $entity_id;
+    if ($entity_id) {
+      $cm_facility = node_load($entity_id);
+      $updates[$ac_facility->title]['ac'] = $ac_facility;
+      $updates[$ac_facility->title]['cm'] = $cm_facility;
+      if ($ac_type != $cm_facility->type) {
+	dsm('wrong type: '.$ac_type.'  '.$cm_facility->type);
+      }
+      $cm_facility->title = $ac_facility->title;
+      $cm_facility->changed = strtotime('now');
+      $cm_facility->reservations_sub_type = 1;
+
+      $cm_facility->field_facility_list[LANGUAGE_NONE][0]['value'] = 1;
+      $cm_facility->field_facility_code[LANGUAGE_NONE][0]['value'] =
+	$ac_facility->facility_code;
+      if (mnn_data_massage_get_tid_for_name($ac_facility->department_name, 14)){
+	$cm_facility->field_department[LANGUAGE_NONE][0]['tid'] = 
+	  mnn_data_massage_get_tid_for_name($ac_facility->department_name, 14);
+      }
+      if (mnn_data_massage_get_tid_for_name($ac_facility->building, 15)) {
+	$cm_facility->field_building[LANGUAGE_NONE][0]['tid'] = 
+	  mnn_data_massage_get_tid_for_name($ac_facility->building, 15);
+      }
+      if (mnn_data_massage_get_tid_for_name($ac_facility->item_status, 13)) {
+	$cm_facility->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name($ac_facility->item_status, 13);
+      }
+      if (mnn_data_massage_get_tid_for_name($ac_facility->inventory_name, 10)){
+	$cm_facility->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] =
+	  mnn_data_massage_get_tid_for_name($ac_facility->inventory_name, 10);
+      }
+      unset($cm_facility->field_invenroty_id[LANGUAGE_NONE][0]['value']);
+      $cm_facility->body = $ac_facility->description ? 
+	$ac_facility->description : "";
+
+      $cm_facility->reservations_default_availability = 	
+	($ac_type != 'facility_non_reservable_' &&
+	 $ac_facility->item_status == 'Reservable') ? 1: 2;
+      node_save($cm_facility);
+    }
+    else {
+      $deleted_nid = $delete_mistake_nids[$ac_facility->title];
+
+      $cm_facility = new stdClass();
+      if ($deleted_nid) {
+	$cm_facility->nid = $deleted_nid;
+	$cm_facility->is_new = TRUE;
+	dsm("$ac_facility->title has deleted_nid = $deleted_nid");
+      }
+      $cm_facility->uid = 4;
+      $cm_facility->title = $ac_facility->title;
+      $cm_facility->log = 'inserted by mnn_data_massage_facility_update';
+    
+      $cm_facility->status = 1;
+      $cm_facility->comment = 2;
+      $cm_facility->promote = 0;
+      $cm_facility->sticky = 0;
+      $cm_facility->type = $ac_type;
+      $cm_facility->language = LANGUAGE_NONE;
+      $cm_facility->created = strtotime('now');
+      $cm_facility->changed = strtotime('now');
+      $cm_facility->reservations_sub_type = 1;
+      $cm_facility->field_facility_list[LANGUAGE_NONE][0]['value'] = 1;
+      $cm_facility->field_facility_code[LANGUAGE_NONE][0]['value'] =
+	$ac_facility->facility_code;
+      $cm_facility->field_department[LANGUAGE_NONE][0]['tid'] = 
+	mnn_data_massage_get_tid_for_name($ac_facility->department_name, 14);
+      $cm_facility->field_building[LANGUAGE_NONE][0]['tid'] = 
+	mnn_data_massage_get_tid_for_name($ac_facility->building, 15);
+      $cm_facility->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] =
+	mnn_data_massage_get_tid_for_name($ac_facility->item_status, 13);
+      $cm_facility->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] =
+	mnn_data_massage_get_tid_for_name($ac_facility->inventory_name, 10);
+      $cm_facility->body = $ac_facility->description ? 
+	$ac_facility->description : "";
+
+      $cm_facility->reservations_default_availability = 	
+	($ac_type != 'facility_non_reservable_' &&
+	 $ac_facility->item_status == 'Reservable') ? 1: 2;
+
+      //dsm($cm_facility, 'about to save cm');
+      //dsm($ac_facility, 'the original');
+      node_save($cm_facility);
+
+     
+
+      $feed_id = ($ac_type == 'facility_non_reservable_') ? 
+	'non_reservable_facility_import' :
+	'reservable_facility_import';
+      $now = strtotime('now');
+      $guid = $ac_facility->item_id;
+      $sql = 
+	"INSERT INTO feeds_item 
+           (entity_type, entity_id, id, feed_nid, imported, url, guid, hash) 
+           VALUES
+           ('node', $cm_facility->nid, '$feed_id', 0, $now, '', $guid , '')
+          ";
+      
+      //dsm($sql);
+      db_query($sql);
+      
+      $creates[$ac_facility->title]['ac'] = $ac_facility;
+      $creates[$ac_facility->title]['cm'] = $cm_facility;
+      //break;
+
+      /**
+      $sql = 
+	"SELECT nid, title 
+         FROM node 
+         WHERE title = '$ac_facility->title'";
+      $placeholders = db_query($sql);
+      while($placeholder = $placeholders->fetchObject()){
+	dsm("'".$placeholder->title."' => ".$placeholder->nid.',');
+	dsm($ac_facility);
+	break;
+      }
+      */
+    }
+    $last_id = $ac_facility->item_id;
+
+  }
+  dsm($creates, 'creates');
+  dsm($updates, 'updates');
+  dsm($last_id, 'last id');
+  variable_set(MNN_DATA_MASSAGE_FACILITY_UPDATE_CREATES, $creates);
+  variable_set(MNN_DATA_MASSAGE_FACILITY_UPDATE_UPDATES, $updates);
+  variable_set(MNN_DATA_MASSAGE_FACILITY_UPDATE_LAST_ID, $last_id);
+}
+
+function mnn_data_massage_get_tid_for_name($t_name, $vid){
+  $vocabularies = taxonomy_vocabulary_get_names();
+  $tid_transforms = array(1565=>804);
+  $term_transforms = array('59th St.' => '59th St');
+  foreach($vocabularies as $v_name=>$vocab) {
+    if ($vocab->vid == $vid) {      
+      $tids = taxonomy_get_term_by_name($t_name, $v_name);
+      foreach ($tids as $tid=>$term) {
+	if ($tid_transforms[$term->tid]) {
+	  //dsm("transformed term!!!! $vid $v_name $t_name");
+	  return $tid_transforms[$term->tid];
+	}
+	return $term->tid;
+      }
+      if ($t_name) {
+	dsm("missing term!!!! $vid $v_name $t_name");
+      }
+      if ($term_transforms[$t_name]) {
+	return 
+	  mnn_data_massage_get_tid_for_name($term_transforms[$t_name], $vid);
+      }
+      return null;
+    }
+  }
+  
+}
+
+function mnn_data_massage_show_patch_sql() {
+  $show_creates = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES);
+  $guids = "";
+  $is_first = TRUE;
+  foreach($show_creates as $guid => $data) {
+    if (!$is_first) {
+      $guids .= ", ";
+    }
+    $is_first = FALSE;
+    $guids .= $guid;
+  }
+  $file_name = 
+    "/home/libkuman/public_files/show.patch.".date('Y.m.d.H.i').".csv";
+
+  $sql = 
+    "SELECT 'title', 'created', 'exec_producer_id' , 'device' , 'runtime', 
+     'content_type', 'format' , 'topic' , 'schedule_type' , 'live_device' , 
+     'reject_reason' , 'delivered_via' , 'episode_id' , 'time_code_in' , 
+     'time_code_out' , 'transcoded_time_code_in' , 'transcoded_time_code_out',
+     'runtime_type' , 'episode_number' , 'project_id' , 'title', 'narrative' ,
+     'notes' , 'project_id' UNION select title, created, exec_producer_id , 
+     live_device , runtime_type, content_type, format , topic , schedule_type,
+     live_device , reject_reason , delivered_via , episode_id , time_code_in , 
+     time_code_out , transcoded_time_code_in , transcoded_time_code_out , 
+     runtime_type , episode_number , project_id , title, narrative , notes , 
+     project_id 
+     INTO OUTFILE '$file_name' 
+     FIELDS TERMINATED BY ',' 
+     OPTIONALLY ENCLOSED BY '" .'"'."' 
+     LINES TERMINATED BY '".'\n'."' 
+     FROM ac_report_episode_cache 
+     WHERE episode_id IN ($guids)" ;
+
+  dsm($sql);
+
+}
+
+function mnn_data_massage_audit_report() {
+  dsm("results");
+
+  /**
+  variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES,array());
+  variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES,array());
+  variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES,array());
+  */
+
+
+  $updates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES);
+  $deletes = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES);
+  $creates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES);
+
+  /**
+     variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES, array());
+     variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES, array());
+  */
+
+
+  $show_deletes = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES);
+  $show_creates = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES);
+
+  dsm(count($updates), 'updates');
+  dsm(count($creates), 'creates');
+  dsm(count($deletes), 'deletes');
+
+  
+  $ret = "";
+  /**
+  foreach($show_deletes as $guid=>$data) {
+    dsm($data['cm']);
+    $ret .= (l($data['cm']['show_id'], 'node/'.$data['cm']['show_id'].
+	  ""))."<br/>";
+  }
+  return $ret;
+  */
+
+  dsm(count($show_deletes), 'show_deletes');
+  dsm(count($show_creates), 'show_creates');
+
+  $entity_id = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_LAST_ID);
+  $show_entity_id = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_LAST_ID);
+  $project_id = variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_ID);
+
+
+
+  dsm("last id: $entity_id");
+  dsm("show last id: $show_entity_id");
+
+  //PROJECT UPDATE RESULTS
+  
+  //variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING, "");
+  //variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS, "");
+  //variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_ID, 1);
+
+  //dsm("last project id: $project_id");
+  //dsm(variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING), 'missing projects from update');
+  //dsm(variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS), 'mistyped project nodes');
+
+  dsm(variable_get(MNN_DATA_MASSAGE_CERTIFICATION_LAST_ID), 'last uid');
+}
+
+function mnn_data_massage_airing_audit_reset() {
+  dsm("results were resset");
+  //variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES, array());
+  //variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES, array());
+  //variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES, array());
+  variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES, array());
+  variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES, array());
+
+}
+
+function mnn_data_massage_airing_audit_updates_handler() {
+  $batch = array(
+		 'title' => t('Updating Airings...'),
+		 'operations' => array(),
+		 'init_message' => t('Starting'),
+		 'progress_message' => t('Processed @current out of @total!'),
+		 'error_message' => t('An error occurred during processing'),
+		 'finished' => 'mnn_data_massage_batch_finished',
+		 'progressive' => FALSE
+		 );
+
+  $max_updates = 15000;
+  $updates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES);
+  
+  $counter = 0;
+  foreach($updates as $guid=>$airing_data) {
+    $counter++;
+    $batch['operations'][] = 
+      array('mnn_data_massage_airing_audit_updates_handler_operation', 
+	    array($guid, $airing_data));  
+    if ($counter >= $max_updates) {
+      break;
+    }
+  }
+  batch_set($batch);
+  batch_process("admin/mnn_data_massage");
+}
+
+function mnn_data_massage_airing_audit_updates_handler_operation($guid,
+								 $entity_data,
+								 &$context){
+  variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_LAST_UPDATE_ID, $entity_id);
+
+  $airings = entity_load('airing', array($entity_data['cm']['airing_id']));
+  if ($airings) {
+    $airing = array_shift($airings);
+  }
+  if (!$airing) {
+    dsm("no airing for $guid");
+  }
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  //FETCH 1.0 USERS WITH ID > $start_user_id
+  $sql = 
+    "SELECT * FROM ac_report_airing_cache WHERE airing_id=$guid";
+  $ac_airing = db_query($sql)->fetchAssoc();
+  //switch datbase back
+  db_set_active();
+
+  if ($ac_airing) {
+    $airing->field_airing_date[LANGUAGE_NONE][0]['value'] = 
+      $ac_airing['start_time'];
+    $airing->field_airing_date[LANGUAGE_NONE][0]['value2'] =
+      $ac_airing['end_time'];
+    if ($ac_airing['episode_id']) {
+      $sql = 
+	"SELECT f.entity_id 
+         FROM feeds_item f
+         INNER JOIN node n on n.nid=f.entity_id
+         WHERE guid=".$ac_airing['episode_id'].
+	" AND entity_type='node'
+         AND n.type='cm_show'";
+
+      $result = db_query($sql)->fetchObject();
+      if ($result->entity_id) {
+	$airing->field_airing_show_ref[LANGUAGE_NONE][0]['target_id'] =
+	  $result->entity_id; 
+      }
+      else {
+	dsm($result, 'result');
+      }
+    }
+    entity_save('airing', $airing);
+    $updates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES);
+    unset($updates[$guid]);
+    variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES, $updates);
+    
+  }
+
+
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully updated Airing #' . $entity_id;
+}
+
+function mnn_data_massage_airing_audit() {
+
+  $min_cache_airing_id = 942072;
+  $max_cache_airing_id = 966627;
+  
+  $sql = 
+    "SELECT f.guid, f.entity_id, s.field_airing_show_ref_target_id as show_id,
+       field_airing_date_value as start, field_airing_date_value2 as end,
+       field_airing_project_ref_target_id as project
+     FROM feeds_item f
+     INNER JOIN cm_airing a on a.airing_id=f.entity_id
+     INNER JOIN field_data_field_airing_date d on d.entity_id=a.airing_id
+    INNER JOIN field_data_field_airing_project_ref p on p.entity_id=a.airing_id
+     LEFT JOIN field_data_field_airing_show_ref s on s.entity_id=a.airing_id
+     WHERE f.entity_type='airing'
+     AND f.guid>=$min_cache_airing_id
+     AND f.guid<$max_cache_airing_id 
+     ORDER BY cast(f.guid as unsigned) desc";
+
+  $data = array();
+  $results = db_query($sql);
+  while($result = $results->fetchObject()) {
+    $data[$result->guid]['cm'] = array('airing_id'=>$result->entity_id,
+				       'show_id'=>$result->show_id,
+				       'start'=>$result->start,
+				       'end'=>$result->end,
+				       );
+  }
+  dsm($data);
+  for($i=$min_cache_airing_id;$i<$max_cache_airing_id;$i++) {
+    mnn_data_massage_airing_audit_operation($i, $data[$i]);
+  } 
+}
+
+function mnn_data_massage_airing_audit_operation($entity_id,
+						 $entity_data){
+  if (!isset($entity_data['cm'])) {
+    return;
+  }
+
+  variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_LAST_ID, $entity_id);
+
+  if (!isset($entity_data['cm'])) {
+    $context['results']['processed']++;
+    $context['message'] = 'Skipped lookin up Airing #' . $entity_id;
+    return;
+  }
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  //FETCH 1.0 USERS WITH ID > $start_user_id
+  $sql = 
+    "SELECT * FROM ac_report_airing_cache WHERE airing_id=$entity_id";
+  $airing = db_query($sql)->fetchAssoc();
+  if ($airing) {
+    $entity_data['ac'] = $airing;
+  }
+  //switch datbase back
+  db_set_active();
+
+  //preset variables
+  $should_delete = FALSE;
+  $should_update = FALSE;
+  $should_create = FALSE;
+  
+  //if exists in cm but not ac
+  if (isset($entity_data['cm']) && !isset($entity_data['ac'])) {
+    $should_delete = TRUE;
+  }
+
+  //if exists in ac but not cm
+  else if (isset($entity_data['ac']) && !isset($entity_data['cm'])) {
+    $should_create = TRUE;
+  }
+
+  //if doesn't exist in either, we are done here
+  else if (!isset($entity_data['cm']) && !isset($entity_data['cm'])) {
+    $context['results']['processed']++;
+    $context['message'] = 'Successfully Audited Airing #' . $entity_id;
+    return;
+  }
+
+  //airing exists in both systems
+  else {
+    //if we have a ac episode, try to find it in cm
+    if (isset($entity_data['ac']['episode_id']) &&
+	   $entity_data['ac']['episode_id']) {
+      $sql = 
+	"SELECT f.entity_id 
+         FROM feeds_item f
+         INNER JOIN node n on n.nid=f.entity_id
+         WHERE guid=".$entity_data['ac']['episode_id'].
+	" AND entity_type='node'
+         AND n.type='cm_show'";
+
+      $result = db_query($sql)->fetchObject();
+      $ac_show_id = $result->entity_id; 
+    }
+    if ($entity_data['cm']['show_id']) {
+      $cm_show_id = $entity_data['cm']['show_id'];
+    }
+
+    //if episode exists in ac but not cm
+    if (isset($ac_show_id) && !isset($cm_show_id)) {
+      $should_update = TRUE;
+    }
+
+    //if episode exists in cm but not ac
+    else if (isset($cm_show_id) && !isset($ac_show_id)) {
+      $should_update = TRUE;
+    }
+
+    //if cm episode differs than ac episode
+    else if (isset($cm_show_id) && isset($ac_show_id) && 
+	     ($cm_show_id != $ac_show_id)) {
+      $should_update = TRUE;
+    }
+
+    //if airtimes differ
+    if ($entity_data['cm']['start'] != $entity_data['ac']['start_time'] ){
+      $should_update = TRUE;
+    }
+    if ($entity_data['cm']['end'] != $entity_data['ac']['end_time'] ){
+      $should_update = TRUE;
+    }
+  }
+
+  if ($should_create) {
+    $creates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES);
+    $creates[$entity_id] = $entity_data;
+    variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_CREATES, $creates);
+  }
+  else if ($should_delete) {
+    $deletes = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES);
+    $deletes[$entity_id] = $entity_data;
+    variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES, $deletes);
+  }
+  else if ($should_update) {
+    $updates = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES);
+    $updates[$entity_id] = $entity_data;
+    variable_set(MNN_DATA_MASSAGE_AIRING_AUDIT_UPDATES, $updates);
+  }
+
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully Audited Airing #' . $entity_id;
+}
+
+
+function mnn_data_massage_airing_data_delete() {
+  $deletes = variable_get(MNN_DATA_MASSAGE_AIRING_AUDIT_DELETES);
+  dsm($deletes);
+  $counter = 0;
+  $limit = 200;
+  foreach($deletes as $guid=>$airing_data) {
+
+    $airing_id = $airing_data['cm']['airing_id'];
+    $airings = entity_load('airing', array($airing_id));
+    if ($airings) {
+      $airing = array_shift($airings);
+    }
+    if ($airing) {
+      drupal_set_message( (l('delete '.$airing_data['cm']['airing_id'], 'airing/'.
+			     $airing_data['cm']['airing_id'].
+			     "/delete"))."<br/>");
+    }
+    if ($limit == $counter) {
+      break;
+    }
+  }
+
+}
+function mnn_data_massage_rand_string( $length ) {
+  $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+  $size = strlen( $chars );
+  for( $i = 0; $i < $length; $i++ ) {
+    $str .= $chars[ rand( 0, $size - 1 ) ];
+  }
+
+  return $str;
+}
+
+function mnn_data_massage_dual_use_user_report() {
+  $start_user_id = 21460;
+
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  //FETCH MAX 1.0 USER ID
+  $max_id = 
+    db_query("SELECT MAX(producer_id) as mpid FROM ac_report_producer_cache");
+  $max_id = $max_id->fetchObject()->mpid;
+
+  //FETCH 1.0 USERS WITH ID > $start_user_id
+  $sql = 
+    "SELECT * FROM ac_report_producer_cache WHERE producer_id>$start_user_id";
+  $results = db_query($sql);
+  //switch datbase back
+  db_set_active();
+
+  $live_users = array();
+  while ($user = $results->fetchObject()) {
+    $live_users[$user->producer_id] = $user;
+  }
+
+  //FETCH 2.0 users
+  $sql = "SELECT uid, name, mail 
+          FROM users 
+          WHERE uid > $start_user_id";
+  $results = db_query($sql);
+
+  $beta_users = array();
+  while ($user = $results->fetchObject()) {
+    $beta_users[$user->uid] = $user;
+  }
+
+  $report = 
+    "<table><th>User ID</th><th>Live User</th><th>Beta User</th>";
+  
+  
+  for($i=$start_user_id+1;$i<=$max_id;$i++){
+    $report .= "<tr><td>$i</td>";
+    $user = $live_users[$i];
+    $link = l($user->username, "https://ac.mnn.org/user/$i")
+      ."<br/>".$user->username."<br/>".$user->email;
+    $report .= "<td>$link</td>";
+    $user = $beta_users[$i];
+    $link = l($user->name, "user/$i")." ".$user->mail;
+    $report .= "<td>$link</td></tr>";
+  }
+  
+  $report .= "</table>";
+  return($report);
+}
+
+function mnn_data_massage_dual_use_project_report() {
+  $start_project_id = 25009;
+
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  //FETCH MAX 1.0 PROJECT ID
+  $max_id = 
+    db_query("SELECT MAX(project_id) as mpid FROM ac_report_project_cache");
+  $max_id = $max_id->fetchObject()->mpid;
+  
+  //FETCH 1.0 PROJECTS WITH ID > $start_project_id
+  $sql = 
+    "SELECT p.title as ptitle, p.node_id, a.producer_id as author_id, 
+     a.producer_name, pro.username, p.project_id,
+     p.project_id as pid, p.created
+     FROM ac_report_project_cache p
+     INNER JOIN ac_report_producer_cache pro 
+       ON pro.producer_id=p.exec_producer_id
+     LEFT JOIN ac_report_project_author_cache a 
+       on p.node_id=a.project_id 
+     WHERE p.project_id>$start_project_id";
+  $results = db_query($sql);
+
+  //switch datbase back
+  db_set_active();
+
+  $live_projects = array();
+  while ($project = $results->fetchObject()) {
+    $live_projects[$project->project_id] = $project;
+  }
+
+
+  //FETCH 2.0 projects
+  $sql = "SELECT nid, title 
+          FROM node 
+          WHERE nid > $start_project_id AND type='cm_project'";
+  $results = db_query($sql);
+
+
+  $beta_projects = array();
+  while ($project = $results->fetchObject()) {
+    $beta_projects[$project->nid] = $project;
+  }
+
+  $report = 
+    "<table><th>Project ID</th><th>Live Project</th><th>Beta Project</th>";
+  
+  
+  for($i=$start_project_id+1;$i <= $max_id; $i++){
+    $report .= "<tr><td>$i</td>";
+    $project = $live_projects[$i];
+
+    $link = l($project->ptitle, "https://ac.mnn.org/node/$project->node_id");
+    $report .= 
+      "<td>$link<br/> $project->ptitle <br/>
+       Exec Producer: $project->username<br/>
+       Project Author: ".
+      l($project->producer_name, "user/".$project->author_id).
+      "<br/>Created: $project->created</td>";
+    $project = $beta_projects[$i];
+    $link = l($project->title, "node/$i");
+    $report .= "<td>$link</td></tr>";
+  }
+  
+  $report .= "</table>";
+  return($report);
+}
+
+function mnn_data_massage_profile_image_synch() {
+  $pictures_dir = file_scan_directory("public://pictures", '/.*/');
+  //dsm($pictures_dir);
+  $counter = 0;
+  foreach($pictures_dir as $uri=>$file_info) {
+    $file = new stdClass();
+    $uid = substr($file_info->name, 8);
+
+    $file->uid = $uid;
+    $file->filename=$file_info->filename;
+    $file->uri=$uri;
+
+    if (strpos($uri, 'jpg') > 1) {
+      $file->filemime="image/jpeg";
+    }
+    else if (strpos($uri, 'png') > 1) {
+      $file->filemime="image/png";
+    }
+    $file->status=1;
+    file_save($file);
+
+    $sql = "UPDATE users set picture=".$file->fid." WHERE uid=$uid";
+    db_query($sql);
+    $counter ++;
+  }
+  dsm("updated $counter users with profile pictures");
+}
+
+
+function mnn_data_massage_civicrm_uf_match_update() {
+  $sql = 
+    "SELECT m.id, m.uf_name, m.uf_id, m.contact_id 
+     FROM {civicrm_uf_match} m 
+     LEFT JOIN {users} u ON u.uid = m.uf_id 
+     WHERE u.uid is null";
+
+    //    "SELECT m.id, m.uf_name, m.uf_id, m.contact_id
+    //     FROM {civicrm_uf_match} m";
+
+
+
+  $matches = db_query($sql);
+  $counter = $update_counter = 0 ;
+  while ($match = $matches->fetchObject()) {
+    $counter ++;
+    $matched_drupal_user = 
+      db_query("SELECT u.uid, u.mail from {users} u where u.mail=:mail",
+	       array(':mail'=>$match->uf_name))->fetchObject();
+
+    if ($matched_drupal_user) {
+      if ($matched_drupal_user->uid == $match->uf_id) {
+	continue;
+      }
+      $update_counter++;
+
+      db_query("UPDATE {civicrm_uf_match} SET uf_id=:uid WHERE id=:mid", 
+       	       array(":uid"=>$matched_drupal_user->uid,
+      		     ":mid"=>$match->id));
+    }
+    else {
+      db_query("DELETE FROM {civicrm_uf_match} where id=:mid",
+	       array(":mid"=>$match->id));
+
+    }
+  }
+
+  dsm("looked at $counter records and updated $update_counter");
+}
+
+function mnn_data_massage_new_entity_field_default_update() {
+  $batch = array(
+		 'title' => t('Setting default entity fields...'),
+		 'operations' => array(),
+		 'init_message' => t('Starting field setting'),
+		 'progress_message' => t('Processed @current out of @total!'),
+		 'error_message' => t('An error occurred during processing'),
+		 'finished' => 'mnn_data_massage_batch_finished',
+		 'progressive' => FALSE
+		 );
+  
+  //$entities = db_query("SELECT airing_id FROM {cm_airing")
+  //  ->fetchAllAssoc('airing_id');
+
+  $entities = db_query("SELECT uid FROM {users} where uid>15293")
+    ->fetchAllAssoc('uid');
+
+
+  $operations = array();
+  $i = 0;
+  foreach ($entities as $entity_id => $values) {
+    $i++;
+    if ($entity_id) {
+      $batch['operations'][] = 
+	array('mnn_data_massage_new_entity_field_default_update_operation', 
+	      array($entity_id, $entity_id));
+    }
+  }
+
+  batch_set($batch);
+  batch_process("admin/mnn_data_massage");
+}
+
+function mnn_data_massage_new_entity_field_default_update_operation($entity_id,
+								    $rid,
+								    &$context){
+  //$field_name = "airing_duration";
+  //$entity_type = "airing";
+  //$field_postfix = "value";
+  //$value= 0;
+
+  $field_name = "documents_viewfield";
+  $entity_type = "user";
+  $field_postfix = "vname";
+  $value = "mnn_documents|documents_view_field";
+
+  
+  //automatically set when above is set correctly
+  $field_table = "field_data_field_$field_name";
+  $revision_table = "field_revision_field_$field_name";
+  $db_field_name = "field_".$field_name."_".$field_postfix;  
+  
+  $fields = array(
+		  'entity_type' => $entity_type,
+		  'bundle' => $entity_type,
+		  'deleted' => 0,
+		  'entity_id' => $entity_id,
+		  'revision_id' => $rid,
+		  'language' => LANGUAGE_NONE,
+		  'delta' => 0,
+		  $db_field_name => $value,
+		  );
+  db_insert($field_table)
+    ->fields($fields)
+    ->execute();
+  db_insert($revision_table)
+    ->fields($fields)
+    ->execute();							 
+
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully Updated Field FOR #' . $entity_id;
+}
+
+function mnn_data_massage_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural($results['processed'], 'One Object processed.', 
+			     '@count objects processed.');
+  }
+  else {
+    $message = 'some errors';
+  }
+
+  drupal_set_message($message);
+  drupal_set_message(date('r'));
+}
+
+
+
+
+
+
+function mnn_data_massage_project_update() {
+  drupal_set_message('starting at '.date('r'));
+
+  $start_id = variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_ID);
+  
+  $missing_ids = variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING);
+  if (!$missing_ids) {
+    variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING, "");
+  }
+
+  $non_project_ids = 
+    variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS);
+  if (!$non_project_ids) {
+    variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS, "");
+  }
+  
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  $sql = " SELECT * from ac_report_project_cache ";
+  if ($start_id) {
+    $sql .= " WHERE project_id >= $start_id ";
+  }
+
+  $sql .= " ORDER by project_id";
+
+  $projects = db_query($sql)->fetchAllAssoc('project_id');
+  //switch datbase back
+  db_set_active();
+
+  $i = 0;
+  foreach ($projects as $project_id => $values) {
+    $i++;
+    if ($project_id) {
+      mnn_data_massage_project_update_operation($project_id, $values);
+    }
+  }
+
+  dsm("Just updated $i projects at ".date('r'));
+}
+
+function mnn_data_massage_project_update_operation($project_id, $values,
+						   &$context){
+  variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_ID, $project_id);
+
+  //load project
+  $project = node_load($project_id);
+
+  if (!$project) {
+    drupal_set_message("Could not load a project for $project_id", 'error');
+    $missing = variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING);
+    variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING,
+		 $missing." ".$project_id);
+    return;
+  }
+
+  if ($project->type != 'cm_project') {
+    drupal_set_message("nid $project_id is not a project", 'error');
+    $non_projects = 
+      variable_get(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS);
+    variable_set(MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS,
+		 $non_projects." ".$project_id);
+    return;
+  }
+
+  $uid = $project->uid;
+  if ($uid) {
+    $user = user_load($uid);
+    if (!$user) {
+      dsm("no user for proj = $project->nid and user = $uid");
+      $project->uid = 1;
+    }
+  }
+   
+  $taxonomies = array(
+		    array('field' => 'taxonomy_cm_project_types',
+			  'value' => $values->schedule_type,
+			  'required' => TRUE),
+		    array('field' => 'field_interval',
+			  'value' => $values->interval,
+			  'required' => TRUE),
+		    array('field' => 'field_format',
+			  'value' => $values->format,
+			  'required' => TRUE),
+		    array('field' => 'field_runtime',
+			  'value' => $values->runtime,
+			  'required' => TRUE),
+		    array('field' => 'field_pbcore_languages',
+			  'value' => $values->language,
+			  'required' => FALSE),
+		    array('field' => 'field_department',
+			  'value' => $values->department,
+			  'required' => FALSE),
+		    array('field' => 'field_device',
+			  'value' => $values->device,
+			  'required' => FALSE),
+		    array('field' => 'field_reason_not_active',
+			  'value' => $values->project_status,
+			  'required' => FALSE),
+		    array('field' => 'field_pbcore_genres',
+			  'value' => $values->content_type,
+			  'required' => FALSE),
+		    array('field' => 'field_pbcore_fcc_ratings',
+			  'value' => $values->msn,
+			  'required' => FALSE),
+		      );
+		    
+  foreach ($taxonomies as $taxonomy) {
+    $field = $taxonomy['field'];
+    $value = $taxonomy['value'];
+    $required = $taxonomy['required'];
+    $tid = mnn_data_massage_get_tid_from_mappings($field, $value, $required);
+    mnn_data_massage_set_tid_on_project($project, $field, $tid);
+  } 
+
+  //created
+  $project->created = strtotime($values->created);
+
+  //set group_group
+  $status = $values->project_status;
+  if ($status == 'Active') {
+    $project->group_group[LANGUAGE_NONE][0]['value']=1;
+  }
+  else {
+    $project->group_group[LANGUAGE_NONE][0]['value']=0;
+  }
+
+  //set field_description
+  if ($values->narrative) {
+    $project->field_description[LANGUAGE_NONE][0]['value'] = 
+      $values->narrative;
+  }
+  else {
+    unset($project->field_description[LANGUAGE_NONE][0]);
+  }
+
+  //field_public_contact
+  if ($values->public_contact_info) {
+    $project->field_public_contact[LANGUAGE_NONE][0]['value'] = 
+      $values->public_contact_info;
+  }
+  else {
+    unset($project->field_public_contact[LANGUAGE_NONE][0]);
+  }
+
+  //field_project_public_url
+  if ($values->public_url) {
+    $project->field_project_public_url[LANGUAGE_NONE][0]['value'] = 
+      $values->public_url;
+  }
+  else {
+    unset($project->field_project_public_url[LANGUAGE_NONE][0]);
+  }
+
+  //field_public_email
+  if ($values->public_email_value) {
+    $project->field_project_public_email[LANGUAGE_NONE][0]['value'] = 
+      $values->public_email_value;
+  }
+  else {
+    unset($project->field_project_public_email[LANGUAGE_NONE][0]);
+  }
+
+  node_save($project);
+
+  //drupal_set_message(l($project->title, 'node/'.$project->nid));
+}
+
+function mnn_data_massage_set_tid_on_project(&$project, $field, $tid){
+  if ($tid) {
+    $project->{$field}[LANGUAGE_NONE][0]['tid'] = $tid;
+  }
+  else {
+    //dsm("unsetting $field for Project ID# $project->nid"); 
+    unset($project->{$field}[LANGUAGE_NONE][0]);
+  }
+}
+
+function mnn_data_massage_get_tid_from_mappings($field, $value, $required){
+  $mappings = mnn_data_massage_taxonomy_mappings();
+
+  if (!$value || $value == 'NULL') {
+    $value = 0;
+  }
+
+  $tid = $mappings[$field][$value];
+
+  if ($tid) {
+    //dsm("Found tid $tid for $field : $value");
+    return $tid;
+  }
+  else if ($required) {
+    drupal_set_message("WARNING, NO tid FOR VALUE $value FOR FIELD $field",
+		       'error');
+  }
+  return NULL;
+} 
+
+function mnn_data_massage_taxonomy_mappings() {
+  global $mappings;
+  if (!isset($mappings)) {
+    $monthly_tid = 775;
+    $every_two_weeks_tid = 774;
+    $every_week_tid= 781;
+    $every_week_day_tid = 771;
+    $once_tid = 780;
+
+    $mappings['field_interval'] = array(
+				   "Monthly" =>  $monthly_tid,
+				   "Monthly 1" => $monthly_tid,
+				   "Monthly 4" => $monthly_tid,
+				   "Monthly 2" => $monthly_tid,
+				   "Monthly 3" => $monthly_tid,
+				   "Every Two Weeks" => $every_two_weeks_tid,
+				   "Weekly" => $every_week_tid,
+				   "Daily" => $every_week_day_tid,
+				   "NULL" => $once_tid,
+				   "Once" => $once_tid,
+				   0 => $once_tid,
+				   );
+    
+    
+    $dvd_tid = 768;
+    $one_half_tid = 766;
+    $dv_tid = 767;
+    $live_tid = 769;
+    $mpeg2_tid = 770;
+    $other_tid = 1062;
+
+    $mappings['field_format'] = array(
+				  "DVD" => $dvd_tid,
+				  "1/2" => $one_half_tid,
+				  "DV" => $dv_tid,
+				  "LIVE" => $live_tid,
+				  "MPEG2" => $mpeg2_tid,
+				  "NULL" => $other_tid,
+				  0 => $other_tid,
+				  );
+    
+    
+    $archival_tid = 764;
+    $fill_tid = 762;
+    $promo_tid = 763;
+    $rental_tid =765;
+    $series_tid = 1;
+    $special_tid = 2;
+    
+    
+    $mappings['taxonomy_cm_project_types'] = array(
+					 "Archival" => $archival_tid,
+					 "Fill" => $fill_tid,
+					 "Promo" => $promo_tid,
+					 "Series" => $series_tid,
+					 "Rental" => $rental_tid,
+					 "Special" => $special_tid,
+					 0 => $special_tid,
+					 );
+    
+    
+    $cancelled_tid = 784;
+    $completed_tid = 785;
+    $inactive_tid = 1151;
+    $incomplete_tid = 786;
+    $pilot_tid = 1150;
+    $withdrawn_tid = 787;
+    
+    
+    $mappings['field_reason_not_active'] = array(
+					   "Archival" => $archival_tid,
+					   "Cancelled" => $cancelled_tid,
+					   "Completed" => $completed_tid,
+					   "Inactive" => $inactive_tid,
+					   "Incomplete" => $incomplete_tid,
+					   "Pilot" => $pilot_tid,
+					   "Withdrawn" => $withdrawn_tid,
+					  );
+    
+    $administration_tid = 823;
+    $broadcast_operations_tid = 824;
+    $community_media_tid = 825;
+    $engineering_tid = 827;
+    $firehouse_tid = 1031;
+    $firehouse_youth_tid = 1039;
+    $outreach_and_visibility_tid = 828;
+    $programming_tid = 829;
+    $technology_tid = 830;
+    $training_and_facilitation_tid = 831;
+    $youth_channel_tid = 832;
+    
+    $mappings['field_department'] = 
+      array(
+	    "Administration" => $administration_tid,
+	    "Broadcast Operations" => $broadcast_operations_tid,
+	    "Community Media" => $community_media_tid,
+	    "Engineering" => $engineering_tid,
+	    "Firehouse" => $firehouse_tid,
+	    "Firehouse Youth" => $firehouse_youth_tid,
+	    "Outreach and Visibility" => $outreach_and_visibility_tid,
+	    "Programming" => $programming_tid,
+	    "Technology" => $technology_tid,
+	    "Training and Facilitation" => $training_and_facilitation_tid,
+	    "Youth Channel" => $youth_channel_tid,
+	    );
+    
+    
+    $arch_tid = 840;
+    $dctv_tid = 843;
+    $dnow_tid = 844;
+    $fh1_tid = 1144;
+    $fstv_tid = 845;
+    $st1_tid = 846;
+    $st2_tid = 847;
+    $st3_tid = 848;
+    $st4_tid = 849;
+    
+    $mappings['field_device'] = array(
+				 "ARCH" => $arch_tid,
+				 "DCTV" => $dctv_tid,
+				 "DNOW" => $dnow_tid,
+				 "FH1" => $fh1_tid,
+				 "FSTV" => $fstv_tid,
+				 "ST1" => $st1_tid,
+				 "ST2" => $st2_tid,
+				 "ST3" => $st3_tid,
+				 "ST4" => $st4_tid,
+				 );
+
+    $mins118_tid = 853;
+    $mins28_tid = 850;
+    $mins58_tid = 851;
+    $mins88_tid = 852;
+    $mins_other_tid = 854;
+    
+  
+    $mappings['field_runtime'] = array(
+				  "118 mins" => $mins118_tid,
+				  "28 mins" => $mins28_tid,
+				  "58 mins" => $mins58_tid,
+				  "88 mins" => $mins88_tid,
+				  "Other" => $mins_other_tid,
+				  "NULL" => $mins_other_tid,
+				  0 => $mins_other_tid,
+				  );
+
+    $albanian_tid = 244;
+    $sign_language_tid = 1029; 
+    $chinese_tid  = 310;
+    $creyole_tid  = 928;
+    $english_tid  = 231;
+    $french_tid  = 367;
+    $greek_tid  = 1041;
+    $hindi_tid  = 407;
+    $hungarian_tid  = 412;
+    $italian_tid  = 431;
+    $multiligual_tid  = 927;
+    $other_tid  = 713;
+    $patois_tid  = 1030;
+    $russian_tid  = 592;
+    $slavic_tid  = 1042;
+    $spanish_tid  = 632;
+
+
+    $mappings['field_pbcore_languages'] = 
+      array(
+	    "Albanian"=>$albanian_tid, 
+	    "Am. Sign Language"=>$sign_language_tid, 
+	    "Chinese"=>$chinese_tid, 
+	    "Creyole"=>$creyole_tid, 
+	    "English"=>$english_tid, 
+	    "French"=>$french_tid, 
+	    "Greek"=>$greek_tid, 
+	    "Hindi"=>$hindi_tid, 
+	    "Hungarian"=>$hungarian_tid, 
+	    "Italian"=>$italian_tid, 
+	    "Multiligual"=>$multiligual_tid, 
+	    "OTHER"=>$other_tid, 
+	    "Patois"=>$patois_tid, 
+	    "Russian"=>$russian_tid, 
+	    "Slavic"=>$slavic_tid, 
+	    "Spanish"=>$spanish_tid, 
+	    );
+
+    $mappings['field_pbcore_genres'] = 
+      array(
+	    'AIDS Issues' => 59,
+	    'Animals/Pets ' => 10,
+	    'Arts ' => 1092,
+	    'Books/Poetry ' => 1092,
+	    'Comics/Animation ' => 1092,
+	    'Community Affairs' => 1044,
+	    'Cooking' => 1109,
+	    'Cultural Issues' => 1092,
+	    'Documentary' => 43,
+	    'Drama' => 44,
+	    'Education' => 45,
+	    'Environment' => 47,
+	    'Erotica' => 6,
+	    'Experimental' =>  1047,
+	    'Fashion' => 52,
+	    'Film' =>  46,
+	    'Financial/Business' =>  23,
+	    'Fix it/How to ' =>  72,
+	    'Food ' => 1109,
+	    'Gender/Sexuality' =>  33,
+	    'Health ' => 59,
+	    'Hip Hop ' =>  78,
+	    'History' => 61,
+	    'Housing ' =>  1044,
+	    'Immigration' => 1044,
+	    'Legal Issues' =>  1044,
+	    'Music' => 78,
+	    'Music Video' => 79,
+	    'New Age' => 1007,
+	    'News/Magazine' => 87,
+	    'Other' => 1047,
+	    'Performance' => 95,
+	    'Political Advocacy' =>  1096,
+	    'PSA' => 102,
+	    'Psychic' => 1006,
+	    'Public Affairs' =>  1044,
+	    'Religion' =>  1049,
+	    'Self Help' => 1101,
+	    'Sitcom' =>  115,
+	    'Sketch Comedy' => 30,
+	    'Spirituality' =>  1049,
+	    'Sports/Outdoors' => 1087,
+	    'Talk Show' => 125,
+	    'Variety' => 129,
+	    "Women's Issues" => 1078,
+	    'Youth' => 1018,
+	    );
+
+    $mappings['field_pbcore_fcc_ratings'] = 
+      array(
+	    "Disclaimer" => 751,
+	    "No Disclaimer" => 718,
+	    0 => 718,
+	     
+	    );
+
+
+    //dsm($mappings, 'mappings');
+    
+  }
+  return $mappings;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+function mnn_data_massage_project_member_update() {
+  drupal_set_message(date('r'), 'starting script at:');
+
+  $start_id = variable_get("MNN_DATA_MASSAGE_PROJECT_UPDATE_ID");
+  
+  $missing_ids = variable_get("MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING");
+  if (!$missing_ids) {
+    variable_set("MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING", "");
+  }
+
+  $non_project_ids = 
+    variable_get("MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS");
+  if (!$non_project_ids) {
+    variable_set("MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS", "");
+  }
+
+
+  $batch = array(
+		 'title' => t('Updating Project Memberss...'),
+		 'operations' => array(),
+		 'init_message' => t('Starting project member update'),
+		 'progress_message' => t('Processed @current out of @total!'),
+		 'error_message' => t('An error occurred during processing'),
+		 'finished' => 'mnn_data_massage_batch_finished',
+		 'progressive' => FALSE
+		 );
+
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  $sql = " SELECT pp.*, proj.* from ac_report_producer_project_cache pp
+           INNER JOIN ac_report_project_cache proj USING (project_id) ";
+
+  if ($start_id) {
+    $sql .= " WHERE producer_project_id >= $start_id ";
+  }
+  //FIXME, DELETE, ONLY HERE FOR TESTING
+  //$sql.=" AND pp.producer_id=20534 "; 
+  //$sql.=" AND pp.project_id=1 "; 
+
+  $sql .= " ORDER by proj.project_id";
+
+  $producers = db_query($sql)->fetchAllAssoc('producer_project_id');
+
+  $operations = array();
+  $i = 0;
+  foreach ($producers as $producer_project_id => $values) {
+    $i++;
+    if ($producer_project_id) {
+      $batch['operations'][] = 
+	array('mnn_data_massage_project_members_update_operation', 
+	      array($producer_project_id, $values ));
+    }
+  }
+
+  //switch datbase back
+  db_set_active();
+
+  batch_set($batch);
+  batch_process("admin/mnn_data_massage");
+}
+
+function mnn_data_massage_project_members_update_operation($producer_project_id, 
+							   $values,
+							   &$context){
+  variable_set("MNN_DATA_MASSAGE_PROJECT_UPDATE_ID", $producer_project_id);
+
+
+  //load project
+  $project_id = $values->project_id;
+  $project = node_load($project_id);
+
+  if (!$project) {
+    drupal_set_message("Could not loadd a project for $project_id", 'error');
+    $missing = variable_get('MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING');
+    variable_set('MNN_DATA_MASSAGE_PROJECT_UPDATE_MISSING',
+		 $missing." ".$project_id);
+    return;
+  }
+
+  if ($project->type != 'cm_project') {
+    drupal_set_message("nid $project_id is not a project", 'error');
+    $non_projects = 
+      variable_get('MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS');
+    variable_set('MNN_DATA_MASSAGE_PROJECT_UPDATE_NON_PROJECTS',
+		 $non_projects." ".$project_id);
+    return;
+  }
+  $producer_id = $values->producer_id;
+  $producer_type = $values->type;
+
+  if ($producer_type == 'associate' && $producer_id) {
+    $producer = user_load($producer_id);
+    if (!$producer) {
+      dsm("no associate producer  for proj = $project->nid and producer id ".
+	  $producer_id);
+    }
+  }
+  else if ($producer_type == 'executive' && $producer_id) {
+    $producer = user_load($producer_id);
+    if (!$producer) {
+      dsm("no executive producer for proj = $project->nid and  producer id ".
+	  $producer_id);
+    }
+  }
+
+  $uid = $project->uid;
+  if ($uid) {
+    $project_author = user_load($uid);
+    if (!$project_author) {
+      dsm("no author for proj = $project->nid and uid = $uid");
+      $project->uid = 1;
+    }
+  }
+
+  $project_status = $project->group_group[LANGUAGE_NONE][0]['value'];
+  $og_membership = og_get_membership('node', $project_id,'user',$producer_id);
+  $should_resave_inactive = FALSE;
+
+  /**
+  dsm($values, 'values');
+  dsm("processing $producer_id of type $producer_type for ".
+      $project_id . " with author $project_author->uid");
+  
+  dsm($producer_type, 'type');
+  dsm($producer_id, 'producer_id');
+  dsm($project_id, 'project_id');
+  dsm($values->title, 'project');
+  dsm($project_status, 'project status');
+  dsm($og_membership, 'membership');
+  */
+
+
+  if ($producer && $producer_type == 'executive' && $uid != $producer_id) {
+    dsm("author does not equal executive when processing $producer_id ".
+	"of type $producer_type for ".$project_id . 
+	" with author $project_author->uid");
+    if (!$project_status && !$og_membership) {
+      $should_resave_inactive = TRUE;
+      $project->group_group[LANGUAGE_NONE][0]['value'] = 1;
+    }
+    $project->uid = $producer_id;
+    $project->title = $values->title;
+    node_save($project);
+  }
+  else if ($producer && $producer_type == 'associate') {
+    // Add the user to the group
+    if (!$project_status && !$og_membership) {
+      $should_resave_inactive = TRUE;
+      $project->title = $values->title;
+      $project->group_group[LANGUAGE_NONE][0]['value'] = 1;
+      node_save($project);
+    }
+    og_group('node', $project_id, 
+	     array("entity type"       => "user",
+		   "entity"            => $producer,
+		   "membership type"   => OG_MEMBERSHIP_TYPE_DEFAULT,
+		   ));
+  }  
+  else if ($producer && !$project_status && !$og_membership) {
+    $should_resave_inactive = TRUE;
+    $project->group_group[LANGUAGE_NONE][0]['value'] = 1;
+    $project->title = $values->title;
+    node_save($project);
+  }
+
+  if ($should_resave_inactive) {
+    $project->group_group[LANGUAGE_NONE][0]['value'] = 0;
+    node_save($project);
+  }
+
+
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully Updated Project #' . $project_id;
+}
+
+
+
+
+
+function mnn_data_massage_show_audit() {
+  $min_cache_entity_id = 900000;
+  $max_cache_entity_id = 970000;
+  
+  $sql = 
+    "SELECT f.guid, f.entity_id
+     FROM feeds_item f
+     INNER JOIN node n on n.nid=f.entity_id
+     WHERE n.type='cm_show'
+     AND f.entity_type = 'node'
+     AND f.guid>=$min_cache_entity_id
+     AND f.guid<$max_cache_entity_id ";
+
+  $data = array();
+  $results = db_query($sql);
+  while($result = $results->fetchObject()) {
+    $data[$result->guid]['cm'] = array('show_id'=>$result->entity_id);
+  }
+
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  $sql = 
+    "SELECT * FROM ac_report_episode_cache 
+     WHERE episode_id >= $min_cache_entity_id
+     AND episode_id < $max_cache_entity_id ";
+
+  $results = db_query($sql);
+
+  while ($entity = $results->fetchObject()) {
+    $data[$entity->episode_id]['ac'] =array('show_id'=>$entity->episode_id,
+					    'project_id'=>$entity->project_id);
+  }
+  //switch datbase back
+  db_set_active();
+  krsort($data);
+  $counter = 0;
+  dsm(count($data));
+  foreach ($data as $guid => $data) {
+    if (mnn_data_massage_show_audit_operation($guid, $data)){
+      $counter++;
+    }
+  } 
+  dsm("examined $counter entities");
+}
+
+
+function mnn_data_massage_show_audit_operation($entity_id,$entity_data){
+
+  if (!isset($entity_data['cm']) && !isset($entity_data['ac'])) {
+    return FALSE;
+  }
+  variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_LAST_ID, $entity_id);
+
+  //preset variables
+  $should_delete = FALSE;
+  $should_create = FALSE;
+
+  //if exists in cm but not ac
+  if (isset($entity_data['cm']) && !isset($entity_data['ac'])) {
+    $should_delete = TRUE;
+  }
+
+  //if exists in ac but not cm
+  else if (isset($entity_data['ac']) && !isset($entity_data['cm'])) {
+    $should_create = TRUE;
+  }
+
+  if ($should_create) {
+    $creates = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES);
+    $creates[$entity_id] = $entity_data;
+    variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_CREATES, $creates);
+  }
+  else if ($should_delete) {
+    $deletes = variable_get(MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES);
+    $deletes[$entity_id] = $entity_data;
+    variable_set(MNN_DATA_MASSAGE_SHOW_AUDIT_DELETES, $deletes);
+  }
+  return TRUE;
+}
+
+function mnn_data_massage_run_crumbine_query($sql) {
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 
+			      'default', $other_database);
+
+  db_set_active('mnn_data_massage_reporting_database_key');
+
+  $results = db_query($sql);
+  //switch datbase back
+  db_set_active();
+  return $results;
+}
+
+function mnn_data_massage_bucket_map($bucket_id) {
+  $map = array(
+	       5233 =>'59th_conference_rooms_fac_',
+	       5232 =>'59th_dubbing_transfer_stations_f',
+	       5231 =>'59th_express_studios_fac_',
+	       772881 =>'59th_facility_arri_2000w_fac_',
+	       5254 =>'59th_facility_headphones_fac_',
+	       5222 =>'59th_linear_editing_bay_fac_',
+	       5223 =>'59th_non_linear_editing_bay_fac_',
+	       5230 =>'59th_open_closed_studios_fac_',
+	       5373 =>'ac_power_cable_p_',
+	       406896 =>'accessory_charge_bucket_fac_',
+	       5082 =>'audio_mixer_cm_',
+	       5044 =>'audio_mixer_p_',
+	       845150 =>'audio_technica_fh_',
+	       397030 =>'audio_technica_p_',
+	       5337 =>'audio_technica_yc_',
+	       845144 =>'azden_fh_',
+	       5339 =>'azden_yc_',
+	       5368 =>'beach_tek_xlr___pro_p_',
+	       5189 =>'beyerdynamic_m58_cm_',
+	       5167 =>'beyerdynamic_m58_p_',
+	       5178 =>'beyerdynamic_m58_yc_',
+	       845138 =>'beyerdynamic_m58_fh_',
+	       5084 =>'boompole_cm_',
+	       5046 =>'boompole_p_',
+	       5065 =>'boompole_yc_',
+	       845157 =>'camera_lights_and_mic_flag_fh_',
+	       526205 =>'cm_dctv_studios', 
+	       5241 =>'cm_multi_format_fac_',
+	       526191=>'dubbing_transfer_stations_cm_',
+	       525905 =>'editing_bays_cm_',
+	       526159 =>'editing_bays_yc_',
+	       5370 =>'electrovoice_re_16_p_',
+	       5168 =>'electrovoice_635a_p_',
+	       5169 =>'electrovoice_re11_p_',
+	       5239 =>'firehouse_conference_rooms_fh_',
+	       5227 =>'firehouse_non_linear_editing_bay',
+	       5237 =>'firehouse_open_closed_studios_fh',
+	       888905 =>'firehouse_portable_studio',
+	       878652 =>'firehouse_sennheiser_md_46_field',
+	       845143 =>'firewire_hd_fh_',
+	       5132 =>'firewire_hd_p_',
+	       5133 =>'firewire_hd_yc_',
+	       5087 =>'headphones_cm_',
+	       845142 =>'headphones_fh_',
+	       5049 =>'headphones_p_',
+	       5068 =>'headphones_yc_',
+	       5081 =>'impact_imnpf970_li_ion_pd_170_cm',
+	       5043 =>'impact_imnpf970_li_ion_pd_170_p_',
+	       5013 =>'jvc_gr_d395u_palmcorder_yc_',
+	       845149 =>'laptops_fh_',
+	       633215 =>'laptops_it_',
+	       5333 =>'laptops_yc_',
+	       5372 =>'lowel_pro_light_w_stand_p_',
+	       5149 =>'lowel_o110_cm_',
+	       5137 =>'lowel_o110_p_',
+	       5150 =>'lowel_pro_light_w_stand_cm_',
+	       5138 =>'lowel_t110_tota_w_stand_p_',
+	       5151 =>'lowel_t110_tota_w_stand_cm_',
+	       520632 =>'panasonic_ag_dvx100',
+	       5019 =>'pd150_cm_',
+	       845136 =>'pd150_fh_',
+	       5005 =>'pd150_p_',
+	       5012 =>'pd150_yc_',
+	       845147 =>'pd150_batteries_for_yc_firehouse',
+	       5021 =>'pd170_cm_',
+	       845152 =>'pd170_fh_',
+	       5007 =>'pd170_p_',
+	       5014 =>'pd170_yc_',
+	       5008 =>'pdx10_p_',
+	       845148 =>'portable_speakers_fh_',
+	       5070 =>'portable_speakers_yc_',
+	       546462 =>'public_internet_kiosks',
+	       5170 =>'sennheiser_ek100_wireless_pack_p',
+	       664829 =>'sennheiser_md46_field_mic_p_',
+	       5196 =>'sennheiser_ecm_55b_lavalier_cm_',
+	       5193 =>'sennheiser_me66_shotgun_cm_',
+	       5171 =>'sennheiser_me66_shotgun_p_',
+	       5172 =>'sennheiser_skp_100_wireless_lava',
+	       5374 =>'sony_ac_l10a_p_',
+	       845135 =>'sony_digital_video_recorder_clam',
+	       397031 =>'sony_dsr_pd150_e_',
+	       5375 =>'sony_ecm_55_lav_mic_p_',
+	       5197 =>'sony_ecm_44b_lavalier_cm_',
+	       5198 =>'sony_ecm_55b_lavalier_cm_',
+	       845156 =>'sony_ecm_55b_lavalier_fh_',
+	       5176 =>'sony_ecm_55b_lavalier_p_',
+	       5187 =>'sony_ecm_55b_lavalier_yc_',
+	       5177 =>'sony_ecm_z37c_p_',
+	       852038 =>'sony_hdnx5u_fh_',
+	       831080 =>'sony_hdnx5u_p_',
+	       845145 =>'sony_hdv_fh_',
+	       5340 =>'sony_hdv_yc_',
+	       873852 =>'sony_hvl_lbpb_led_camera_lights_',
+	       853437 =>'sony_np_f770_battery_fh_',
+	       853432 =>'sony_npf970_battery_fh_',
+	       5058 =>'sony_pd_150_batteries_cm_',
+	       853468 =>'sony_tripod_for_hvr_cameras_fh_',
+	       5059 =>'sony_trv_900_pd150_yc_',
+	       845146 =>'sony_trv_950_batteries_fh_',
+	       5359 =>'sony_trv_950_batteries_yc_',
+	       5142 =>'sony_hvl_20dm_m_series_light_p_',
+	       5152 =>'sony_hvl_20dw2_l_series_light_cm',
+	       5140 =>'sony_hvl_20dw2_l_series_light_p_',
+	       5075 =>'sony_np_f720h_vx1000_l_series_cm',
+	       5076 =>'sony_np_f730_vx1000_l_series_cm_',
+	       5078 =>'sony_np_f960_pd150_170_pdx10_cm_',
+	       5042 =>'sony_np_qm71d_m_series_vltr_batt',
+	       5041 =>'sony_npqm_91d_palm_m_series_p_',
+	       845141 =>'specialty_cable_xlr_xlr_fh_',
+	       5053 =>'specialty_cable_xlr_xlr_p_',
+	       5072 =>'specialty_cable_xlr_xlr_yc_',
+	       819182 =>'stagedrop_portable_stage_fh_',
+	       860696 =>'studio_1_sennheiser_sk_300_trans',
+	       5090 =>'tripod_large_cm_',
+	       845139 =>'tripod_large_fh_',
+	       5052 =>'tripod_large_p_',
+	       5071 =>'tripod_large_yc_',
+	       845153 =>'tripod_small_fh_',
+	       5050 =>'tripod_small_p_',
+	       5069 =>'tripod_small_yc_',
+	       5010 =>'trv_900_yc_',
+	       5016 =>'trv_950_cm_',
+	       5002 =>'trv_950_p_',
+	       5009 =>'trv_950_yc_',
+	       573000 =>'video_projector_cm_',
+	       845154 =>'video_projector_fh_',
+	       5329 =>'video_projector_yc_',
+	       5018 =>'vx1000_cm_',
+	       5004 =>'vx1000_p_',
+	       
+	       );
+  return $map[$bucket_id];
+}
+
+function mnn_data_massage_producer_role_check() {
+
+  $sql = "
+    SELECT u.uid, oc.field_1_0_certs_value as ocert, u.name, u.mail,
+      MAX(field_reservations_date_value) as latest
+    FROM users u
+    INNER JOIN field_data_field_1_0_certs oc ON u.uid=oc.entity_id
+    INNER JOIN node r on r.uid=u.uid
+    INNER JOIN field_data_field_reservations_date d ON d.entity_id=r.nid
+    WHERE  d.field_reservations_date_value >= '2005-01-01'
+    GROUP by u.uid
+    ORDER BY u.uid asc
+  ";
+
+  $results = db_query($sql);
+  $u_ret = "<table><tr><th>UID</th><th>User Name</th><th>email</th><th>Last Reservation</th><th>1.0 Certs</th><th>2.0 Certs</th><th>Certs To Add?</th></tr><tr>";
+  $ocerts = array();
+  $_SESSION['mdm_user_roles_to_add'] = array();
+  $counter = 0;
+  while ($result = $results->fetchObject()) {
+    $counter ++;
+    $u_ret .= "<tr>";
+    $u_ret .= mdm_cell($result->uid);
+    $name = l($result->name, "user/".$result->uid);
+    $u_ret .= mdm_cell($name);
+    $u_ret .= mdm_cell($result->mail);
+    $u_ret .= mdm_cell($result->latest);
+    $u_ret .= mdm_cell(str_replace(",","<br/>",$result->ocert));
+
+    $user = user_load($result->uid);
+
+    $u_ret .= mdm_cell(mdm_role_string($user->roles));
+    
+    $current_roles = explode("<br/>", mdm_role_string($user->roles));
+    array_pop($current_roles);
+    $u_ocerts = explode(",",$result->ocert);
+    
+    $roles_to_add = "";
+    $roles_to_add_array = array();
+    foreach ($u_ocerts as $role) {
+      $ocerts[] = trim($role);
+      if (mdm_get_mapped_role($role) && 
+	  !in_array(mdm_get_mapped_role($role), $current_roles)) {
+	$roles_to_add .= $role."(".mdm_get_mapped_role($role).")"."<br/>";
+	$roles_to_add_array[] = mdm_get_mapped_role($role);
+      }
+    }
+    $u_ret .= mdm_cell($roles_to_add);
+    if ($roles_to_add) {
+      $_SESSION['mdm_user_roles_to_add'][$result->uid] = 
+	implode(',', $roles_to_add_array);
+      $_SESSION['mdm_user_roles_to_add2'][$result->name] = 
+	implode(',', $roles_to_add_array);
+	    
+    }
+    $u_ret .= "</tr>";
+  }
+  $u_ret .= "</table>";
+  dsm("looking at $counter users");
+
+  drupal_set_message(l("Update Producers Now!", 
+		       "admin/mnn_data_massage/producer_role_update"));
+
+  dsm($_SESSION['mdm_user_roles_to_add'], 'Users we will update');
+  global $possible_roles;
+  
+  $possible_roles = array_unique($possible_roles);
+  asort($possible_roles);
+
+  $ocerts = array_unique($ocerts);
+  asort($ocerts);
+
+  $log = "";
+  $two_ret = "<table>";
+  foreach ($possible_roles as $role) {
+    $two_ret .= "<tr>";
+    $two_ret .= mdm_cell($role);
+    $two_ret .= "</tr>";
+    $log .= "'$role'=>'$role',</br>";
+  }
+
+  $two_ret .= "</table>";
+
+  $one_ret = "<table>";
+  foreach ($ocerts as $role) {
+    $one_ret .= "<tr>";
+    $one_ret .= mdm_cell($role);
+    $one_ret .= "</tr>";
+  }
+  $one_ret .= "</table>";
+
+
+  $footer = "";
+  $non_mapped = array_diff($ocerts, $possible_roles);
+  asort($non_mapped);
+  
+  $log = "";
+  foreach($non_mapped as $role) {
+    $log .= "'$role'=>'',</br>";
+  }
+  ctools_add_js('collapsible-div');
+  ctools_add_css('collapsible-div');
+  $options = array('handle' => 'Unmapped Certs',
+		   'content' => "<br/>".$log, 
+		   'collapsed' => TRUE);
+  $output = theme('ctools_collapsible',$options);
+
+ 
+
+  $header = "<table><tr><th>1.0</th><th>2.0</th><tr><td>$two_ret</td><td>$one_ret</td></tr></table>";
+  return $output." ".$u_ret."<br/>".$header;
+}
+
+function mdm_role_string($roles) {
+  global $possible_roles;
+
+  $ignore_roles = array(
+			'authenticated user',
+			'Management',
+			'Programming',
+			'Res - Manager',
+			'Reservations',
+			'Staff - All',
+			'Suspended',
+			'Trainer',
+			'Intern',
+			'admin',
+			);
+  $ret = '';
+  $first = TRUE;
+
+  foreach ($roles as $rid=>$role) {
+    if (!in_array($role, $ignore_roles)) {
+      $ret .= $role;
+      $ret .= "<br/>";
+      $possible_roles[] = trim($role);
+    }
+  }
+  return $ret;
+}
+
+function mdm_cell($data) {
+  return "<td>$data</td>";
+}
+
+function mdm_get_mapped_role($role) {
+  $map = array(
+	       'DST'=>'DST',
+	       'DSTC'=>'DSTC',
+	       'DSTE'=>'DSTE',
+	       'DSTW'=>'DSTW',
+	       'EDW'=>'EDW',
+	       'FCP'=>'FCP',
+	       'FH - Express Studio'=>'FH - Express Studio',
+	       'FH - FCP'=>'FH - FCP',
+	       'FH - NX5U'=>'FH - NX5U',
+	       'FH - PDW'=>'FH - PDW',
+	       'IMO'=>'IMO',
+	       'LVTYPE'=>'LVTYPE',
+	       'MAC'=>'MAC',
+	       'ORW'=>'ORW',
+	       'PDW'=>'PDW',
+	       'PEW'=>'PEW',
+	       'SDTRK'=>'SDTRK',
+	       'STE'=>'STE',
+	       'WAS'=>'WAS',
+
+	       'Basic Camcorder Workshop'=>'PDW',
+	       'Basic Editing Workshop'=>'EDW',
+	       'DSTU'=>'DST',
+	       'DTSC'=>'DSTC',
+	       'Express Studio (FH)'=>'FH - Express Studio',
+	       'Express Studio Workshop'=>'STE',
+	       'FAPP'=>'FCP',
+	       'FCO'=>'FCP',
+	       'FCP (FH)'=>'FH - FCP',
+	       'FCP4'=>'FCP',
+	       'FCPHT'=>'FCP',
+	       'HEF'=>'PDW',
+	       'ICW'=>'PDW',
+	       'IES'=>'STE',
+	       'IEW'=>'FCP',
+	       'ISW'=>'STU',
+	       'KEY'=>'STU',
+	       'NLE'=>'EDW',
+	       'NX5U'=>'NX5U',
+	       'NX5U (FH)'=>'FH - NX5U',
+	       'ORI'=>'ORW',
+	       'OW'=>'ORW',
+	       'Orientation Workshop'=>'ORW',
+	       'P.O.W'=>'PEW',
+	       'PDW (FH)'=>'FH - PDW',
+	       'POW'=>'PEW',
+	       'STU'=>'STU',
+	       'STU/STW'=>'STU',
+	       'STW'=>'STW',
+	       'Studio'=>'STU',
+	       'Studio Camera Only Workshop'=>'STW',
+	       'TRV'=>'TRV',
+	       'fcplab'=>'FCP',
+	       );
+  if ($map[$role]) {
+    return $map[$role];
+  }
+  return NULL;
+}
+
+function mnn_data_massage_producer_role_update() {
+  $results = $_SESSION['mdm_user_roles_to_add'];
+  if (!$results) {
+    drupal_goto('admin/mnn_data_massage/producer_role_check');
+  }
+  $counter = 0;
+
+  foreach ($results as $uid=>$role_string) {
+    array_shift($_SESSION['mdm_user_roles_to_add']);
+    $roles = explode(',',$role_string);
+
+    drupal_set_message("Updating ".l($uid, "user/$uid/edit").
+		       " with  $role_string");
+    foreach ($roles as $role_name) {
+      if ($role = user_role_load_by_name($role_name)) {
+	user_multiple_role_edit(array($uid), 'add_role', $role->rid);
+      }
+      $counter ++;
+    }
+
+    dsm("Note, limiting to 10 at a time, remove when ready to run for real");
+    if ($counter >= 10) {
+      break;
+    }
+  }
+
+  dsm("Updated $counter users"); 
+  drupal_goto('admin/mnn_data_massage/producer_role_check');
+
+
+}

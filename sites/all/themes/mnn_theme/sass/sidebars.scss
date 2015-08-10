@@ -1,0 +1,134 @@
+/**
+ * @file
+ * Sidebars Styling
+ *
+ */
+
+@import "base";
+
+/* MAIN NODE SIDEBARS */
+.sidebar {
+  h2, h3{
+    margin: .5em 0;
+  }
+  h4, h5, p {
+    margin: .2em 0;
+  }
+  h2 {
+    font-size: 1.35em;
+    text-indent: 0;
+  }
+  .block {
+    padding-bottom: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #EEEEEE;
+    ul {
+      margin: 1em 0;
+      padding: 0 0 0 20px;
+    }
+  }
+  .whats-on-now {
+    background: $dark;
+    padding: 12px;
+    color: $greyer;
+    @include box-sizing(border-box);
+    h3 {
+      font-size: 24px;
+      color: $greyer;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .view-sched a {
+      font-size: 14px;
+      color: white;
+    }
+  }
+  #block-mnn-show-watch-now {
+    .whats-on-now {
+      padding: 5px;
+    }
+    ul {
+      margin: 0;
+      padding: 0;
+      li {
+        list-style-type: none;
+        list-style-image: none;
+        clear: both;
+        float: left;
+        width: 100%;
+        padding: 2px 5px;
+        margin: 5px 0;
+        background: #f9f9f9;
+        @include box-sizing(border-box);
+        .channel-icon {
+          @include box-sizing(border-box);
+          @include col(1/5, $gutter: 0);
+          img {
+            width: 100%;
+          }
+        }
+        .channel-info {
+          @include box-sizing(border-box);
+          @include col(4/5, $gutter: 0);
+          padding-left: 8px;
+          h4 {
+            cursor: pointer;
+            padding: 5px 0;
+            height: 20px;
+            &.collapsed {
+              &:after {
+                content: "▶";
+                font-size: 12px;
+                position: relative;
+                left: 5px;
+                color: #474747;
+              }
+              &.down {
+                &:after {
+                  content: "▼";
+                  font-size: 13px;
+                  position: relative;
+                  left: 5px;
+                  color: #474747;
+                }
+              }
+            }
+          }
+          h5 {
+            clear: both;
+            a {
+              &:hover, &:focus {
+                color: $blue;
+                outline: 0 !important;
+              }
+            }
+          }
+          .watch-now-link {
+            float: left;
+            width: 100%;
+            margin: 5px 0 0 0;
+            border-top: 1px solid #eee;
+            a {
+              @include sassy-button("matte", 0px, 90%, #999, #888, #fff, "inset");
+              margin: 10px 0;
+            }
+          }
+        }
+        .channel-about {
+          padding: 5px 0;
+          margin-bottom: 3px;
+          float: left;
+          @include box-sizing(border-box);
+          .channel-description, .cable-channel-list {
+            color: #888;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* PANEL SIDEBARS */
+.panel-flexible .sidebar {
+
+}

@@ -1,0 +1,82 @@
+<?php
+/**
+ * @file
+ * Code for the MNN Airing Import feature.
+ */
+
+include_once('mnn_airing_import.features.inc');
+
+/**
+ * Implements hook_menu()
+ */
+function mnn_airing_import_menu() {
+
+  $items['admin/airing/purge'] = array(
+    'title' => 'Purge Airings not from Migrate',
+    'description' => 'Enable Active Projects',
+    'page callback' => 'mnn_airing_import_purge_batch_init',
+    'access arguments' => array('administer group'),
+    'type' => MENU_CALLBACK
+  );
+  
+  return $items;
+}
+
+function mnn_airing_import_purge_batch_init() {
+    
+  $batch = array(
+    'title' => t('Purging Aitings...'),
+    'operations' => array(),
+    'init_message' => t('Starting Purge'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+    'finished' => 'mnn_airing_import_purge_batch_finished',
+    'progressive' => FALSE
+  );
+    
+  //query all project nodes
+  
+  $result = db_query('SELECT * FROM {cm_airing}');
+  
+  $count = 0;
+  foreach ($result as $record) {
+    //if ($count < 10000) {
+    $migrated_airing = db_query("SELECT destid1 FROM {migrate_map_import_airings} WHERE destid1 = :airing_id", array(':airing_id' => $record->airing_id))->fetchField();
+  
+    if(!$migrated_airing) {
+    
+      $batch['operations'][] = array('mnn_airing_import_purge_batch_worker', array($record->airing_id));
+      $count++;
+    }
+  }
+   
+  batch_set($batch);
+ 
+  batch_process('airing');
+}
+ 
+function mnn_airing_import_purge_batch_worker($eid, &$context) {
+    
+  //$migrated_airing = db_query("SELECT destid1 FROM {migrate_map_import_airings} WHERE destid1 = :airing_id", array(':airing_id' => $eid))->fetchField();
+  
+  //if(!$migrated_airing) {
+
+    cm_airing_delete(cm_airing_load($eid));
+    watchdog('mnn_airing_import', 'deleted' . $eid);
+  //}
+    
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully processed #' . $eid;
+}
+ 
+function mnn_airing_import_purge_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural($results['processed'], 'One airing processed.', '@count airings processed.');
+  }
+  else {
+    $message = 'some errors';
+  }
+ 
+  drupal_set_message($message);
+}
+

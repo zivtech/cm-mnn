@@ -1,0 +1,199 @@
+/**
+ * @file
+ * Panels Styling
+ * Will handle panel pages, panelizer etc
+ * Do not put views code in here, unless they need to be overridden specifically as views-panes
+ *
+ */
+
+@import "base";
+
+.panel-pane {
+  clear: both;
+}
+
+.cm-row {
+  .column {
+    .panel-pane {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+    }
+  }
+}
+
+// Home page community channel buttons
+%community-channel-button {
+  font-size: 14px;
+  list-style: none;
+  border: 1px solid #EDEDED;
+  border-bottom: 1px solid #CFCFCF;
+  margin: 0 !important;
+  @include background-image(linear-gradient(#FFFFFF, #F5F5F5));
+}
+%channel-info {
+  height: 30px;
+  padding: 0 !important;
+}
+%channel-icon {
+  height: 50px;
+  width: 30px;
+  float: left;
+  margin: 12px 6px;
+}
+
+.channel-about {
+  background: #EBEBEB;
+  clear: left;
+  padding: 12px !important;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pane-mnn-show-watch-now {
+  ul {
+    padding-left: 0 !important;
+    margin: 24px 0 !important;
+    @include clearfix;
+    li {
+      @extend %community-channel-button;
+      @include clearfix;
+      h5 {
+        margin-bottom: 5px;
+      }
+      a.watch-now {
+        display: block;
+        float: left;
+        font-weight: bold;
+        margin-bottom: 12px;
+      }
+    }
+
+    #channel1 .channel-icon {
+        //@include channel-icons-sprite(ch1);
+        @extend %channel-icon;
+    }
+    #channel2 .channel-icon {
+        //@include channel-icons-sprite(ch2);
+        @extend %channel-icon;
+    }
+    #channel3 .channel-icon {
+        //@include channel-icons-sprite(ch3);
+        @extend %channel-icon;
+    }
+    #channel4 .channel-icon {
+        //@include channel-icons-sprite(ch4);
+        @extend %channel-icon;
+    }
+
+  }
+}
+
+/* Our Video Styles */
+
+#content .cm-col.teaser.grid-item {
+  .field-name-field-video {
+    a {
+      position: relative;
+      float: left;
+      width: 100%;
+      &:after {
+        content: "";
+        opacity: 1;
+        position: absolute;
+        bottom: 0;
+        width: 60px;
+        height: 60px;
+        margin: auto;
+        z-index: 100;
+        background: transparent url(../images/video-play.png) no-repeat center;
+      }
+    }
+    img {
+      width: 100%;
+      position:relative;
+      z-index: 4;
+    }
+  }
+}
+
+/* FOOTER MINI PANEL */
+
+#footer {
+  .footer-mp {
+    padding: 5px 10%;
+    @include breakpoint ($breakpoint-large-width) {
+      padding: 5px 5%;
+    }
+    @include breakpoint ($breakpoint-medium-width) {
+      padding: 5px 20px;
+    }
+    .wrap {
+      font-size: 15px;
+      color: #ccc;
+      h5 {
+        font-size: 16px;
+        font-weight: normal;
+        font-family: 'Roboto Condensed',sans-serif;
+        margin: 0 0 10px 0;
+        color: #fff;
+        @include breakpoint ($breakpoint-medium-width) {
+          margin-bottom: 5px;
+        }
+      }
+      p {
+        margin: 0;
+      }
+      &.left {
+        @include col(1/4);
+        @include breakpoint ($breakpoint-medium-width) {
+          @include col();
+          @include stack();
+          margin-bottom: 30px;
+        }
+      }
+      &.center {
+        @include col(2/4);
+        @include breakpoint ($breakpoint-medium-width) {
+          @include col();
+          @include stack();
+          margin-bottom: 30px;
+        }
+        .c-left, .c-right {
+          @include col(1/2);
+          @include breakpoint ($breakpoint-small-width) {
+            @include col();
+            @include stack();
+          }
+        }
+      }
+      &.right {
+        @include col(1/4);
+        margin-bottom: 30px;
+        @include breakpoint ($breakpoint-medium-width) {
+          @include col();
+          @include stack();
+        }
+        ul {
+          margin: 0;
+          padding: 0;
+          li {
+            list-style-type: none;
+            a {
+              color: #ccc;
+            }
+          }
+        }
+      }
+    }
+  }
+  .drupal-credit {
+    clear: both;
+    padding: 10px 0 0 0;
+    text-align: center;
+    color: #ccc;
+    font-size: 13px;
+    a {
+      color: #ccc;
+    }
+  }
+}

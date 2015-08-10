@@ -1,0 +1,19 @@
+core = "7.x"
+dependencies[] = "features"
+dependencies[] = "cm_show"
+dependencies[] = "cm_airing"
+dependencies[] = "views"
+description = "Relates Airings to Show"
+features[ctools][] = "views:views_default:3.0"
+features[field][] = "airing-airing-field_airing_show_ref"
+features[views_view][] = "cm_cm_show_airings"
+name = "Show Airings"
+package = "Community Media"
+php = "5.2.4"
+
+; Information added by drupal.org packaging script on 2013-03-07
+version = "7.x-3.x-dev"
+core = "7.x"
+project = "cm_airing"
+datestamp = "1362617114"
+

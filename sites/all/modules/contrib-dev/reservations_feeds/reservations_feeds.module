@@ -1,0 +1,29 @@
+<?php
+
+/**
+* Implementation of hook_feeds_plugins().
+*/
+function reservations_feeds_feeds_plugins() {
+  $info = array();
+  $info['ReservationsTypeProcessor'] = array(
+    'name' => 'Reservations Content Type processor',
+    'description' => 'Processes data into Reservable Content Types.',
+    'handler' => array(
+      'parent' => 'FeedsProcessor', // A plugin needs to derive either directly or indirectly from FeedsFetcher, FeedsParser or FeedsProcessor.
+      'class' => 'ReservationsTypeProcessor',
+      'file' => 'ReservationsTypeProcessor.inc',
+      'path' => drupal_get_path('module', 'reservations_feeds'),
+    ),
+  );
+  $info['ReservationsNodeProcessor'] = array(
+    'name' => 'Reservations Node processor',
+    'description' => 'Processes data into Reservable Nodes.',
+    'handler' => array(
+      'parent' => 'FeedsNodeProcessor', // A plugin needs to derive either directly or indirectly from FeedsFetcher, FeedsParser or FeedsProcessor.
+      'class' => 'ReservationsNodeProcessor',
+      'file' => 'ReservationsNodeProcessor.inc',
+      'path' => drupal_get_path('module', 'reservations_feeds'),
+    ),
+  );
+  return $info;
+}

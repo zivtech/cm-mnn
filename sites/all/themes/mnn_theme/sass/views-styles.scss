@@ -1,0 +1,266 @@
+/**
+ * @file
+ * Views Styling
+ */
+
+@import "base";
+
+
+/*
+ * Views' admin tabs
+ *
+ * The views admin tabs use the same classes as the secondary tabs. We prevent
+ * some of our tab styling from bleeding into (and breaking) the Views admin
+ * pages. If your sub-theme isn't used for admin pages, you can remove this
+ * entire section.
+ */
+.views-displays .secondary {
+  li {
+    float: none;
+    margin: 0 6px 0;
+  }
+
+  a:link,
+  a:visited {
+    @include single-text-shadow(none);
+    padding: 2px 7px 3px;
+  }
+
+  .open > a {
+    @include border-radius(7px 7px 0 0);
+    &:hover {
+      color: #333;
+    }
+  }
+
+  .action-list li {
+    margin: 0;
+    &:first-child {
+      @include border-radius(0 7px 0 0);
+    }
+    &:last-child {
+      @include border-radius(0 0 7px 7px);
+    }
+  }
+}
+
+.view-content-listing {
+  .view-content {
+    clear: both;
+  }
+}
+
+.views-field-created {
+  color: $lightgrey;
+  font-size: 14px;
+}
+
+/* Our Slideshows */
+
+#content {
+  .view-content-listing.view-display-id-panel_pane_2 {
+    .flexslider {
+      .cm-row {
+        border: 0;
+        margin: 0;
+        padding: 0;
+      }
+      background: none repeat scroll 0 0 #000;
+      border: 0;
+      border-radius: 0;
+      -moz-border-radius: 0;
+      -webkit-border-radius: 0;
+      box-shadow: none;
+      -moz-box-shadow: none;
+      -webkit-box-shadow: none;
+      margin: 0 0 30px 0;
+      padding-bottom: 0;
+      position: relative;
+      float: left;
+      width: 100%;
+      ul {
+        margin: 0;
+        padding: 0;
+        li {
+          .media {
+            width: 100%;
+            @include stack();
+            @include box-sizing(border-box);
+            img {
+              display: block !important;
+              visibility: visible !important;
+              height: auto !important;
+              position: relative;
+              z-index: 9;
+            }
+            .field-name-field-cm-slideshow-link {
+              a {
+                text-indent: -9999px;
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                z-index: 10;
+              }
+            }
+          }
+          .wrapper {
+            width: 100%;
+            padding: 10px 10px 0 10px !important;
+            position: relative;
+            z-index: 11;
+            @include box-sizing(border-box);
+            color: #fff;
+            h2 {
+              font-size: 26px;
+            }
+            .field-name-field-cm-slideshow-sub-header {
+              font-size: 16px;
+              a {
+                color: #ffa;
+              }
+            }
+          }
+        }
+      }
+      .flex-control-nav {
+        bottom: 0px;
+        background: #000;
+        text-align: right;
+        position: relative;
+        float: left;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        z-index: 5;
+        padding: 0px 5px 10px 5px;
+        @include box-sizing(border-box);
+        li {
+          a {
+            text-indent: -9999px;
+            background: #ebebeb;
+            width: 20px;
+            height: 20px;
+            color: #ebebeb;
+            font-size: 0;
+            &.flex-active {
+              background: #757575;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Channels Featured Videos */
+
+.cm-row {
+  .pane-views-panes {
+    .view-mnn-channel-lists {
+      .views-row {
+        padding: 0;
+        .group-left {
+          @include col(4/10, $gutter: 0);
+          @include box-sizing(border-box);
+          .field-name-field-channel-logo {
+            float: left;
+            img {
+              width: 40px;
+            }
+          }
+          .field-name-title {
+            padding: 5px 5px 0 5px;
+            float: left;
+            h2 {
+              clear: none;
+              margin: 0 !important;
+              a {
+                color: #999;
+              }
+            }
+          }
+          .field-name-more-link {
+            float: left;
+            padding: 13px 10px 13px 7px;
+            font-size: 14px;
+            font-weight: bold;
+          }
+          @include breakpoint ($breakpoint-large-width) {
+            @include col();
+            @include stack();
+          }
+        }
+        .group-right {
+          @include col(6/10, $gutter: 0);
+          @include box-sizing(border-box);
+          .taxonomy-term-description {
+            font-size: 14px;
+            line-height: 14px;
+            padding: 5px 0 0 10px;
+            p {
+              margin: 0;
+              padding: 0;
+            }
+          }
+          @include breakpoint ($breakpoint-large-width) {
+            @include col();
+            @include stack();
+          }
+        }
+      }
+    }
+  }
+  .pane-content-listing-panel-pane-1 {
+    margin-bottom: 30px;
+    float: left;
+    width: 100%;
+  }
+}
+
+/* Producer's Videos */
+
+#content {
+  .cm-row {
+    .left {
+      .pane-views-panes {
+        .view-content-listing {
+          .cm-col.grid-item {
+            @include col(1/2, $gutter: 0, $cycle: 2);
+            @include box-sizing(border-box);
+            .inside {
+              margin-right: 20px;
+              @include breakpoint ($breakpoint-large-width) {
+                margin-right: 20px;
+              }
+            }
+            .field-name-title {
+              padding: 5px 5px 0 5px;
+              float: left;
+              h2 {
+                clear: none;
+                margin: 0 !important;
+                a {
+                  color: #000;
+                  text-decoration: none;
+                }
+              }
+            }
+            .field-name-more-link {
+              float: left;
+              padding: 13px 10px 13px 7px;
+              font-size: 14px;
+              font-weight: bold;
+            }
+            @include breakpoint ($breakpoint-small-width) {
+              @include col();
+              @include stack();
+              .inside {
+                margin: 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

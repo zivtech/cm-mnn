@@ -1,0 +1,5 @@
+core = "7.x"
+dependencies[] = "views"
+description = "Provides an interface reliant on views to replicate quarter of series airings"
+name = "MNN Airing Replication"
+package = "MNN Features"

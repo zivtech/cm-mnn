@@ -1,0 +1,9 @@
+name = MNN Reservations
+package = MNN Custom
+description = "Small tweaks to reservations for MNN"
+
+core = 7.x
+files[] = mnn_reservations.module
+
+
+

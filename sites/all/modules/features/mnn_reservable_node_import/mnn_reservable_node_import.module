@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the MNN Reservable Node Import feature.
+ */
+
+include_once('mnn_reservable_node_import.features.inc');

@@ -1,0 +1,7 @@
+core = "7.x"
+dependencies[] = "views"
+description = "Searches reservable and non-reservable items"
+features[ctools][] = "views:views_default:3.0"
+features[views_view][] = "mnn_inventory_seach"
+name = "MNN Inventory Search"
+package = "MNN Features"

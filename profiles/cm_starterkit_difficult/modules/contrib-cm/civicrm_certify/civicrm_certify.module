@@ -1,0 +1,1104 @@
+<?php
+
+/**
+ * @file
+ * Creates a certification entity and rules to apply them
+ *
+ */
+
+require 'civicrm.api.inc';
+
+/**
+ * Implements hook_entity_info().
+ */
+function civicrm_certify_entity_info() {
+  $return = array(
+    'certification_rule' => array(
+      'label' => t('Certification Rule'),
+      'base table' => 'certification_rule',
+      'entity class' => 'CertificationRule',
+      'controller class' => 'CertificationRuleController',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'cert_rule_id',
+        'label' => 'cert_rule_name',
+      ),
+      'label callback' => 'entity_class_label',
+      'uri callback' => 'certification_rule_uri',
+      'module' => 'civicrm_certify',
+      'access callback' => 'certification_rule_access',
+      'load hook' => 'certification_rule_load',
+      // Attach bundles - i.e. alternative configurations of fields associated with a main entity.
+      'bundles' => array(
+        'certification_rule' => array(
+          'label' => 'Certification Rule',
+          // Information below is used by the Field UI - they "attach" themselves here and lets us
+          // do the standard field management that all the core entities enjoy.
+          'admin' => array(
+            'path' => 'admin/structure/certifications/certification-rule/manage',
+            'access arguments' => array('administer certification_rules'),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  $return['certification'] = array(
+    'label' => t('Certification'),
+    'base table' => 'certification',
+    'entity class' => 'Certification',
+    'controller class' => 'CertificationController',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'cert_id',
+    ),
+    'label callback' => 'entity_class_label',
+    'uri callback' => 'certification_uri',
+    'module' => 'civicrm_certify',
+    'access callback' => 'certification_access',
+    'load hook' => 'certification_load',
+    // Attach bundles - i.e. alternative configurations of fields associated with a main entity.
+    'bundles' => array(
+      'certification' => array(
+        'label' => 'Certification',
+        // Information below is used by the Field UI - they "attach" themselves here and lets us
+        // do the standard field management that all the core entities enjoy.
+        'admin' => array(
+          'path' => 'admin/structure/certifications',
+          'access arguments' => array('administer certifications'),
+        ),
+      ),
+    ),
+  );
+
+  return $return;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function civicrm_certify_menu() {
+  $items = array();
+
+  /*
+   * -------------------------------------------------------
+   * -------------------  Certification Rule ---------------
+   * -------------------------------------------------------
+   */
+
+  $items['certification-rule/add'] = array(
+    'title' => 'Add certification rule',
+    'page callback' => 'certification_rule_add',
+    'access arguments' => array('create certification_rule entities'),
+    'file' => 'certification_rule.pages.inc',
+  );
+
+  $certification_rule_uri = 'certification-rule/%certification_rule';
+  $certification_rule_uri_argument_position = 1;
+
+  $items[$certification_rule_uri] = array(
+    'title callback' => 'entity_label',
+    'title arguments' => array('certification_rule', $certification_rule_uri_argument_position),
+    'page callback' => 'certification_rule_view',
+    'page arguments' => array($certification_rule_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('view', 'certification_rule', $certification_rule_uri_argument_position),
+    'file' => 'certification_rule.pages.inc',
+  );
+
+  $items[$certification_rule_uri . '/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'access arguments' => array('view', 'certification_rule', $certification_rule_uri_argument_position),
+    'weight' => -10,
+  );
+
+  $items[$certification_rule_uri . '/delete'] = array(
+    'title' => 'Delete certification rule',
+    'title callback' => 'certification_rule_title',
+    'title arguments' => array($certification_rule_uri_argument_position),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('certification_rule_delete_form', $certification_rule_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'certification_rule', $certification_rule_uri_argument_position),
+    'file' => 'certification_rule.pages.inc',
+  );
+
+  $items[$certification_rule_uri . '/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('certification_rule_form', $certification_rule_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'certification_rule', $certification_rule_uri_argument_position),
+    'file' => 'certification_rule.pages.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  // manual sync
+  $items[$certification_rule_uri . '/sync'] = array(
+    'title' => 'Sync',
+    'description' => 'Certifies all participants based on Rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('certification_rule_sync_form', $certification_rule_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'certification_rule', $certification_rule_uri_argument_position),
+    'file' => 'certification_rule.pages.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+
+  );
+
+  // This provides a place for Field API to hang its own
+  // interface and has to be the same as what was defined
+  // in civicrm_certify_entity_info() above.
+  $items['admin/config/civicrm/certification-rule'] = array(
+    'title' => 'Certification Rules',
+    'description' => 'Manage Certification Rule Entity Structure',
+    'page callback' => 'certification_rule_content',
+    'file' => 'certification_rule.pages.inc',
+    'access arguments' => array('administer certification_rule entities'),
+    'weight' => -50,
+  );
+
+
+  /*
+   * -------------------------------------------------------
+   * -------------------  Certification ---------------
+   * -------------------------------------------------------
+   */
+
+  $items['certification/view/contact/%'] = array(
+    'title' => 'Certifications',
+    'page callback' => 'civicrm_certify_certification_tab',
+    'access arguments' => array('access CiviCRM'),
+    'page arguments'   => array(3),
+    'file' => 'certification.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  // Make "Certification" tab
+  $items['user/%/certifications'] = array(
+    'title' => 'Certifications',
+    'access callback' => 'certification_tab_access',
+    'access arguments' => array(1),
+    'page callback' => 'civicrm_certify_certification_profile_tab',
+    'page arguments'   => array(1),
+    'file' => 'certification.pages.inc',
+    'weight' => '15',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['certification/add'] = array(
+    'title' => 'Add certification',
+    'page callback' => 'certification_add',
+    'access arguments' => array('create certification entities'),
+    'file' => 'certification.pages.inc',
+  );
+
+  $certification_uri = 'certification/%certification';
+  $certification_uri_argument_position = 1;
+
+  $items[$certification_uri . '/delete'] = array(
+    'title' => 'Delete certification',
+    'title callback' => 'certification_title',
+    'title arguments' => array($certification_uri_argument_position),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('certification_delete_form', $certification_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'certification', $certification_uri_argument_position),
+    'file' => 'certification.pages.inc',
+  );
+
+  $items[$certification_uri . '/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('certification_form', $certification_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'certification', $certification_uri_argument_position),
+    'file' => 'certification.pages.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  $items[$certification_uri] = array(
+    'title callback' => 'entity_label',
+    'title arguments' => array('certification', $certification_uri_argument_position),
+    'page callback' => 'certification_view',
+    'page arguments' => array($certification_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('view', 'certification', $certification_uri_argument_position),
+    'file' => 'certification.pages.inc',
+  );
+
+  $items[$certification_uri . '/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/config/people/certifications'] = array(
+    'title' => 'Certifications',
+    'description' => 'Certifications',
+    'page callback' => 'certification_content',
+    'file' => 'certification.pages.inc',
+    'access arguments' => array('administer certification entities'),
+    'weight' => -50,
+  );
+
+  return $items;
+}
+
+
+
+
+/**
+ * Implements hook_field_extra_fields().
+ *
+ * This exposes the "extra fields" (usually properties that can be configured
+ * as if they were fields) of the entity as pseudo-fields
+ * so that they get handled by the Entity and Field core functionality.
+ * Node titles get treated in a similar manner.
+ */
+function civicrm_certify_field_extra_fields() {
+
+  // certification rule fields
+  // manage fields tab
+  $form_elements['cert_rule_name'] = array(
+    'label' => t('Certification Rule Name'),
+    'description' => t('The Certification Rule name'),
+    'weight' => -5,
+  );
+
+  // manage display tab
+  $display_elements['cert_rule_name'] = array(
+    'label' => t('Certification Rule Name'),
+    'description' => t('The Certification Rule name.'),
+    'weight' => 0,
+  );
+  $display_elements['cert_rule_created'] = array(
+    'label' => t('Certification Rule created date'),
+    'description' => t('The Certification Rule created date.'),
+    'weight' => 0,
+  );
+
+  // Since we have only one bundle type, we'll just provide the extra_fields
+  // for it here.
+  $extra_fields['certification_rule']['certification_rule']['form'] = $form_elements;
+  $extra_fields['certification_rule']['certification_rule']['display'] = $display_elements;
+
+  // certification fields
+  // manage fields tab
+  $form_elements['cert_event'] = array(
+    'label' => t('Certification Event Title'),
+    'description' => t('The CiviEvent that awards the certification.'),
+    'weight' => -5,
+  );
+
+  $form_elements['cert_date'] = array(
+    'label' => t('Certification Date'),
+    'description' => t('The Certification Rule name'),
+    'weight' => -5,
+  );
+  $display_elements['cert_event'] = array(
+    'label' => t('Certification Event Title'),
+    'description' => t('The CiviEvent that awards the certification.'),
+    'weight' => 0,
+  );
+
+  $display_elements['cert_date'] = array(
+    'label' => t('Certification awarded date'),
+    'description' => t('The Certification awarded date.'),
+    'weight' => 0,
+  );
+
+  // Since we have only one bundle type, we'll just provide the extra_fields
+  // for it here.
+  $extra_fields['certification']['certification']['form'] = $form_elements;
+  $extra_fields['certification']['certification']['display'] = $display_elements;
+
+  return $extra_fields;
+}
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function civicrm_certify_entity_property_info() {
+  $info = array();
+  // certification rule entity properties
+  $properties = &$info['certification_rule']['properties'];
+  $properties['cert_rule_id'] = array(
+    'label' => t("Certification Rule ID"),
+    'description' => 'The primary identifier for the certification type.',
+    'type' => 'integer',
+    'schema field' => 'cert_rule_id',
+    'setter permission' => 'administer certification_rules',
+    'table' => 'certification_rule',
+  );
+  $properties['cert_rule_name'] = array(
+    'label' => t("Certification Rule Name"),
+    'type' => 'text',
+    'description' => t("The name of the Certification Rule was posted."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certification_rules',
+    'schema field' => 'cert_rule_name',
+    'field' => TRUE,
+    'table' => 'certification_rule',
+  );
+  $properties['cert_rule_created'] = array(
+    'label' => t("Date created"),
+    'type' => 'date',
+    'description' => t("The date the certification rule was posted."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certification_rules',
+    'schema field' => 'cert_rule_created',
+    'table' => 'certification_rule',
+  );
+
+  // certification entity properties
+
+  $cert_properties = &$info['certification']['properties'];
+  $cert_properties['cert_id'] = array(
+    'label' => t("Certification ID"),
+    'type' => 'text',
+    'description' => t("The ID of the Certification."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_id',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  $cert_properties['cert_rule_id'] = array(
+    'label' => t("Certification Rule ID"),
+    'type' => 'integer',
+    'description' => t("The ID of the Certification Rule."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_rule_id',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  $cert_properties['cert_created'] = array(
+    'label' => t("Certification Rule ID"),
+    'type' => 'date',
+    'description' => t("The date the certification was created."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_created',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  $cert_properties['cert_date'] = array(
+    'label' => t("The date the certification was awarded."),
+    'type' => 'date',
+    'description' => t("The date the event awarded the certification."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_date',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  $cert_properties['cert_author'] = array(
+    'label' => t("The creator of the certification. Usually the instructor of a workshop."),
+    'type' => 'integer',
+    'description' => t("The instructor of the event, or grantor of the certification."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_author',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  $cert_properties['cert_user'] = array(
+    'label' => t("The recipient of the certification."),
+    'type' => 'integer',
+    'description' => t("The civi contact the certification is granted to."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_user',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+
+  $cert_properties['cert_event'] = array(
+    'label' => t("Certification Event ID."),
+    'type' => 'integer',
+    'description' => t("The CiviEvent that awards the certification."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer certifications',
+    'schema field' => 'cert_event',
+    'field' => TRUE,
+    'table' => 'certification',
+  );
+  return $info;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function civicrm_certify_permission() {
+  $permissions = array(
+    'administer certification_rule entities' => array(
+      'title' => t('Administer certification rules'),
+      'description' => t('Allows users to configure certification rule fields.'),
+      'restrict access' => TRUE,
+    ),
+    'create certification_rule entities' => array(
+      'title' => t('Create certification rules'),
+      'description' => t('Allows users to create certification rules.'),
+    ),
+    'view any certification_rule entity' => array(
+      'title' => t('View certification rule'),
+      'description' => t('Allows users to view certification rules.'),
+    ),
+    'edit any certification_rule entity' => array(
+      'title' => t('Edit any certification rule'),
+      'description' => t('Allows users to edit any certification type.'),
+      'restrict access' => TRUE,
+    ),
+    'administer certification entities' => array(
+      'title' => t('Administer certification entities'),
+      'description' => t('Allows users to configure certification fields.'),
+      'restrict access' => TRUE,
+    ),
+    'view any certification entity' => array(
+      'title' => t('View any certification'),
+      'description' => t('Allows users to view any certifications.'),
+    ),
+    'view own certification entity' => array(
+      'title' => t('View own certification'),
+      'description' => t('Allows users to view their own certifications.'),
+    ),
+    'edit any certification entity' => array(
+      'title' => t('Edit any certification'),
+      'description' => t('Allows users to delete any certification.'),
+      'restrict access' => TRUE,
+    ),
+  );
+
+  return $permissions;
+}
+
+/**
+ * -------------------------------------------------------
+ * --------------  Certification Rule APIs ---------------
+ * -------------------------------------------------------
+ */
+
+
+/**
+ * Access callback for Certification type.
+ */
+function certification_rule_access($op, $certification_rule, $account = NULL, $entity_type = NULL) {
+  global $user;
+
+  if (!isset($account)) {
+    $account = $user;
+  }
+  switch ($op) {
+    case 'create':
+      return user_access('administer certification_rule entities', $account)
+        || user_access('create certification_rule entities', $account);
+    case 'view':
+      return user_access('administer certification_rule entities', $account)
+        || user_access('view any certification_rule entity', $account);
+    case 'sync':
+      return user_access('administer certification_rule entities', $account);
+    case 'edit':
+      return user_access('administer certification_rule entities')
+        || user_access('edit any certification_rule entity');
+  }
+}
+
+/**
+ * Load a certification type.
+ */
+function certification_rule_load($certification_rule_id, $reset = FALSE) {
+  $certification_rule = certification_rule_load_multiple(array($certification_rule_id), array(), $reset);
+  return reset($certification_rule);
+}
+
+/**
+ * Load multiple certification types based on certain conditions.
+ */
+function certification_rule_load_multiple($certification_rule_ids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('certification_rule', $certification_rule_ids, $conditions, $reset);
+}
+
+/**
+ * Save certification type.
+ */
+function certification_rule_save($certification_rule) {
+  if (isset($certification_rule->is_new)) {
+    $certification_rule->cert_rule_created = REQUEST_TIME;
+  }
+
+  entity_save('certification_rule', $certification_rule);
+}
+
+/**
+ * Delete single certification type.
+ */
+function certification_rule_delete($certification_rule) {
+  $count = 0;
+  // deleting a rule also deletes the certifications related to it
+
+  //get all certifications
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'certification')
+    ->propertyCondition('cert_rule_id', $certification_rule->cert_rule_id)
+    ->addMetaData('account', user_load(1)); // Run the query as user 1.
+  $result = $query->execute();
+
+  if (isset($result)) {
+    foreach ($result['certification'] as $certification) {
+      $count++;
+      entity_delete('certification', $certification->cert_id);
+    }
+  }
+
+  drupal_set_message(check_plain("Deleted $count certifications"))  ;
+  entity_delete('certification_rule', entity_id('certification_rule' , $certification_rule));
+}
+
+/**
+ * Delete multiple certification types.
+ */
+function certification_rule_delete_multiple($certification_rule_ids) {
+  entity_delete_multiple('certification_rule', $certification_rule_ids);
+}
+
+/**
+ * Creates a certification rule entity for us - simply intializing the main variables and
+ * sending us to a form to add in the rest.
+ */
+function certification_rule_add() {
+  $certification_rule = entity_create('certification_rule', array('type' => 'certification_rule'));
+  return drupal_get_form('certification_rule_form', $certification_rule);
+}
+
+/**
+ * Implementing the uri callback defined
+ */
+function certification_rule_uri($certification_rule) {
+  return array(
+    'path' => 'certification-rule/' . $certification_rule->cert_rule_id,
+  );
+}
+
+/**
+ * Callback for a page title when this entity is displayed.
+ */
+function certification_rule_title($entity) {
+  return t(entity_label('certification_rule', $entity));
+}
+
+/**
+ * Callback for manually syncing a certification_rule
+ */
+function certification_rule_sync($entity) {
+  $count = 0;
+
+  // get all events that match the event_type
+  $event_type_id = $entity->cert_rule_event_type;
+  $status_id = $entity->cert_rule_status;
+  if ($event_type_id) {
+    // get all active events of this type
+    $result = _civicrm_certify_get_civievents($event_type_id);
+    if (is_array($result['values'])) {
+      foreach ($result['values'] as $event) {
+        // get all participants of the event
+        $participants = _civicrm_certify_get_particpants($event['id'], $status_id);
+        foreach ($participants['values'] as $participant) {
+
+          // only perform certification if status is correct
+          if ($participant['participant_status_id'] == $status_id) {
+            // perform the certification
+
+            hook_civicrm_certify($entity, $participant['id']);
+            $count ++; // count only participants successfully certified
+          }
+        }
+      }
+    }
+  }
+
+  drupal_set_message(check_plain(t("{$count} participants certified.")));
+  return t(entity_label('certification_rule', $entity));
+}
+
+
+/**
+ * -------------------------------------------------------
+ * -------------------  Certification APIs ---------------
+ * -------------------------------------------------------
+ */
+
+/**
+ * Access callback for Certification.
+ */
+function certification_access($op, $certification, $account = NULL, $entity_type = NULL) {
+  global $user;
+
+  if (!isset($account)) {
+    $account = $user;
+  }
+  switch ($op) {
+    case 'create':
+      return user_access('administer certification entities', $account)
+        || user_access('create certification entities', $account);
+    case 'view':
+      $contact = _civicrm_certify_civicrm_ufmatch($account->uid);
+      if ($contact['contact_id'] == $certification->cert_user) {
+        return user_access('administer certification entities', $account)
+          || user_access('view any certification entity', $account)
+          || user_access('view own certification entity', $account);
+      }
+      else {
+        return user_access('administer certification entities', $account)
+          || user_access('view any certification entity', $account);
+      }
+    case 'edit':
+      return user_access('administer certification entities')
+        || user_access('edit any certification entity');
+  }
+}
+
+/**
+ * Load a certification.
+ */
+function certification_load($certification_id, $reset = FALSE) {
+  $certification = certification_load_multiple(array($certification_id), array(), $reset);
+  return reset($certification);
+}
+
+/**
+ * Load multiple certifications based on certain conditions.
+ */
+function certification_load_multiple($certification_ids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('certification', $certification_ids, $conditions, $reset);
+}
+
+/**
+ * Save certification.
+ */
+function certification_save($certification) {
+  if (isset($certification->is_new)) {
+    $certification->cert_created = REQUEST_TIME;
+  }
+  entity_save('certification', $certification);
+}
+
+/**
+ * Delete single certification.
+ */
+function certification_delete($certification) {
+  // get the full rule
+  $rule = entity_load('certification_rule', array($certification->cert_rule_id));
+  $rule = $rule[$certification->cert_rule_id];
+
+  // TODO: only remove the group if there are no other certifications providing this same group
+  // remove the user from the civigroup
+  _civicrm_certify_civicrm_group_contact_delete($rule->cert_rule_group, $certification->cert_user);
+
+  // delete the certification
+  entity_delete('certification', entity_id('certification' , $certification));
+}
+
+/**
+ * Delete multiple certification types.
+ */
+function certification_delete_multiple($certification_ids) {
+  // TODO: test this
+  foreach ($certification_ids as $certification) {
+    // get the full rule
+    $rule = entity_load('certification_rule', array($certification->cert_rule_id));
+    $rule = $rule[$certification->cert_rule_id];
+
+
+    // remove the user from the civigroup
+    _civicrm_certify_civicrm_group_contact_delete($rule->cert_rule_group, $certification->cert_user);
+  }
+  entity_delete_multiple('certification', $certification_ids);
+}
+
+/**
+ * Creates a certification entity for us - simply intializing the main variables and
+ * sending us to a form to add in the rest.
+ */
+function certification_add() {
+  global $base_path;
+  $certification = entity_create('certification', array('type' => 'certification'));
+
+  $certification->content['notice'] = array(
+    '#type' => 'item',
+    '#title' => t('You cannot manually add a certification'),
+    '#markup' => l(t('Add a certification rule'), 'certification-rule/add'),
+  );
+  return $certification->content;
+}
+
+/**
+ * Implementing the uri callback defined
+ */
+function certification_uri($certification) {
+  return array(
+    'path' => 'certification/' . $certification->cert_id,
+  );
+}
+
+/**
+ * Callback for a page title when this entity is displayed.
+ */
+function certification_title($entity) {
+  return t(entity_label('certification', $entity));
+}
+
+
+/**
+ * -------------------------------------------------------
+ * ------------------  Certification Hooks ---------------
+ * -------------------------------------------------------
+ */
+
+/**
+ * Implements hook_civicrm_post().
+ * http://wiki.civicrm.org/confluence/display/CRMDOC42/hook_civicrm_post
+ *
+ * This hook fires after civi writes something to the database.
+ * In our case we only care about Participant status'.
+ *
+ * This function:
+ * 1) Determines if a certification rule is attached to the referenced event
+ * 2) Loads certification rules when applicable
+ * 3) Apply's the certification
+ *
+ * @objectRef = object being altered
+ */
+/**
+ * @param $op
+ * @param $objectName
+ * @param $objectId
+ * @param $objectRef
+ */
+function civicrm_certify_civicrm_post( $op, $objectName, $objectId, &$objectRef ) {
+  if ($objectName == "Participant") {
+    // to get the event type we first need the full event object
+    $event = _civicrm_certify_civicrm_get_event($objectRef->event_id);
+
+    if ($event['event_type_id']) {
+      // get the certification rule entities attached to this event type
+      $query = new EntityFieldQuery();
+      $query->entityCondition('entity_type', 'certification_rule')
+        ->propertyCondition('cert_rule_event_type', $event['event_type_id'])
+        ->addMetaData('account', user_load(1)); // Run the query as user 1.
+      $result = $query->execute();
+
+      // if we have some rules for this event type, load them
+      if (isset($result['certification_rule'])) {
+        $cert_rule_ids = array_keys($result['certification_rule']);
+        $rules = entity_load('certification_rule', $cert_rule_ids);
+        foreach ($rules as $rule){
+          // check if the participant status matches the status defined in the rule
+          if ($rule->cert_rule_status == $objectRef->status_id) {
+            // pass the rest off to the certification routine
+            hook_civicrm_certify($rule, $objectRef->id);
+          }
+        }
+      }
+    }
+  }
+}
+/**
+ * Certify a Civi contact
+ *@params -
+ * rule - the certification_rule entity we are acting upon
+ * participant_id - the civicrm participant receiving certification
+ *
+ */
+function hook_civicrm_certify($rule, $participant_id) {
+  global $user;
+  $participant = array();
+  $participant['is_error'] = 0;
+
+  // get full participant object
+  if ($participant = _civicrm_certify_get_particpant($participant_id)) {
+    $event_id = $participant['event_id'];
+    $contact_id = $participant['contact_id'];
+  } else {return false;}
+
+  // to certify:
+  //   1 - get authorized user
+  //   2 - add the contact to the appropriate group. there are security implications.
+  //   3 - create or update the certification record (entity)
+
+  // 1 - get the authorized user since its not provided
+  $auth_ufmatch = _civicrm_certify_civicrm_ufmatch($user->uid);
+
+  // 2 - simple call to the civicrm api to add a contact to a group
+  _civicrm_certify_civicrm_group_contact($rule->cert_rule_group, $contact_id);
+
+  // 3 - prepare and save a new 'certification' entity
+  // first get all certifications related to this certification_rule for this participant
+  // we don't create new enities if there is an existing certification of the same type
+  // for the same event
+  $query = new EntityFieldQuery();
+
+  $query->entityCondition('entity_type', 'certification')
+    ->propertyCondition('cert_rule_id', $rule->cert_rule_id)
+    ->propertyCondition('cert_user', $contact_id)
+    ->propertyCondition('cert_event', $event_id)
+    ->addMetaData('account', user_load(1)); // Run the query as user 1.
+
+  $result = $query->execute();
+
+  if (!isset($result['certification'])) {     // there are no existing records
+    $entity = entity_create('certification',array());
+    $entity->cert_author = $auth_ufmatch['contact_id'];
+    $entity->cert_user = $contact_id;
+    $entity->cert_rule_id = $rule->cert_rule_id;
+    $entity->cert_event = $event_id;
+    $entity->cert_date = strtotime($participant['participant_register_date']);
+    $entity->save();
+
+    watchdog('civicrm_certify', "{$participant['display_name']} has been certified for <em>{$rule->cert_rule_name}</em>");
+
+  } else { // existing entity detected. Load and update.
+
+    $entity_id = array_shift(array_keys($result['certification']));
+    $entity = entity_load('certification', array($entity_id));
+    $entity[$entity_id]->cert_event = $event_id;
+    $entity[$entity_id]->cert_author = $auth_ufmatch['contact_id'];
+    entity_save('certification', $entity[$entity_id]);
+
+    watchdog('civicrm_certify', "{$participant['display_name']} has been <em>re</em>-certified for <em>{$rule->cert_rule_name}</em>");
+
+  }
+
+}
+
+
+/**
+ * Implementation of hook_civicrm_tabs().
+ */
+function civicrm_certify_civicrm_tabs(&$tabs, $cid) {
+  if (!civicrm_initialize()) { return; }
+
+  $count = civicrm_certify_civicrm_cert_count($cid);
+
+  $tab = array(
+    'id'     => 'certifications',
+    'title'  => t('Certifications'),
+    'count'  => $count,
+    'weight' => 99,
+  );
+
+  if ($count > 0) { $tab['url'] = url("certification/view/contact/$cid"); }
+  $tabs[] = $tab;
+
+  return $tabs;
+}
+
+
+
+/*
+ * -------------------------------------------------------
+ * -------------  Display / Helper Functions -------------
+ * -------------------------------------------------------
+ */
+
+/**
+ * Helper function to determine if a user is allowed to view items
+ * at user/%/certifications
+ *
+ * Who is allowed to view?
+ *   administer certification entities
+ *   view any certification entity
+ *   view own certification entity (as long as they are looking at their own)
+ *
+ * @param $uid
+ * @return bool
+ */
+function certification_tab_access($uid) {
+  global $user;
+
+  // Admins have access:
+  if ($user->uid == 1 || user_access("administer certification entities") || user_access("view any certification entity")) {
+    return TRUE;
+  } elseif ($user->uid == $uid) { // user trying to view their own certifications
+    return user_access('view own certification entity');
+  }
+
+  // default to false
+  return false;
+}
+
+/**
+ * Helper function to count # of certifications for a contact
+ */
+function civicrm_certify_civicrm_cert_count($cid) {
+  $count = 0;
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'certification')
+    ->propertyCondition('cert_user', $cid)
+    ->pager(15)
+    ->addMetaData('account', user_load(1)); // Run the query as user 1.
+  $result = $query->execute();
+  if ($result) {
+    foreach ($result['certification'] as $certification) {
+      $count++;
+    }
+  }
+  return $count;
+
+}
+
+/**
+ *
+ * Helper function to get the name of a certification
+ *
+ * @params:
+ *  display - either "text" or "link"
+ */
+function civicrm_certify_cert_name($certification, $display = NULL) {
+
+  // To get the certification name we need the full certification_rule
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'certification_rule')
+    ->propertyCondition('cert_rule_id', $certification->cert_rule_id)
+    ->addMetaData('account', user_load(1)); // Run the query as user 1.
+  $result = $query->execute();
+
+  if (isset($result['certification_rule'])) {
+    $cert_rule_ids = array_keys($result['certification_rule']);
+    $rules = entity_load('certification_rule', $cert_rule_ids);
+    foreach ($rules as $rule){
+      if (!$display) { // assume we want to return a link
+        return l($rule->cert_rule_name, 'certification-rule/' . $certification->cert_rule_id);
+      } else {
+        return t($rule->cert_rule_name);
+      }
+    }
+  }
+
+}
+
+/**
+ * Helper functionfor the civigroup field values.
+ * pulls values from civi api
+ *
+ * returns an array of civi group options
+ */
+function field_cert_rule_civigroup_values(){
+  $groups = _civicrm_certify_get_civigroups();
+  foreach ($groups['values'] as $index => $group) {
+    $options[$index] = $group['title'];
+  }
+  return $options;
+}
+
+/**
+ * Helper function for the participant_status field values.
+ * pulls values from civi api
+ */
+function field_cert_rule_participant_status_values(){
+  $result = _civicrm_certify_get_particpant_status();
+  foreach ($result['values'] as $status) {
+    $options[$status['id']] = $status['name'];
+  }
+  return $options;
+}
+
+
+/**
+ * Helper function for the civievent_type field values.
+ * pulls values from civi api
+ */
+function field_cert_rule_civievent_type_values(){
+  $result = _civicrm_certify_civicrm_get_options();
+  foreach ($result['values'] as $index => $value) {
+    $options[$value['value']] = $value['label'];
+  }
+  return $options;
+}
+
+
+/**
+ *  Return a URL to a civicrm contact
+ *
+ * @params:
+ *   $contact_id: the contact id of the civi contact
+ */
+function civicrm_certify_contact_link($contact_id, $display = NULL) {
+  // get full contact from civi
+  $contact = _civicrm_certify_civicrm_get_contact($contact_id);
+  if ($display == 'text') {
+    return t($contact['display_name']);
+  }
+  return l($contact['display_name'],
+    'civicrm/contact/view',
+    array(
+      'query' =>
+      array(
+        'reset' => 1,
+        'cid' => "{$contact_id}",
+      ),
+    )
+  );
+}
+
+/**
+ *  Return a CiviEvent type name
+ *
+ * @params:
+ *   $event_id: the event_id
+ */
+function civicrm_certify_event_type_display($event_type_id, $display_type = "text") {
+  // get all the event types
+  $event_types = field_cert_rule_civievent_type_values();
+  return $event_types[$event_type_id];
+}
+
+/**
+ *  Return the name of a Civi group
+ *
+ * @params:
+ *   $group_id: the group_id
+ */
+function civicrm_certify_group_display($group_id, $display_type = "text") {
+  // get full group from civi
+  $group = _civicrm_certify_get_civigroup($group_id);
+  if ($display_type = "text") {
+    return $group['title'];
+  } else { return "not found"; }
+
+}
+
+/**
+ *  Return the name of a Civi event
+ *
+ * @params:
+ *   $event_id: the event id
+ */
+function civicrm_certify_event_display($event_id, $display_type = "text") {
+  // get full group from civi
+  $event = _civicrm_certify_civicrm_get_event($event_id);
+  if ($display_type = "text") {
+    return $event['title'];
+  } else { return "not found"; }
+
+}
+
+/**
+ *  Return the name of a Participant status
+ *
+ * @params:
+ *   $psid: the participant status id
+ */
+function civicrm_certify_paricipant_status_display($psid, $display_type = "text") {
+  // get full group from civi
+  $status = _civicrm_certify_get_particpant_status_type($psid);
+  if ($display_type = "text") {
+    return $status['name'];
+  } else { return "not found"; }
+
+}

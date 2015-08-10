@@ -1,0 +1,24 @@
+name = "Airing"
+description = "Defines Airing entity and provides some starter Views."
+package = "Community Media"
+php = "5.2.4"
+core = "7.x"
+dependencies[] = "date"
+dependencies[] = "date_popup"
+dependencies[] = "entity"
+dependencies[] = "taxonomy"
+dependencies[] = "views"
+dependencies[] = "hms_field"
+
+files[] = "cm_airing.controller.inc"
+
+configure = admin/structure/cm-airing/manage/fields
+
+
+
+; Information added by drupal.org packaging script on 2013-03-07
+version = "7.x-3.x-dev"
+core = "7.x"
+project = "cm_airing"
+datestamp = "1362617114"
+

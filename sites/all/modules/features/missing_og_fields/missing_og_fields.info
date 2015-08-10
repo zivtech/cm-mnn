@@ -1,0 +1,7 @@
+core = "7.x"
+dependencies[] = "features"
+dependencies[] = "og_ui"
+description = "Configures missing og fields on user"
+features[field][] = "user-user-og_user_node"
+name = "Missing OG Fields"
+package = "Features"

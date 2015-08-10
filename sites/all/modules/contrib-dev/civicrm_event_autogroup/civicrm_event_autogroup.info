@@ -1,0 +1,8 @@
+name = CiviEvent Autogroup
+description = "Adds CiviCRM Contacts to a Group after X hours after a event has started."
+dependencies[] = civicrm
+package = CiviCRM
+core = 7.x
+version = 4.0
+configure = admin/config/civicrm/civicrm_event_autogroup
+files[] = civicrm_event_autogroup.module

@@ -1,0 +1,38 @@
+<?php
+/**
+ * @file
+ * Code for the MNN Project ID.
+ */
+ 
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mnn_project_id_form_alter(&$form, &$form_state, $form_id) {
+  
+  //dsm($form_id);
+  
+  //dsm($form);
+  
+  if ($form_id == 'cm_project_node_form' && empty($form['vid']['#value'])) {
+  
+  
+  
+  
+  $form['nid'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Project ID',
+    '#required' => TRUE,
+    '#weight' => '-11', 
+    '#description' => 'Create the Project in Access Center 1.0 first, then copy the ID into this field so the old and new ids match',
+  );
+  
+  $form['is_new'] = array(
+    '#type' => 'hidden',
+    '#title' => 'is_new',
+    '#value' => TRUE, 
+  );
+
+  
+  //dsm($form);
+  }
+}

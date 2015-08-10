@@ -1,0 +1,5 @@
+core = "7.x"
+dependencies[] = "views"
+description = "Module to provide all the programming exports"
+name = "MNN Programming Exports"
+package = "MNN Features"

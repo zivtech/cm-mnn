@@ -1,0 +1,21 @@
+name = CiviCRM Certify
+description = Certifies participants of a CiviEvent. Certification is a fieldable Drupal entity.
+core = 7.x
+project = civicrm_certify
+package = CiviCRM
+dependencies[] = civicrm
+dependencies[] = entity
+files[] = certification.pages.inc
+files[] = certification.controller.inc
+files[] = certification_rule.admin.inc
+files[] = certification_rule.pages.inc
+files[] = certification_rule.controller.inc
+
+configure = "admin/config/civicrm/certification-rule"
+
+; Information added by drupal.org packaging script on 2013-04-10
+version = "7.x-2.0-alpha2"
+core = "7.x"
+project = "civicrm_certify"
+datestamp = "1365615612"
+

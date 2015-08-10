@@ -1,0 +1,87 @@
+<?php
+/**
+ * @file
+ * Time Period Module
+ */
+
+function timespan_supported_periods() {
+  $supported_periods = &drupal_static(__FUNCTION__, array());
+
+  // If this function has already been called this request, we can avoid a DB hit.
+  if (!empty($supported_periods)) {
+    return $supported_periods;
+  }
+
+  // Try first to load from cache, it's much faster than the scan below.
+  if ($cache = cache_get('timespan:supported-periods')) {
+    $supported_periods = $cache->data;
+  }
+  else {
+    $dir = drupal_get_path('module', 'timespan') . '/periods';
+    $files = file_scan_directory($dir, '/period.*\.inc$/');
+    foreach ($files as $file) {
+      if (file_exists($file->uri)) {
+        $type = end(explode(".", $file->name));
+        include_once($file->uri);
+        if (function_exists($func = 'timespan_' . $type . '_info')) {
+          $pinfo = $func();
+          $supported_periods[$pinfo['id']] = $pinfo['name'];
+        }
+      }
+    }
+    cache_set('timespan:supported-periods', $supported_periods);
+  }
+  return $supported_periods;
+}
+
+function timespan_current($type, $datetime = NULL) {
+  return timespan_result($type, $datetime, 'current');
+}
+
+function timespan_next($type, $datetime = NULL) {
+  return timespan_result($type, $datetime, 'next');  
+}
+
+function timespan_result($type, $datetime = NULL, $op = 'current') {
+  if (!$type) {
+    return FALSE;
+  }
+
+  if (!$datetime) {
+    $datetime = date('Y-m-d');
+  }
+
+  timespan_load_period($type);
+
+  if (function_exists($func = 'timespan_' . $op . '_' . $type)) {
+    $result = $func($datetime);
+    return $result;
+  }
+  else {
+    return FALSE;
+  }
+
+}
+
+/**
+  * Load a timespan definition file
+  *
+  * This function will load a time period definition from  a file.
+  * Files must be named period.[periodname].inc, and placed in the module's
+  * /periods subdirectory
+  *
+  * @TODO: enable secondary location for user-defined periods to be placed outside
+  * the module directory
+  * 
+  */
+function timespan_load_period($type) {
+  $file = drupal_get_path('module', 'timespan') . '/periods/period.' . $type . '.inc';
+  if (file_exists($file)) {
+    include_once($file);
+  }
+}
+
+
+
+
+

@@ -1,0 +1,186 @@
+/**
+ * @file
+ * Block Styling
+ */
+
+@import "base";
+
+
+.block { /* Block wrapper */
+  //margin-bottom: 1.5em;
+
+  &.first { /* The first block in the region */
+  }
+
+  &.last { /* The last block in the region */
+  }
+
+  &.odd { /* Zebra striping for each block in the region */
+  }
+
+  &.even { /* Zebra striping for each block in the region */
+  }
+
+  h2.block-title { /* Block title */
+  }
+}
+
+
+#block-aggregator-category-1 { /* Block for the latest news items in the first category */
+}
+
+#block-aggregator-feed-1 { /* Block for the latest news items in the first feed */
+}
+
+#block-block-1 { /* First block created with "Add block" link */
+}
+
+#block-blog-recent { /* "Recent blog posts" block */
+}
+
+#block-book-navigation { /* "Book navigation" block for the current book's table of contents */
+}
+
+#block-comment-recent { /* "Recent comments" block */
+}
+
+#block-forum-active { /* "Active forum topics" block */
+}
+
+#block-forum-new { /* "New forum topics" block */
+}
+
+#block-locale-language { /* Language switcher block */
+}
+
+#block-menu-menu-NAME { /* Custom menu block */
+}
+
+#block-node-recent { /* "Recent content" block */
+}
+
+#block-node-syndicate { /* "Syndicate" block for primary RSS feed; see also page.css's .feed-icon */
+}
+
+#block-poll-recent { /* "Most recent poll" block */
+}
+
+#block-profile-author-information { /* "Author information" block for the profile of the page's author */
+}
+
+#block-search-form { /* "Search form" block */
+}
+
+#block-shortcut-shortcuts { /* "Shortcuts" block */
+}
+
+#block-statistics-popular { /* "Popular content" block */
+}
+
+#block-system-main-menu { /* "Main menu" block */
+}
+
+#block-system-management { /* "Management" block for Drupal management menu */
+}
+
+#block-system-navigation { /* "Navigation" block for Drupal navigation menu */
+}
+
+#block-system-user-menu { /* "User menu" block for Drupal user menu */
+}
+
+#block-system-help { /* "System help" block */
+}
+
+#block-system-main { /* "Main page content" block */
+}
+
+#block-system-powered-by { /* "Powered by Drupal" block */
+}
+
+#block-user-login { /* "User login form" block */
+  .form-item {
+    margin: 10px 0;
+    .form-text {
+      font-size: 12px;
+      width: 100%;
+      padding-left: 10px;
+      @include border-radius(4px);
+    }
+  }
+  .links {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+#block-user-new { /* "Who's new" block for a list of the newest users */
+}
+
+#block-user-online { /* "Who's online" block for a list of the online users */
+}
+
+/* Block Producers Login */
+
+.block.producer-login {
+  .prod-login a {
+    @include sassy-button("flat", 0px, 90%, #222, #000, #fff, "inset");
+    @include box-shadow(3px 3px 5px #ccc);
+    @include border-radius(4px);
+    margin: 0;
+    padding: 0.4em 1.1em 0.5em 1.2em;
+    font-size: 16px;
+    width: 100%;
+    @include box-sizing(border-box);
+    margin: 10px 0;
+    font-family: 'Roboto Condensed',sans-serif;
+    &:focus {
+      outline: none;
+      border: 0;
+    }
+  }
+  .prod-link a {
+    @include sassy-button("flat", 0px, 90%, #888, #777, #fff, "inset");
+    @include box-shadow(3px 3px 5px #ccc);
+    @include border-radius(4px);
+    margin: 0;
+    padding: 0.4em 1.1em 0.5em 1.2em;
+    font-size: 16px;
+    width: 100%;
+    @include box-sizing(border-box);
+    margin: 0;
+    font-family: 'Roboto Condensed',sans-serif;
+    &:focus {
+      outline: none;
+      border: 0;
+    }
+  }
+}
+
+/* MAILCHIMP SIGNUP FORM */
+
+.block.mailchimp-signup {
+  p {
+    font-family: 'Roboto Condensed',sans-serif;
+    text-transform: uppercase;
+    font-size: 14px;
+  }
+  input.email {
+    width: 100%;
+    margin: 5px 0 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    padding: 10px 5px;
+    height: 36px;
+    line-height: 36px;
+    color: #888;
+    &:focus {
+      outline: 0;
+      background: #f8f8f8;
+      border-color: #ccc;
+      color: #333;
+    }
+  }
+}

@@ -1,0 +1,4 @@
+name = "MNN Data Massage"
+package = "MNN Custom"
+
+core = 7.x

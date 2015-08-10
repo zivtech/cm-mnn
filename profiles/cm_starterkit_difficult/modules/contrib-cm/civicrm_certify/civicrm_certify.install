@@ -1,0 +1,130 @@
+<?php
+
+/*
+* Implements hook_install()
+*
+*/
+function civicrm_certify_install() {
+
+
+  $here = l(t('here'), 'admin/structure/certifications/certification-rule/manage/add');
+  drupal_set_message(t('CiviCRM Certify installed. You will need to specify certification rules !1.', array('!1' => $here)));
+}
+
+/*
+* Implements hook_uninstall()
+*
+*/
+function civicrm_certify_uninstall() {
+
+}
+
+/**
+ * Implements hook_schema().
+ */
+function civicrm_certify_schema() {
+  $schema = array();
+
+  $schema['certification_rule'] = array(
+    'description' => 'The base table for certification rules.',
+    'fields' => array(
+      'cert_rule_id' => array(
+        'description' => 'The primary identifier for the certification rule.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'cert_rule_name' => array(
+        'description' => 'The name of the Certification Rule.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'cert_rule_created' => array(
+        'description' => 'The Unix timestamp when the certification type was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_rule_event_type' => array(
+        'description' => 'The type of CiviEvent that will award the certification.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_rule_status' => array(
+        'description' => 'The participant status that will trigger the certification.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_rule_group' => array(
+        'description' => 'The CiviGroup to assign to the participant.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'unique keys' => array(
+      'cert_rule_name' => array('cert_rule_name'),
+    ),
+    'primary key' => array('cert_rule_id'),
+  );
+
+  $schema['certification'] = array(
+    'description' => 'The base table for certification.',
+    'fields' => array(
+      'cert_id' => array(
+        'description' => 'The primary identifier for certification.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'cert_rule_id' => array(
+        'description' => 'The {certification_rule}.cert_rule_id',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_created' => array(
+        'description' => 'The Unix timestamp when the certification was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_date' => array(
+        'description' => 'The Unix timestamp when the certification was granted.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_author' => array(
+        'description' => 'The user who authorized the certification.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_user' => array(
+        'description' => 'The user receiving the certification.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'cert_event' => array(
+        'description' => 'The Event that granted the certification.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'foreign keys' => array(
+      'certification_rule' => array(
+        'table' => 'certification_rule',
+        'columns' => array('cert_rule_id' => 'cert_rule_id'),
+      ),
+    ),
+    'primary key' => array('cert_id'),
+  );
+  return $schema;
+}

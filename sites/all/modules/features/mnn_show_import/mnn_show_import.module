@@ -1,0 +1,72 @@
+<?php
+/**
+ * @file
+ * Code for the MNN Show Import feature.
+ */
+
+include_once('mnn_show_import.features.inc');
+
+/**
+ * Implements hook_menu()
+ */
+function mnn_show_import_menu() {
+  
+  $items['admin/show/resave-all'] = array(
+    'title' => 'Resave All Shows',
+    'description' => 'Enable Active Projects',
+    'page callback' => 'mnn_show_import_resave_batch_init',
+    'access arguments' => array('administer group'),
+    'type' => MENU_CALLBACK
+  );
+  
+  return $items;
+}
+
+function mnn_show_import_resave_batch_init() {
+    
+  $batch = array(
+    'title' => t('Resaving Show Nodes...'),
+    'operations' => array(),
+    'init_message' => t('Starting Resave'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+    'finished' => 'mnn_show_import_resave_batch_finished',
+    'progressive' => FALSE
+  );
+    
+  //query all show nodes
+  
+  //SELECT nid, ogm.id  FROM node n LEFT JOIN og_membership ogm ON etid = nid WHERE n.type = 'cm_show' and ogm.id IS NULL
+  
+  $result = db_query('SELECT nid FROM {node} n LEFT JOIN {og_membership} ogm ON etid = nid WHERE n.type = :type AND ogm.id IS NULL', array(':type' => 'cm_show'));
+  
+  //query show nodes without OG2 reference
+  //etid
+ 
+  
+  $count = 0;
+  foreach ($result as $record) {
+    if ($count < 10000) {
+      $batch['operations'][] = array('mnn_show_import_resave_batch_worker', array($record->nid));
+      $count++;
+    }
+  }
+   
+ 
+ 
+  batch_set($batch);
+ 
+  batch_process('admin/content');
+}
+ 
+function mnn_show_import_resave_batch_worker($nid, &$context) {
+
+  $node = node_load($nid);
+  if (isset($node->field_temp_project_id['und'][0]['value']) && $node->field_temp_project_id['und'][0]['value']) {
+    $node->og_node2['und'][0]['target_id'] = $node->field_temp_project_id['und'][0]['value'];
+  }
+  node_save($node);
+    
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully resaved Show #' . $array[0];
+}

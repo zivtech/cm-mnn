@@ -1,0 +1,609 @@
+<?php
+/**
+ * @file
+ * Code for the CM Batch Airings Reservations Module.
+ */
+
+
+define ("CM_BATCH_AIRING_RESERVATIONS_PID","cm_batch_airing_reservations_pid");
+define ("CM_BATCH_AIRING_RESERVATIONS_FORM",'admin/reservations/batch/form');
+define ("CM_BATCH_AIRING_RESERVATIONS_MANAGE_VIEW",
+	'admin/reservations/batch/airings');
+define ("CM_BATCH_AIRING_RESERVATIONS_VIEW",'airings_live');
+define ("CM_BATCH_AIRING_RESERVATIONS_RES_ITEM_MAP_FILE", "mnn.inc");
+define ("CM_BATCH_AIRING_RESERVATIONS_LIVEFEED_FIELD_NAME", 
+	'field_field_device');
+define ('CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_NAME', 'mnnquarter');
+define ('CM_BATCH_AIRING_RESERVATIONS_REQUIRES_TIMEZONE_SHIFT', 1);
+define ('CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_SESSION_VAR',
+	'cm_batch_airing_reservations_timespan_session_var');
+
+define ("CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO",
+	'cm_batch_airing_reservations_batch_info');
+
+
+
+function cm_batch_airing_reservations_menu() {
+  $items = array();
+  $items[CM_BATCH_AIRING_RESERVATIONS_FORM] =
+    array( 
+	  'title' => 'Batch Airing Reservations',
+	  'description' => 'Batch Airing Reservations',
+	  'access arguments' => array('manage reservations'),
+	  'page callback' => 'drupal_get_form',
+	  'page arguments'=>array('cm_batch_airing_reservations_form'),
+	  'access arguments' => array('manage reservations'),
+	  'type' => MENU_NORMAL_ITEM,
+	  ); 
+
+
+  return $items;
+}
+
+function cm_batch_airing_reservations_form() {
+  $form = array();
+
+  $pid = cm_batch_airing_reservations_get_active_pid();
+  
+  $action = arg(4);
+  if ($action == 'clear') { 
+    $batch_info = array();
+    $batch_info = variable_set(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO,
+			       serialize($batch_info));
+    drupal_goto(CM_BATCH_AIRING_RESERVATIONS_FORM);
+  }
+  else {
+    $batch_info = variable_get(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO);
+    if ($batch_info) {
+      $batch_info = unserialize($batch_info);
+    }
+  }
+
+  if ($pid && $batch_info) {
+    drupal_set_message("<h2>IN PROGRESS!!!!!! <BR/>".
+		       "Creating Batch Reservations for ".
+		       $batch_info['quarter']."</h2>".
+		       "Page will refresh automatically until complete.", 
+		       'ERROR');
+    return $form;
+  }
+
+  if ($batch_info) {
+    ctools_add_js('collapsible-div');
+    ctools_add_css('collapsible-div');
+    $run_box = $status_box = "";
+    cm_batch_airing_reservations_display_elements($batch_info['awaiting'], 
+						  $batch_info['reserved'], 
+						  $batch_info['conflicts'],
+						  $batch_info['skips'],
+						  $batch_info['quarter'],
+						  $run_box, $status_box);
+
+    $batch_info['run_box'] = $run_box;
+    $batch_info['status_box'] = $status_box;
+    variable_set(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO, 
+		 serialize($batch_info));
+
+
+    if ($batch_info['run_box']) {
+      $form['run_fieldset'] = array(
+				    '#title'=>"Run Batch",
+				    '#type'=>'fieldset',
+				    );
+      $form['run_fieldset']['run_button'] = 
+	array(
+	      '#markup' => $batch_info['run_box'],
+	      );
+    }
+
+    $form['batch_info_fieldset'] = 
+      array(
+	    '#title'=>"Status of Loaded Airings",
+	    '#description' => t("Load Airings below to refresh this data"),
+	    '#type'=>'fieldset',
+	    );
+    $form['batch_info_fieldset']['status_box'] = 
+      array(
+	    '#markup' => "<br/>".$batch_info['status_box'],
+	    );
+  }
+
+
+  $options = array(0 => '<select>', 'all' => 'all');
+  if (module_exists('timespan')) {
+    $quarter = timespan_current(CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_NAME,
+				date('Y-m-d'));
+    $start = date('Y-m-d',strtotime($quarter['start']));
+    $end = date('Y-m-d',strtotime($quarter['end']));
+    $options['current'] =  $start.'--'.$end;
+    
+    $quarter = timespan_next(CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_NAME,
+			     $start);
+    $start = date('Y-m-d',strtotime($quarter['start']));
+    $end = date('Y-m-d',strtotime($quarter['end']));
+    $options['next'] = $start.'--'.$end;
+  }
+  
+  $description = 
+    "Select a time span to load airings for the ".
+    "batch reservation script. This will not start the script, only ".
+    "search for the airings and load them for the batch create.";
+  
+  $form['timespan_fieldset'] = array(
+				     '#type'=>'fieldset',
+				     '#title'=>'Load Airings',
+				     '#description'=>$description,
+				     );
+    
+  $form['timespan_fieldset']['timespan'] = 
+    array(
+	  '#type' => 'select',
+	  '#title' => t('Timespan'),
+	  '#options'=> $options,
+	  );
+  $form['timespan_fieldset']['submit'] = 
+    array(
+	  '#type' => 'submit',
+	  '#value' => 'Load Airings For Batch',
+	  );
+
+  return $form;
+}
+function cm_batch_airing_reservations_form_validate($form, 
+						    &$form_state){
+  if (!$form_state['input']['timespan']) {
+    form_set_error("timespan", "You must pick a timespan!");
+  }
+}
+
+function cm_batch_airing_reservations_form_submit($form, 
+						  &$form_state){
+  $res_item_map = cm_batch_airing_reservations_res_item_map();
+
+  $timespan_input = $form_state['input']['timespan'];
+  if ($timespan_input == 'all') {
+    $start = strtotime('now');
+    $end = strtotime('next year');
+    $timespan = NULL;
+  }
+  else {
+    if ($timespan_input == 'current' && module_exists('timespan')) {
+      $timespan = timespan_current(CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_NAME,
+				  date('Y-m-d'));
+      
+    }
+    else if ($timespan_input == 'next' && module_exists('timespan')) {
+      $timespan = timespan_next(CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_NAME,
+				  date('Y-m-d'));
+    }
+    else {
+      drupal_set_message("Error Code 233491 Invalid timespan: $timespan", 
+			 'error');
+      return;
+    }
+    $start = strtotime($timespan['start']);
+    $end = strtotime($timespan['end']);
+  }
+  $arg = date('Y-m-d',$start).'--'.date('Y-m-d',$end);
+  $_SESSION[CM_BATCH_AIRING_RESERVATIONS_TIMESPAN_SESSION_VAR] = $arg;
+  
+  $view = views_get_view(CM_BATCH_AIRING_RESERVATIONS_VIEW);
+  if (!$view) {
+    drupal_set_message("Error Code 232223: Missing view:".
+		       CM_BATCH_AIRING_RESERVATIONS_VIEW, 'error');
+    return;
+  }
+  $view->set_arguments(array($arg));
+  $view->execute();
+  $results = $view->result;
+
+  $conflicts = $skips = $reserved = $awaiting = array();
+  $counter = 0;
+  foreach($results as $result) {
+    $counter ++;
+    
+    $project_id = $result->node_field_data_field_airing_project_ref_nid;
+
+    if ($result->field_field_airing_reservation_id &&
+	$result->field_field_airing_reservation_id[0] &&
+	$result->field_field_airing_reservation_id[0]['raw']) {
+      $reservation_id = 
+	$result->field_field_airing_reservation_id[0]['raw']['nid'];
+    }
+    else {
+      $reservation_id = NULL;
+    }
+
+    if ($result->field_field_airing_title &&
+	$result->field_field_airing_title[0] &&
+	$result->field_field_airing_title[0]['raw']) {
+      $title = 
+	$result->field_field_airing_title[0]['raw']['value'];
+    }
+    else {
+      $title = NULL;
+    }
+
+    if ($result->field_field_airing_date &&
+	$result->field_field_airing_date[0] &&
+	$result->field_field_airing_date[0]['raw']) {
+      $start = 
+	$result->field_field_airing_date[0]['raw']['value'];
+      $end = 
+	$result->field_field_airing_date[0]['raw']['value2'];
+    }
+    else {
+      $start = NULL;
+      $end = NULL;
+    }
+
+    $field = $result->{CM_BATCH_AIRING_RESERVATIONS_LIVEFEED_FIELD_NAME};
+    if ($field && $field[0] && $field[0]['raw']) {
+      $livefeed_tid = $field[0]['raw']['tid'];
+    }
+    else {
+      $livefeed_tid = NULL;
+    }
+
+    
+    $airing = 
+      array(
+	    'airing_id' => $result->airing_id,
+	    'project_id' => $project_id,
+	    'project_uid' => 
+	    $result->node_field_data_field_airing_project_ref_uid,
+	    'reservation_id' => $reservation_id,
+	    'livefeed' => $livefeed_tid,
+	    'title' => $title,
+	    'start' => $start,
+	    'end' => $end,
+	    'res_item' => $res_item_map[$livefeed_tid],
+	    );
+    if ($reservation_id) {
+      $reserved[] = $airing;
+    }
+    else if ($res_item_map[$livefeed_tid]) {
+      $awaiting[] = $airing;
+    }
+    else {
+      $skips[] = $airing;
+    }
+  }
+  
+  $run_box = $status_box = 0;
+  
+  cm_batch_airing_reservations_display_elements($awaiting, $reserved, 
+						$conflicts, $skips,
+						$arg, $run_box, $status_box);
+  $batch_info = array();
+  $batch_info['run_box'] = $run_box;
+  $batch_info['status_box'] = $status_box;
+  $batch_info['quarter'] = $arg;
+  $batch_info['reserved'] = $reserved;
+  $batch_info['awaiting'] = $awaiting;
+  $batch_info['conflicts'] = $conflicts;
+  $batch_info['skips'] = $skips;
+  variable_set(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO, 
+	       serialize($batch_info));
+}
+
+function cm_batch_airing_reservations_display_elements($awaiting, $reserved, 
+						       $conflicts, $skips,
+						       $timespan, 
+						       &$run_box, 
+						       &$status_box) {
+
+  $run_box = "";
+  $status_box = "";
+  ctools_add_js('collapsible-div');
+  ctools_add_css('collapsible-div');
+
+  $text = 'Create Reservations for '.count($awaiting) . ' Airings';
+  if ($timespan) {
+    $text .= " during Timespan: $timespan";
+  }
+
+  if (count($awaiting) > 0) {
+    $run_box .= 
+      '<a href="/admin/reservations/batch/form/start">'.
+      '<button type="button">'.$text.'</button></a><br/><br/>';
+  }
+
+  $airing_links = array();
+  foreach($awaiting as $airing) {
+    $airing_links[] =l($airing['title'], "airing/".$airing['airing_id']);
+  }
+  $handle = 
+    t("Airings without Reservations") . " (".count($awaiting).")";
+
+  $options = array('handle' => $handle,
+		   'content' => implode("<br/>",$airing_links), 
+		   'collapsed' => TRUE);
+  $status_box .= theme('ctools_collapsible',$options)."<br/>";
+
+  $reservation_links = array();
+  foreach($reserved as $airing) {
+    $reservation_links[] =
+      l($airing['title'], "airing/".$airing['airing_id']).
+      " - ".
+      l("Reservation ID: ".$airing['reservation_id'], "node/".
+	$airing['reservation_id']);
+  }
+  $handle = 
+    t("Airings with Reservations") . " (".count($reserved).")";
+
+  $content = "";
+  if (count($reservation_links)) {
+    $content .= 
+      l("Manage Airing Reservations",CM_BATCH_AIRING_RESERVATIONS_MANAGE_VIEW);
+  }
+  $content .= "<br/><br/>".implode("<br/>",$reservation_links);
+
+  $options = array('handle' => $handle,
+		   'content' => $content,
+		   'collapsed' => TRUE);
+  $status_box .= theme('ctools_collapsible',$options)."<br/>";
+
+  $conflict_reservation_links = array();
+  foreach($conflicts as $airing) {
+    $conflict_reservation_links[] =
+      l($airing['title'], "airing/".$airing['airing_id']).
+      " - ".
+      l("Conflict Reservation ID: ".$airing['reservation_id'], "node/".
+	$airing['reservation_id']);
+  }
+  $handle = 
+    t("Airings with Conflict Reservations") . " (".count($conflicts).")";
+
+  $options = array('handle' => $handle,
+		   'content' => 
+		     "<br/>" . implode("<br/>", $conflict_reservation_links), 
+		   'collapsed' => TRUE);
+  $status_box .= theme('ctools_collapsible',$options)."<br/>";
+
+  $skip_links = array();
+  foreach($skips as $airing) {
+    $skip_links[] = l($airing['title'], "airing/".$airing['airing_id']);
+  }
+  $handle = 
+    t("Airings with Livefeeds we Ignore") . " (".count($skips).")";
+
+  $options = array('handle' => $handle,
+		   'content' => 
+		     "<br/>" . implode("<br/>", $skip_links), 
+		   'collapsed' => TRUE);
+  $status_box .= theme('ctools_collapsible',$options)."<br/>";
+
+  $status_box .= "<br/>".
+      '<a href="/admin/reservations/batch/form/clear">'.
+      '<button type="button">Clear Loaded Airings</button></a><br/><br/>';
+}
+
+function cm_batch_airing_reservation_times_from_airing($airing_start, 
+						       $airing_end,
+						       &$start, &$end,
+						       $start_offset = 0,
+						       $end_offset = 0) {
+  $start = strtotime($airing_start) - $start_offset*60;
+  if (CM_BATCH_AIRING_RESERVATIONS_REQUIRES_TIMEZONE_SHIFT) {
+    $start = $start - date('Z', $start);
+  }
+  $start = date("Y-m-d H:i:s", $start);
+
+  $end = strtotime($airing_end) + $end_offset*60;
+
+  if (CM_BATCH_AIRING_RESERVATIONS_REQUIRES_TIMEZONE_SHIFT) {
+    $end = $end - date('Z', $end);
+  }
+  $end = date("Y-m-d H:i:s", $end);
+}
+
+function cm_batch_airing_reservations_script() {
+  global $user;
+  $batch_info = variable_get(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO);
+
+  if ($batch_info) {
+    $batch_info = unserialize($batch_info);
+  }
+  if ($batch_info) {
+    $awaiting = $batch_info['awaiting'];
+    $reserved = $batch_info['reserved'];
+    $conflicts = $batch_info['conflicts'];
+    $skips = $batch_info['skips'];
+
+    while ($airing = array_shift($awaiting)) {
+      $item_id = $airing['res_item']['item_id']; 
+      $type = $airing['res_item']['type']; 
+      $inv = $airing['res_item']['inventory_tid']; 
+      $start_offset = $airing['res_item']['start_offset'];
+      $end_offset = $airing['res_item']['end_offset'];
+
+
+      $start = $end = NULL;
+      cm_batch_airing_reservation_times_from_airing($airing['start'],
+						    $airing['end'],
+						    $start, $end,
+						    $start_offset, 
+						    $end_offset);
+
+      $overlap_reservation_id = 
+	cm_batch_airing_reservation_get_overlap_reservation($start, $end,
+							    $item_id, $type);
+
+      if ($overlap_reservation_id) {
+	$airing['reservation_id'] = $overlap_reservation_id;
+	$conflicts[] = $airing;
+	continue;
+      }
+
+      $reservation = 
+	cm_batch_airing_reservations_get_reservation_template_node();
+
+      $reservation->uid = $airing['project_uid'];
+      $reservation->reservations_reservation_status = 
+	RESERVATIONS_STATUS_PENDING;
+      $reservation->field_reservations_date[LANGUAGE_NONE][0]['value']=$start;
+      $reservation->field_reservations_date[LANGUAGE_NONE][0]['value2']=$end;
+      $reservation->field_reservations_inventory[LANGUAGE_NONE][0]['tid']=$inv;
+      $reservation->og_node1[LANGUAGE_NONE][0]['target_id'] = 
+	$airing['project_id'];
+
+      $reservation->reservations_reservation_items[0] = 
+	array('reservations_item_nid'=>$item_id);
+
+      node_save($reservation);
+
+      $airing['reservation_id'] = $reservation->nid;
+      $reserved[] = $airing;
+      drupal_set_message(l($reservation->nid, "node/".$reservation->nid));
+
+      $airings = entity_load('airing', array($airing['airing_id']));
+      if ($airings) {
+	$airing_entity = array_shift($airings);
+	$airing_entity->field_airing_reservation_id[LANGUAGE_NONE][0]['nid']=
+	  $reservation->nid;
+	entity_save('airing', $airing_entity);
+      }
+    }
+      
+    $run_box = $status_box = 0;
+    
+    cm_batch_airing_reservations_display_elements($awaiting, $reserved, 
+						  $conflicts, $skips,
+						  $arg, $run_box, $status_box);
+    $batch_info = array();
+    $batch_info['run_box'] = $run_box;
+    $batch_info['status_box'] = $status_box;
+    $batch_info['quarter'] = $arg;
+    $batch_info['reserved'] = $reserved;
+    $batch_info['awaiting'] = $awaiting;
+    $batch_info['conflicts'] = $conflicts;
+    $batch_info['skips'] = $skips;
+    variable_set(CM_BATCH_AIRING_RESERVATIONS_BATCH_INFO, 
+		 serialize($batch_info));
+    
+  }
+  else {
+    //we have no batch_info, that means nothing was loaded, that means 
+    //this shouldn't happen
+  }
+}
+
+
+function cm_batch_airing_reservations_get_reservation_template_node() {
+  $reservation_template = new stdClass();
+  $reservation_template->status = 1;
+  $reservation_template->comment = 0;
+  $reservation_template->promote= 0;
+  $reservation_template->sticky= 0;
+  $reservation_template->type='reservations_reservation';
+  $reservation_template->language=LANGUAGE_NONE;
+  $reservation_template->tnid=0;
+  $reservation_template->translate=0;
+  $reservation_template->reservation_reservation_items=array();
+  $reservation_template->reservations_date=array();
+  $reservation_template->og_node1 = array();
+  $reservation_template->field_reservations_inventory = array();
+
+  return $reservation_template;
+}
+
+
+function cm_batch_airing_reservation_get_overlap_reservation($start,$end,
+							     $item_nid, $type) {
+
+  $start = date('Y-m-d H:i:s', strtotime($start)+1);
+  $end = date('Y-m-d H:i:s', strtotime($end)-1);
+
+  $reservations = 
+    reservations_load_reservations_for_node_in_timespan($item_nid, $type, 
+							$start, $end);
+
+  foreach ($reservations as $item_id=>$item_reservation) {
+    foreach($item_reservation as $rid=>$reservation) {
+      return $rid;
+    }
+  }
+}
+
+
+function cm_batch_airing_reservations_res_item_map() {
+  $filename = 
+    "sites/all/modules/contrib-cm/cm_batch_airing_reservations/res_item_map/".
+    CM_BATCH_AIRING_RESERVATIONS_RES_ITEM_MAP_FILE;
+  if (file_exists($filename)) {
+    require_once($filename);
+  }
+  else {
+    drupal_set_message("Error Code 3392: Missing file in $filename", 'error');
+    return;
+  }
+  return _cm_batch_airing_reservations_res_item_map();
+}
+function cm_batch_airing_reservations_get_active_pid() {
+ $pid = $_SESSION[CM_BATCH_AIRING_RESERVATIONS_PID];
+  if ($pid && cm_batch_airing_reservations_check_pid($pid, 'run.php')) {
+    //we found pid!
+  }
+  else {
+    $pid = NULL;
+    $_SESSION[CM_BATCH_AIRING_RESERVATIONS_PID] = NULL;
+  }
+  
+  $action = arg(4);
+  if ($action == 'start' && !$pid) {
+    $cmd = "php -d max_execution_time=64800 -f " .
+      "sites/all/modules/contrib-cm/cm_batch_airing_reservations/scripts/".
+      "run.php > /dev/null 2>&1 & echo \$!";
+    $pid = exec($cmd,$cmd_results,$cmd_status);
+    $_SESSION[CM_BATCH_AIRING_RESERVATIONS_PID] = $pid;
+  }
+  
+  if ($pid) {
+    //add javascript to the headers to make the page reload
+    $refresh_url = url(CM_BATCH_AIRING_RESERVATIONS_FORM);
+    drupal_add_js
+      (cm_batch_airing_reservations_reload_page($refresh_url,3000),
+       array('type'=>'inline','scope'=>'header'));
+  }
+  return $pid;
+}
+
+function cm_batch_airing_reservations_reload_page($url,$time) {
+  
+  //$js="\n".'<script language="Javascript">'."\n";
+  //$js.='<!--'."\n";
+  $js.='// please keep these lines on when you copy the source'."\n";
+  $js.='// made by: Nicolas - http://www.javascript-page.com'."\n";
+  $js.='var URL   = "'.$url.'"'."\n";
+  $js.='var speed = '.$time."\n";
+  $js.='function reload() {'."\n";
+  $js.='location = URL'."\n";
+  $js.='}'."\n";
+  $js.='setTimeout("reload()", speed);'."\n";
+  $js.='//-->'."\n";
+  //$js.='</script>';
+  return $js;
+}
+
+function cm_batch_airing_reservations_check_pid($pid, $search_term = null) {
+  // create our system command
+  $cmd = "ps $pid";
+  // run the system command and assign output to a variable ($output)
+  exec($cmd, $output, $result);
+  // check the number of lines that were returned
+  if(count($output) >= 2){
+    if (preg_match("/php/", $output[1])){
+      if ($search_term) {
+        if (preg_match("/".$search_term."/", $output[1])){
+          return true;
+        }
+      }
+      else {
+	return true;
+      }
+    }
+  }
+  // the process is dead
+  return false;
+}

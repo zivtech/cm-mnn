@@ -1,0 +1,9 @@
+name = MNN Reservation Required Project
+package = MNN Custom
+description = "Will make Project (or any organic group actually) be required for a reservation
+
+core = 7.x
+files[] = mnn_reservation_required_project.module
+
+
+

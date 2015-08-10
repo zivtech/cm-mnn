@@ -1,0 +1,9 @@
+name = MNN Menu
+package = MNN Custom
+description = "Creates custom menu pages"
+
+core = 7.x
+files[] = mnn_menu.module
+
+
+

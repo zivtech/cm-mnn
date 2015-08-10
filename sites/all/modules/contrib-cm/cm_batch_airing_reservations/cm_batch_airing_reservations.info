@@ -1,0 +1,5 @@
+core = "7.x"
+dependencies[] = "views"
+description = "A module providing interfaces and scripts for batch reservationstied to airings"
+name = "CM Batch Airing Reservations"
+package = "Community Media"

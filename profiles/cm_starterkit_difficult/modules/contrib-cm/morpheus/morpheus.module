@@ -1,0 +1,819 @@
+<?php
+
+/**
+ * @file
+ * Adds an export option to cm_airing_gird to export in the morpheus XML format.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function morpheus_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#morpheus":
+      $output = '<p>' .  t("") . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function morpheus_permission() {
+  $permissions = array(
+    'administer morpheus' => array(
+      'title' => t('Administer Morpheus'),
+      'description' => t('Allows access of configure and manage the Morpheus integration.'),
+      'restrict access' => TRUE,
+    ),
+    'export cingey xml' => array(
+      'title' => t('Export Morpheus XML'),
+      'description' => t('Allows users access the Morpheus XML.'),
+      'restrict access' => TRUE,
+    ),
+  );
+
+  return $permissions;
+}
+
+
+
+/**
+ * Implements hook_menu().
+ */
+function morpheus_menu() {
+  $items = array();
+
+  $items['node/%node/morpheus.xml'] = array(
+    'title' => 'Morpheus XML',
+    'description' => 'Export of Node in Morpheus',
+    'page callback' => 'morpheus_render_xml',
+    'page arguments' => array(1),
+    'access callback' => 'morpheus_render_xml_access',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/system/morpheus'] = array(
+    'title' => 'morpheus Configuration',
+    'description' => 'Enabled Content Types to be output as morpheus compatible XML',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('morpheus_admin_settings'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/config/system/morpheus/xml'] = array(
+    'title' => 'XML Settings',
+    'description' => 'Configuration options for the XML Exports.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('morpheus_admin_settings'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/system/morpheus/export/playlist'] = array(
+    'title' => 'Export Playlist',
+    'description' => 'Export Shows in a Playlist as morpheus compatible XML',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('morpheus_export_settings'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/system/morpheus/export/airing-grid'] = array(
+    'title' => 'Export Grid',
+    'description' => 'Export Shows from Grid as morpheus compatible XML',
+    'page callback' => 'morpheus_airing_grid_export',
+    'page arguments' => array(6,7),
+    'access arguments' => array('export cingey xml'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['morpheus/export/playlist/%/date/%'] = array(
+    'title' => 'Playlist as XML',
+    'description' => 'Export Shows in a Playlist as morpheus compatible XML',
+    'page callback' => 'morpheus_export',
+    'page arguments' => array(3,5),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Builds the morpheus_admin_settings admininstration settings form.
+ */
+function morpheus_admin_settings($form, &$form_state) {
+  $form = array();
+
+  $form['morpheus_postbox_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Postbox URL'),
+    '#default_value' => variable_get('morpheus_postbox_url', 'http://okv.dyndns.tv:223/postbox'),
+    '#description' => t(''),
+  );
+
+
+  $form['morpheus_file_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('File Path to Include in XML'),
+    '#default_value' => variable_get('morpheus_file_path', 'X:\Contents'),
+    '#description' => t('This is the path to the files as configured on the morpheus'),
+  );
+
+  $form['morpheus_include_interstitial_playlists'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Include Interstitial Playlists'),
+    '#default_value' => variable_get('morpheus_include_interstitial_playlists', 0),
+    '#description' => t('Used to debug XML'),
+  );
+
+  $form['morpheus_debug'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Debug'),
+    '#default_value' => variable_get('morpheus_debug', 0),
+    '#description' => t('Changes Output from XML to dsm() for troubleshooting'),
+  );
+
+  $types = node_type_get_types();
+  foreach ($types as $type => $data) {
+
+    $form['morpheus_export_' . $type] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Enable morpheus Export for ' . $data->name,
+    '#default_value' => variable_get('morpheus_export_' . $type, 0),
+    '#description' => t(''),
+    );
+  }
+
+  return system_settings_form($form);
+}
+
+function morpheus_export($playlist_nid, $date) {
+
+  $flagged_nodes = flag_get_flagged_content($flag_name);
+
+  //print '<pre>';
+  //print_r($flagged_nodes);
+
+  header("Content-type: text/xml");
+
+  print '<?xml version="1.0"?>';
+  print '<mcrs_playlist>';
+  print '<guid>{B8875B88-024A-4503-84AC-AB64A703C280}</guid>';
+  print '<version>2</version>';
+  print '<TV_Format>1280x720 16:9 50p</TV_Format>';
+  print '<parental_rating>1</parental_rating>';
+
+  $accumulated_duration = 0;
+  foreach ($flagged_nodes as $flag) {
+
+    $node = node_load($flag->content_id);
+    //print '<pre>';
+    //print_r($node);
+    //print '</pre>';
+    $accumulated_duration = ($accumulated_duration + $node->field_okv_duration[LANGUAGE_NONE][0]['value']);
+
+    print theme('morpheus_xml', array('node' => $node, 'accumulated_duration' => $accumulated_duration, 'start_duration' => $start));
+    //start is updated after so first program starts at 00:00:00
+    $start = ceil($accumulated_duration/300)*300;
+
+  }
+print '<mcrs_playlist>';
+}
+
+
+/**
+ * Builds the morpheus_export_settings settings form.
+ */
+function morpheus_export_settings($form, &$form_state) {
+  $form = array();
+
+  //build lists of playlist nodes
+  $queues = db_query("SELECT nid, title FROM {node} WHERE type = 'cm_playlist'")->fetchArray();
+
+
+  $form['playlist'] = array(
+    '#type' => 'select',
+    '#options' => $queues,
+    '#default_value' => variable_get('morpheus_playlist_default', NULL),
+  );
+
+  $format='d-m-Y G:i';
+  $form['start_date'] = array(
+    '#type' => 'date_popup',
+    '#title' => t('Date'),
+    '#date_format' => $format,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Export'),
+  );
+
+
+  return $form;
+}
+
+function morpheus_export_settings_submit($form, &$form_state) {
+
+  drupal_goto('morpheus/export/playlist/' . $form['playlist']['#value'] . '/date/' . $form['start_date']['#value']['date']);
+
+}
+
+
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function morpheus_form_alter(&$form, $form_state, $form_id) {
+
+  if ($form_id == 'cm_airing_grid_grid_header_form') {
+	$form['morpheus_button'] = array(
+      '#type' => 'submit',
+      '#value' => t('morpheus Export'),
+      '#submit' => array('morpheus_airing_grid_submit'),
+    );
+  }
+}
+
+function morpheus_airing_grid_submit($form, &$form_state){
+  // THIS IS NOT REQUIRED YET BECAUSE WE ARE STARTING THE EXPORT FROM
+  // NOW
+  /*
+  $channels = cm_airing_grid_get_vocab_terms_array(cm_airing_grid_get_channel_vid());
+  $hour = _class_scheduler_fix_hour($form_state['values']['cm_airing_grid_grid_hour'],
+  $form_state['values']['cm_airing_grid_grid_ampm']);
+  $new_time = mktime($hour, 0, 0,
+     $form_state['values']['cm_airing_grid_grid_month'],
+      $form_state['values']['cm_airing_grid_grid_day'],
+      $form_state['values']['cm_airing_grid_grid_year']);
+  $channel_tid = $form_state['values']['cm_airing_grid_channel_select'];
+  $channel = $channels[$channel_tid];
+  $channel = preg_replace("/Channel /", "", $channel);
+  $mode = $form_state['values']['cm_airing_grid_grid_mode'];
+  */
+
+  drupal_goto("admin/config/system/morpheus/export/airing-grid");
+}
+
+function morpheus_airing_grid_export($timestamp = NULL, $channel = NULL) {
+
+  //clear the cache
+  db_query('TRUNCATE TABLE {morpheus_airing_cache}');
+
+  $output = '';
+  $block_uuid = morpheus_clean_uuid('B8875B88-024A-4503-84AC-AB64A703C212');
+  $accumulated_duration = 0;
+  $debug = variable_get('morpheus_debug', 0);
+  $accumulated_duration = 0;
+  $original_start_timestamp = 0;
+
+  if (!$debug) {
+   // drupal_add_http_header('Content-Type', 'text/xml; utf-8');
+  }
+
+
+  print '<?xml version="1.0" encoding="UTF-8"?>';
+  print '<mcrs_playlist>';
+  print '<guid>{B8875B88-024A-4503-84AC-AB64A703C280}</guid>';
+  print '<version>2</version>';
+  print '<TV_Format>1280x720 16:9 50p</TV_Format>';
+  print '<parental_rating>1</parental_rating>';
+
+  //$start_date = date("Y-m-d 00:00:00");
+  //$end_date = date('Y-m-d 24:59:59"', strtotime("+7 days"));
+
+  //Do we need the time?
+  $start_date = date("Y-m-d");
+  $end_date = date('Y-m-d"', strtotime("+7 days"));
+
+
+  //get all the upcoming airings from the grid
+  $airings = db_query("SELECT * FROM {cm_airing}
+  JOIN {field_data_field_airing_date} on field_data_field_airing_date.entity_id = cm_airing.airing_id
+  LEFT JOIN {field_data_field_airing_playlist_ref} ON field_data_field_airing_playlist_ref.entity_id = cm_airing.airing_id
+  LEFT JOIN {field_data_field_airing_show_ref} ON field_data_field_airing_show_ref.entity_id = cm_airing.airing_id
+  LEFT JOIN {field_data_field_airing_project_ref} ON field_data_field_airing_project_ref.entity_id = cm_airing.airing_id WHERE field_airing_date_value > :start_date AND field_airing_date_value2 < :end_date ORDER BY field_airing_date_value", array(':start_date' => $start_date, ':end_date' => $end_date));
+
+  foreach($airings as $airing) {
+    $start_timestamp = strtotime($airing->field_airing_date_value);
+
+    //SHOW
+    if ($airing->field_airing_show_ref_nid) {
+
+      $start_date = date("d.m.Y", $start_timestamp);
+      $start_time = date("H:i:s", $start_timestamp) . ':00';  //morpheus expects the time in miliseconds
+
+      $node = node_load($airing->field_airing_show_ref_nid);
+
+      print theme('morpheus_xml', array('node' => $node, 'block_uuid' => getGUID(),'start_time' => $start_time, 'start_date' => $start_date, 'accumulated_duration' => $accumulated_duration));
+
+      morpheus_cache_airing($node, $start_timestamp);
+
+    } //end if show
+
+    //PLAYLIST
+    if ($airing->field_airing_playlist_ref_nid) {
+
+      //get the playlist id from the nid
+      $queues = db_query('SELECT field_queue_ref_value, field_interstitial_playlist_nid FROM field_revision_field_queue_ref LEFT JOIN field_data_field_interstitial_playlist ON field_revision_field_queue_ref.entity_id = field_data_field_interstitial_playlist.entity_id WHERE field_revision_field_queue_ref.entity_id = :eid ', array(':eid' => $airing->field_airing_playlist_ref_nid))->fetchAll();
+
+
+      //get all the shows in the playlist in order
+      $playlisted_shows = db_query('SELECT * FROM {nodequeue_nodes} WHERE qid = :qid ORDER BY position', array(':qid' => $queues[0]->field_queue_ref_value));
+
+      foreach ($playlisted_shows as $playlisted_show) {
+
+        $node = node_load($playlisted_show->nid);
+
+        $start_date = date("d.m.Y", $start_timestamp);
+        $start_time = date("H:i:s", $start_timestamp) . ':00';  //morpheus expects the time in miliseconds
+
+        if (!$debug) {
+
+          print theme('morpheus_xml', array('node' => $node, 'block_uuid' => getGUID(),'start_time' => $start_time, 'start_date' => $start_date, 'accumulated_duration' => $accumulated_duration));
+
+          morpheus_cache_airing($node, $start_timestamp);
+
+        } else {
+
+           dsm('Playlist Node');
+           dsm($node);
+           dsm($start_date);
+           dsm($start_time);
+           dsm($accumulated_duration);
+
+        }
+
+        // start is updated after so first program starts at 00:00:00 or the beining of the
+        // first aring
+        $start_timestamp = ($start_timestamp + $node->field_okv_duration[LANGUAGE_NONE][0]['value']);
+        $accumulated_duration = ($accumulated_duration + $node->field_okv_duration[LANGUAGE_NONE][0]['value']);
+
+        $original_accumulated_duration = $accumulated_duration;
+        $interstitial_start_timestamp = $start_timestamp;
+
+        //round to nearest 5 min
+        $accumulated_duration = ceil($accumulated_duration/300)*300;
+        $start_timestamp = ceil($start_timestamp/300)*300;
+
+        //how long should the interstitial run?
+        $interstitial_duration = ($accumulated_duration - $original_start_timestamp);
+        $accumulated_interstitials_duration = 0;
+
+        //INTERSTITIAL PLAYLIST TO FILL OUT THE 5 MIN
+        morpheus_interstitial_playlist($queues, $accumulated_duration);
+
+      } //end foreach playlisted show
+    } //end if playlist
+
+
+    morpheus_interstitial_playlist($queues, $accumulated_duration);
+
+  } //end foreach airing
+
+  print '</mcrs_playlist>';
+
+  if ($debug) {
+    return 'testing';
+  }
+  //print $output;
+}
+
+
+
+
+
+/**
+ * Checks content types that configured to allow the nodes be rendered as PBCore xml.
+ */
+function morpheus_render_xml_access($node) {
+  if (variable_get('morpheus_export_' . $node->type, 0)) {
+    return TRUE;
+  }
+}
+
+
+/**
+ * Returns xml with only the settings in morpheus-xml.tpl
+ */
+function morpheus_render_xml($node) {
+
+  header("Content-type: text/xml");
+
+  print '<?xml version="1.0" encoding="UTF-8" ?>';
+  print theme('morpheus_xml', array('node' => $node), NULL);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function morpheus_theme() {
+
+  return array(
+    'morpheus_xml' => array(
+      'template' => 'templates/morpheus-xml',
+      'variables' => array('node' => NULL, $start),
+    ),
+    'morpheus_interstitial_xml' => array(
+      'template' => 'templates/morpheus-interstitial-xml',
+      'variables' => array('node' => NULL, $start),
+    ),
+  );
+}
+
+/**
+ * Converts seconds to time.
+ */
+  function morpheus_sec2hms($sec, $padHours = false) {
+    //dsm($sec);
+    if( is_numeric($sec) ) {
+    //dsm('converting seconds');
+    //check for miliseconds
+    if (strstr($sec, '.')) {
+      $sec_parts = explode('.', $sec);
+      $sec = $sec_parts[0];
+      $msec = $sec_parts[1];
+    }
+
+	if ($sec > 0) {
+    // start with a blank string
+    $hms = "";
+
+    // do the hours first: there are 3600 seconds in an hour, so if we divide
+    // the total number of seconds by 3600 and throw away the remainder, we're
+    // left with the number of hours in those seconds
+    $hours = intval(intval($sec) / 3600);
+
+    $padHours = TRUE;
+    // add hours to $hms (with a leading 0 if asked for)
+    $hms .= ($padHours)
+          ? str_pad($hours, 2, "0", STR_PAD_LEFT). ":"
+          : $hours. ":";
+
+    // dividing the total seconds by 60 will give us the number of minutes
+    // in total, but we're interested in *minutes past the hour* and to get
+    // this, we have to divide by 60 again and then use the remainder
+    $minutes = intval(($sec / 60) % 60);
+
+    // add minutes to $hms (with a leading 0 if needed)
+    $hms .= str_pad($minutes, 2, "0", STR_PAD_LEFT). ":";
+
+    // seconds past the minute are found by dividing the total number of seconds
+    // by 60 and using the remainder
+    $seconds = intval($sec % 60);
+
+    // add seconds to $hms (with a leading 0 if needed)
+    $hms .= str_pad($seconds, 2, "0", STR_PAD_LEFT);
+
+    //append miliseconds
+    if (isset($msec)) {
+      $hms .= '.' . $msec;
+    }
+    } else {
+      //dsm('not converting seconds');
+      $hms = $sec;
+    }
+
+    // done!
+    return $hms;
+    }
+  }
+
+/**
+ * Converts time to seconds.
+ */
+function morpheus_hms2sec($hms) {
+	if (!is_numeric($hms)) {
+	list($hr, $min, $sec) = explode (":", $hms);
+
+	//check for miliseconds
+    if (strstr($sec, '.')) {
+      $sec_parts = explode('.', $sec);
+      $sec = $sec_parts[0];
+      $msec = $sec_parts[1];
+    }
+
+	$seconds = 0;
+	$seconds += (intval($hr) * 3600);
+	$seconds += (intval($min) * 60);
+	$seconds += (intval($sec));
+
+	//append miliseconds
+    if (isset($msec)) {
+      $seconds .= '.' . $msec;
+    }
+	} else {
+	  //dsm('not converting hms');
+	  $seconds = $hms;
+	}
+	return $seconds;
+}
+
+
+function morpheus_resave_batch_init() {
+
+  $batch = array(
+    'title' => t('Resaving Show Nodes...'),
+    'operations' => array(),
+    'init_message' => t('Starting Resave'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+    'finished' => 'morpheus_resave_batch_finished',
+    'progressive' => FALSE
+  );
+
+  //query all project nodes
+
+  $result = db_query('SELECT nid FROM {node} WHERE type = :type', array(':type' => 'cm_show'));
+
+  $count = 0;
+  foreach ($result as $record) {
+    //if ($count < 4) {
+      $batch['operations'][] = array('morpheus_resave_batch_worker', array($record->nid));
+      //$count++;
+    //}
+  }
+
+
+
+  batch_set($batch);
+
+  batch_process('admin/content');
+}
+
+function morpheus_resave_batch_worker($nid, &$context) {
+
+  $node = node_load($nid);
+  //set og to legacy project id
+
+
+
+  if(!$node->field_okv_duration[LANGUAGE_NONE][0]['value']) {
+    if (isset($node->field_duration_temp[LANGUAGE_NONE][0]['value']) && $node->field_duration_temp[LANGUAGE_NONE][0]['value']) {
+      //dsm($node->nid);
+      $seconds = morpheus_hms2sec($node->field_duration_temp[LANGUAGE_NONE][0]['value']);
+      $node->field_okv_duration[LANGUAGE_NONE][0]['value'] = $seconds;
+      node_save($node);
+    }
+  }
+
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully update Show #' . $node->nid;
+}
+
+function morpheus_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural($results['processed'], 'One Show processed.', '@count Shows processed.');
+  }
+  else {
+    $message = 'some errors';
+  }
+
+  drupal_set_message($message);
+}
+
+function morpheus_clean_uuid($uuid) {
+  //print $uuid . '<br />';
+  //check format... must be 8-4-4-4-12
+  //ba4829c664-f6ae-1874-39d8-b3fc3433c837
+
+  //"^[a-zA-Z0-9_]*$"
+  //$clean_uuid = preg_replace('/^[f-mF-m]*/', 'A', $uuid);
+  //$clean_uuid = preg_replace('/^[n-zN-Z]*/', 'B', $clean_uuid);
+
+  //$clean_uuid = preg_replace('/[^fghijklm]/i','A', $uuid);
+  //$clean_uuid = preg_replace('/[^nopqrstuvwxyz]/i','B', $clean_uuid);
+
+  $clean_uuid = preg_replace('/(?:[ijklmnpqrstvwxyz]|(?<=[abcdf]))/','A', $uuid);
+
+  //print $clean_uuid . '<br />';
+
+  $uuid_part = explode('-', $clean_uuid);
+  //limit to 8
+  $uuid_part[0] = substr($uuid_part[0], 0, 8);
+  //limit to 4
+  $uuid_part[1] = substr($uuid_part[1], 0, 4);
+  $uuid_part[2] = substr($uuid_part[2], 0, 4);
+  $uuid_part[3] = substr($uuid_part[3], 0, 4);
+  //limit to 12
+  $uuid_part[4] = substr($uuid_part[0], 0, 12);
+  //make sure this strlen = 12
+  while(strlen($uuid_part[4]) != 12) {
+	$uuid_part[4] .= '0';
+  }
+
+  $formatted_uuid = $uuid_part[0] . '-' . $uuid_part[1] . '-' . $uuid_part[2] . '-' . $uuid_part[3] . '-' . $uuid_part[4];
+
+  //print $formatted_uuid . '<br />';
+
+  return strtoupper($formatted_uuid);
+}
+
+
+function getGUID(){
+    if (function_exists('com_create_guid')){
+        return com_create_guid();
+    }else{
+        mt_srand((double)microtime()*10000);//optional for php 4.2.0 and up.
+        $charid = strtoupper(md5(uniqid(rand(), true)));
+        $hyphen = chr(45);// "-"
+        $uuid = chr(123)// "{"
+            .substr($charid, 0, 8).$hyphen
+            .substr($charid, 8, 4).$hyphen
+            .substr($charid,12, 4).$hyphen
+            .substr($charid,16, 4).$hyphen
+            .substr($charid,20,12)
+            .chr(125);// "}"
+        return $uuid;
+    }
+}
+
+//INTERSTITIAL PLAYLIST TO FILL OUT THE BLOCK
+function morpheus_interstitial_playlist($queues, $accumulated_duration) {
+    if (!variable_get('morpheus_include_interstitial_playlists', 0)) {
+      return;
+    }
+
+    $debug = variable_get('morpheus_debug', 0);
+
+      $flag = "0x100";
+
+      print '  <program name="Slinga"><guid>' . getGUID() . '</guid>';
+      print '    <block name="Block 1"><guid>' . getGUID()  . '</guid>';
+
+      foreach ($queues as $queue) {
+
+        //get the playlist id from the nid
+        $qid = db_query('SELECT field_queue_ref_value FROM field_revision_field_queue_ref WHERE entity_id = :eid ', array(':eid' => $queue->field_interstitial_playlist_nid))->FetchField();
+
+        $playlist_node = node_load($queue->field_interstitial_playlist_nid);
+
+        //dsm($queue_node);
+
+        // should this be stored in the interstitial playlist node?
+        $background_video = check_plain("X:\Contents\Motion_graphics\motionbackground_flarez.mpg");
+
+        $morpheus_file_path = variable_get('morpheus_file_path', 'X:\Contents');
+
+        //@TODO: the timeline duration is hardcoded
+
+        //get all the interstitials in the playlist in order
+
+        $playlisted_interstitials = db_query('SELECT * FROM {nodequeue_nodes} WHERE qid = :qid ORDER BY position', array(':qid' => $qid));
+
+        $event_output = NULL;
+        $accumulated_interstitials_duration = 0;
+        $station_logo_shown = false;
+
+        $station_logo = "X:\Type\okv_station_logo_liggande.CinType";
+        $clock = "X:\Type\okv_digital_clock.CinType";
+        $weather = "X:\Type\okv_weather.CinType";
+        $upcoming_show = "X:\Type\okv_next_show.CinType";
+
+
+
+
+        foreach ($playlisted_interstitials as $playlisted_interstitial) {
+
+          $node = node_load($playlisted_interstitial->nid);
+
+          $initial_interstitial_duration = 0;
+
+          if (!$debug) {
+
+            $cg_layer = 1;
+            for ($i = 1; $i <= 4; $i++) {
+              $show_cg_layer_[$i] = false;
+            }
+
+            foreach ($node->field_persistent_layers[LANGUAGE_NONE] as $oneRow) {
+              $cg = $oneRow['value'];
+
+              if (($cg == 'station_logo' ) && (!$station_logo_shown)) {
+                $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_LOGO" cmd="SHOW" skip="0"><op1>'. $station_logo . '</op1><op2>&lt;variables/&gt;</op2></event>';
+                $station_logo_shown = true;
+              }
+
+              if(in_array('station_logo', $oneRow))
+                $show_station_logo = TRUE;
+
+
+              if (($cg == 'clock') && ($cg_layer_shown_[$cg_layer] != 'clock')) {
+                $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_' . $cg_layer . '" cmd="SHOW" skip="0"><op1>'. $clock . '</op1><op2>&lt;variables/&gt;</op2></event>';
+                $show_cg_layer_[$cg_layer] = 'clock';
+                $cg_layer++;
+              }
+
+
+              if (($cg == 'upcoming_show') && ($cg_layer_shown_[$cg_layer] != 'upcoming_show')) {
+                $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_' . $cg_layer . '" cmd="SHOW" skip="0"><op1>' . $upcoming_show . '</op1><op2>&lt;variables&gt;&lt;var name="Showtitle.Text.Value1" type="Text" value=""/&gt;&lt;var name="Starttime.Text.Value1" type="Text" value=""/&gt;&lt;/variables&gt;</op2></event>';
+                $show_cg_layer_[$cg_layer] = 'upcoming_show';
+                $cg_layer++;
+              }
+
+
+              if (($cg == 'weather') && ($cg_layer_shown_[$cg_layer] != 'weather')) {
+                $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_' . $cg_layer . '" cmd="SHOW" skip="0"><op1>'. $weather . '</op1><op2>&lt;variables/&gt;</op2></event>';
+                $show_cg_layer_[$cg_layer] = 'weather';
+                $cg_layer++;
+              }
+
+            }
+
+            if(!$show_station_logo) {
+              $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_LOGO" cmd="HIDE" skip="0"/>';
+              $station_logo_shown = false;
+            }
+
+            for ($i = $cg_layer; $i <= 4; $i++) {
+              if (!$show_cg_layer_[$i]) {
+                $event_output .= '<event offset="+' . $accumulated_interstitials_duration . '0000000" device="*CG_' . $i . '" cmd="HIDE" skip="0"/>';
+              }
+            }
+
+
+
+
+            // this is seperated from the item XML because we need the total duration
+            $event_output .= theme('morpheus_interstitial_xml', array('node' => $node, 'block_uuid' => $block_uuid,'start_time' => $start_time, 'start_date' => $start_date, 'accumulated_interstitials_duration' => $accumulated_interstitials_duration));
+
+           // the cache table is called by cron later
+
+
+          } else {
+
+            dsm('Interstitial Node');
+            dsm($node);
+            dsm($start_date);
+            dsm($start_time);
+            dsm($accumulated_interstitials_duration, 'Accumulated interstitials duration');
+            dsm($initial_interstitial_duration, 'Initial interstitial duration');
+
+          }
+
+          // start is updated after so first program starts at 00:00:00 or the beginning of the
+          // first aring
+          $start_timestamp = ($start_timestamp + $node->field_duration[LANGUAGE_NONE][0]['value']);
+          $accumulated_interstitials_duration = ($accumulated_interstitials_duration + $node->field_duration[LANGUAGE_NONE][0]['value']);
+
+          //round to nearest 5 min
+          //$accumulated_duration = ceil($accumulated_duration/300)*300;
+          //$start_timestamp = ceil($start_timestamp/300)*300;
+
+        }
+
+        print '<item name="[Slinga] ' . check_plain($playlist_node->title) . '" src_in="00:00:00:00" src_out="00:01:00:00" in="00:00:00:00" out="' . morpheus_sec2hms($accumulated_interstitials_duration) . '.00" type="clip" flags="' . $flag . '" split_audio="0"><guid>' . getGUID() . '</guid><FrameRate>25</FrameRate><Aspect>16:9</Aspect>';
+        print '		<timeline duration="' . $accumulated_duration . '">';
+        print '			<group type="video" width="720" height="576" framerate="25" progressive="n">';
+        print '				<track>';
+        print '					<clip start="0" stop="' . $accumulated_duration . '" mstart="0" mstop="' .$accumulated_duration . '">';
+        print '						<quality src="' . $background_video . '" track="0" id="0"/>';
+        print '					</clip>';
+        print '				</track>';
+        print '			</group>';
+        print '			<group type="audio">';
+        print '				<track>';
+        print '					<clip start="0" stop="' . $accumulated_duration . '" mstart="0" mstop="' . $accumulated_duration .'">';
+        print '						<quality src="' . $background_video . '" track="0" channels="0;1" id="0"/>';
+        print '					</clip>';
+        print '				</track>';
+        print '			</group>';
+        print '		</timeline><src_path>' . $background_video . '</src_path><ActiveAspect>16:9</ActiveAspect>';
+        print '<events>';
+          print $event_output;
+        print '</events>';
+        print '</item>';
+
+        $flag = "0x80";
+      } //end foreach playlist
+
+      print '    </block>';
+      print '  </program>';
+
+
+}
+
+function morpheus_cache_airing($node, $timestamp) {
+  //dsm($node->title);
+  //dsm($start_date);
+  //dsm($start_time);
+
+  //2012-10-26 05:48:00
+  //$timestamp = strtotime($start_date . ' ' . $start_time);
+  $datetime = date("Y-m-d H:i:s", $timestamp);
+  dsm($datetime);
+
+  db_insert('morpheus_airing_cache') // Table name no longer needs {}
+  ->fields(array(
+  'nid' => $node->nid,
+  'title' => $node->title,
+  'datetime' => $datetime,
+  ))->execute();
+
+}

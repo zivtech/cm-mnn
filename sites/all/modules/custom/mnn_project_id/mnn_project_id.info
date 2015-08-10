@@ -1,0 +1,12 @@
+name = MNN Project ID
+package = MNN Custom
+description = "Allows staff to manually set the OG Group ID (gid)"
+
+dependencies[] = "cm_project"
+dependencies[] = "og"
+
+core = 7.x
+files[] = mnn_project_id.module
+
+
+

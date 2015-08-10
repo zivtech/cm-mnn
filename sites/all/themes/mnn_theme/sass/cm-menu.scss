@@ -1,0 +1,161 @@
+@import "compass/css3";
+@import "base";
+
+// Based on Animenu: https://github.com/catalinred/Animenu
+
+// Variables
+$subMenuItemWidth: 100px;     // Minimum width for submenus' items
+$baseMenuBackground: white;     // Base color theme
+$baseMenuBackgroundHover: #666666;    // When main item is hovered
+$secondaryMenuBackground: $blue;  // Secondary color (highlights, triangles...)
+$baseMenuColor: $dark;        // Proper menu items color
+$gutter: 1em;           // Base gutter
+$input: "input[type=checkbox]";   // Checkbox hack selector
+$selector: "#navigation #block-system-main-menu .block-wrapper";
+
+// Menu background mixin
+@mixin menu-background($color, $menu-gradient: true) {
+  background-color: $color;
+  @if $menu-gradient == true {
+    @include background-image(linear-gradient(rgba(255, 255, 255, .2),
+                          rgba(255, 255, 255, 0)));
+  }
+  @else {
+    background-image: none;
+  }
+}
+
+// Menu background mixin
+// The $size argument specifies the actual size of the triangle
+// The $shift-left helps on horizontal positioning.
+@mixin pseudo-triangle($size, $shift-left) {
+  &:after {
+    content: '';
+    position: absolute;
+    left: $shift-left * $gutter;
+    top: -$size * 2;
+    border: $size solid transparent;
+    border-bottom-color: inherit;
+  }
+  &:after:hover {
+    color: #474747;
+  }
+}
+
+// Shortest clearfix. Ever. IE8+.
+// http://www.css-101.org/articles/clearfix/latest-new-clearfix-so-far.php
+%cf:after {
+  content:"";
+  display:table;
+  clear:both;
+}
+
+@-webkit-keyframes bugfix {
+  from { padding: 0; }
+  to { padding: 0; }
+}
+
+// New box model, small reset, global stuff
+#{$selector} {
+  font: bold 13px Arial, Helvetica;
+  * {
+    @include box-sizing(border-box);
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1.2em;
+    line-height: 1.0;
+  }
+  li {
+    position: relative;
+    &:hover {
+      border-right-color: $baseMenuBackgroundHover;
+      > ul {
+        opacity: 1;
+        visibility: visible;
+        margin: 0;
+      }
+      > a {
+        color: $greyer;
+      }
+    }
+  }
+  #{$input} {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  label {
+    display:none;
+    cursor: pointer;
+    user-select:none;
+  }
+}
+
+#{$selector} > ul {
+  > li {
+    float: left;
+    > a {
+      float: left;
+      padding: $gutter 1 * $gutter;
+      text-transform: uppercase;
+    }
+    &.first {
+      a {
+        padding-left: 0;
+      }
+    }
+    @include breakpoint($breakpoint-full-width) {
+      a {
+        padding-right: 0;
+      }
+    }
+  }
+  a {
+    color: $baseMenuColor;
+    text-decoration: none;
+  }
+  ul {
+    position: absolute;
+    top: 100%; left: 0;
+    z-index: 15;
+    opacity: 0;
+    visibility: hidden;
+    margin: 2 * $gutter 0 0 0;
+    background: #fff;
+    min-width: 175px;
+    @include transition-property("margin, opacity");
+    @include transition-duration(".15s");
+    @include transition-timing-function(ease-in-out);
+    -moz-box-shadow: 0 0 5px #888;
+    -webkit-box-shadow: 0 0 5px #888;
+    box-shadow: 0 0 5px #888;
+    @include pseudo-triangle(6px, 1.5);
+    color: #454545;
+    li {
+      display: block;
+      clear: both;
+      width: 100%;
+      &:first-child > a {
+
+      }
+    }
+    a {
+      padding: 8px 15px;
+      width: 100%;
+      display: block;
+      font-weight: normal;
+      font-size: 16px;
+      &:hover {
+        color: #fff;
+        background: #474747;
+      }
+    }
+  }
+}
+
+// Last but not least: the responsive stuff
+@import "cm-menu-responsive";

@@ -1,0 +1,70 @@
+<?php
+/**
+ * @file
+ */
+ 
+/**
+ * Implements hook_form_alter().
+ */
+function mnn_reservations_form_alter(&$form, &$form_state, $form_id) {
+
+  if ($form['#node_edit_form'] == TRUE && 
+      $form['type']['#value'] == 'reservations_reservation') {
+
+    global $user;
+    $nid = $form['nid']['#value'];
+    $status = $form['reservations_reservation_status']['#default_value'];
+
+    $status = isset($form['reservations_reservation_status']['#value'])
+      ? $form['reservations_reservation_status']['#value'] : 
+      $form['reservations_reservation_status']['#default_value'];
+
+    $uid = $form['uid']['#value'];
+
+    $edit_mode = $nid ? TRUE : FALSE;
+    $is_author = ($user->uid == $uid) ? TRUE : FALSE;
+    $is_manager = user_access("manage reservations") ? TRUE : FALSE;
+    $unconfirmed = ($status == RESERVATIONS_STATUS_UNCONFIRMED) ?
+      TRUE : FALSE;
+    
+    $deny_access =
+      ($is_manager || !$edit_mode || ($unconfirmed && $is_author) ) ?
+      FALSE : TRUE;
+
+    /**
+    dsm($nid, 'nid');
+    dsm($status, 'status');
+    dsm($uid, 'uid');
+    dsm($edit_mode, 'edit mode');
+    dsm($is_author, 'is author');
+    dsm($unconfirmed, 'unconfirmed');
+    dsm($is_manager, 'is manager');
+    dsm($deny_access, 'deny access');
+    dsm($form, "my form");
+    */
+
+    if (!$is_manager) {
+      // don't show revisions tab at bottom of form
+      $form['revision_information']['#access'] = FALSE;
+    }
+    
+    if ($deny_access ) {
+      drupal_set_message(t("Sorry, you cannot edit your reservation once it ".
+			   "has been confirmed/cancelled by a staff person."), 
+			 'error');
+      drupal_goto('user');
+      return;
+    }
+
+    $choice_wrapper =$form['choice_wrapper']['reservations_reservation_items'];
+    foreach ($choice_wrapper as $choice=>$choice_array) {
+      if (is_array($choice_array) && isset($choice_array['ops'])) {
+	$place_nid = $choice_array['reservations_placeholder_nid']['#value'];
+	$form['choice_wrapper']['reservations_reservation_items'][$choice]
+	  ['ops']['#markup'] = l('remove', "node/".$place_nid."/delete", 
+				 array('query'=>array('destination'=> 
+						      "node/".$nid."/edit")));
+      }
+    }
+  }
+}

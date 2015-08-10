@@ -1,0 +1,10 @@
+name = CM Project Picker
+description = Allows users to pick their project by ID or Name, then the results give links to the users.
+core = 7.x
+package = Community Media
+dependencies[] = cm_show
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:1
+features[views_view][] = project_picker
+features_exclude[dependencies][ctools] = ctools

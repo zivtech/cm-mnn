@@ -1,0 +1,9 @@
+name = MNN Event Landing
+package = MNN Custom
+description = "Checks for prerequisite requirements before allowing a producer to register for an event"
+
+core = 7.x
+
+files[] = mnn_event_landing_page.module
+
+

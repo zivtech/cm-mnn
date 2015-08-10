@@ -1,0 +1,352 @@
+<?php 
+
+/**
+ *@file
+ * Implementes MNN-specific rules governing the end times of airings when they're created
+ */
+
+
+/**
+ *  Implementation of hook_menu()
+ */
+function mnn_import_menu() {
+
+  $items['admin/reports/mnn-import'] = array(
+    'title' => 'MNN Import Overview',
+	'description' => 'MNN Import Overview',
+	'page callback' => 'mnn_import_overview',
+	'access arguments' => array('access site reports'),
+	'type' => MENU_NORMAL_ITEM,
+  );
+  
+  $items['admin/reports/mnn-import/inventory_detail/reservable-facilities'] = array(
+    'title' => 'MNN Import Overview',
+	'description' => 'MNN Import Overview',
+	'page callback' => 'mnn_import_overview_reservable_facilities',
+	'access arguments' => array('access site reports'),
+	'type' => MENU_NORMAL_ITEM,
+  );
+  
+  if (!module_exists('mnn_airing')) {
+    $items['admin/config/mnn'] = array(
+      'title' => 'MNN',
+      'description' => 'Configuration options for Custom MNN modules',
+      'position' => 'left',
+      'page callback' => 'system_admin_menu_block_page',
+      'access arguments' => array('access administration pages'),
+      'file' => 'system.admin.inc',
+      'file path' => drupal_get_path('module', 'system'),
+      'weight' => -99,
+    );
+  }
+	
+  $items['admin/config/mnn/mnn-import'] = array(
+    'title' => 'Import Configuration',
+    'description' => 'Configuration options for the MNN Import.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mnn_import_admin_settings'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+	
+  return $items;
+}
+
+/**
+ * Builds the cm_show admininstration settings form.
+ */
+function mnn_import_admin_settings($form, &$form_state) {
+  $form = array();
+
+  $form['mnn_import_ac_project_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center Project Count'),
+    '#default_value' => variable_get('mnn_import_ac_project_count', '0'),
+    '#description' => '',
+  );
+  
+  $form['mnn_import_ac_show_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center Show Count'),
+    '#default_value' => variable_get('mnn_import_ac_show_count', '0'),
+    '#description' => '',
+  );
+  
+  $form['mnn_import_ac_airing_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center Airing Count'),
+    '#default_value' => variable_get('mnn_import_ac_airing_count', '0'),
+    '#description' => '',
+  );
+  
+  $form['mnn_import_ac_user_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center User Count'),
+    '#default_value' => variable_get('mnn_import_ac_user_count', '0'),
+    '#description' => '',
+  );
+  
+  $form['mnn_import_ac_class_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center Classes Count'),
+    '#default_value' => variable_get('mnn_import_ac_class_count', '0'),
+    '#description' => '',
+  );
+  
+  $form['mnn_import_ac_reservation_count'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access Center Reservations Count'),
+    '#default_value' => variable_get('mnn_import_ac_reservation_count', '0'),
+    '#description' => '',
+  );
+
+  
+      
+  return system_settings_form($form);
+}
+
+
+
+function mnn_import_overview() {
+  
+  //switch database to reporting
+  $other_database = 
+    array(
+	  'database' => 'reporting_stage_drupal_6',
+	  'username' => 'cmbeta', // assuming this is necessary
+	  'password' => '90ocii7', // assuming this is necessary
+	  'host' => 'crumbine.mnn.org', // assumes localhost
+	  'driver' => 'mysql', // replace with your database driver
+	  );
+
+  // replace 'YourDatabaseKey' with something that's unique to your module
+  Database::addConnectionInfo('mnn_data_massage_reporting_database_key', 'default', $other_database);
+  
+  $output = '<b>Current Stats: D7 | D4.7 (difference)</b>';
+  
+  //PROJECTS
+  
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(node_id) FROM {ac_report_project_cache}')->fetchField();
+  
+  db_set_active('default');
+  $type = 'cm_project';
+  $count = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => $type))->fetchField();
+  $output .= '<div class="admin-panel">';
+  $output .= '<h3>Projects: ' . $count . ' | ' . $ac_count . ' (' . ($count - $ac_count). ')</h3>';
+  //variable_get('mnn_import_ac_project_count', '0')
+  
+  $count = 0;
+  $result = db_query("SELECT DISTINCT(uid) FROM {node} WHERE type = :type", array(':type' => $type));
+  foreach ($result AS $exec_producer) {
+    $count++;
+  }
+  
+  $output .= ' - Number of Exec Producers: ' . $count . '<br />';
+  
+  $count = 0;
+  $languages = db_query("SELECT DISTINCT(field_pbcore_languages_tid) FROM {field_data_field_pbcore_languages} WHERE bundle = 'cm_project'");
+  $output .= ' - Languages: ';
+  foreach ($languages AS $language) {
+    $count++;
+    $term = taxonomy_term_load($language->field_pbcore_languages_tid);
+    $output .= $term->name . ', ';
+  }
+
+  $output .= '<br />  - Number of Unique Languages: ' . $count."<br/>";
+  $output .= l("See report", "admin/mnn_data_massage/dual_use_project_report");
+  $output .= '</div>';
+  
+  //SHOWS
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(episode_id) FROM {ac_report_episode_cache}')->fetchField();
+  
+  db_set_active('default');
+  
+  $output .= '<div class="admin-panel">';
+  $type = 'cm_show';
+  $count = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => $type))->fetchField();
+  $output .= '<h3>Shows: ' . $count . ' | ' . $ac_count . ' (' . ($count - $ac_count). ')</h3>';
+   $output .= '</div>';
+  //variable_get('mnn_import_ac_show_count', '0')
+  
+  //AIRINGS
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(airing_id) FROM {ac_report_airing_cache}')->fetchField();
+  
+  db_set_active('default');
+ 
+  
+  $output .= '<div class="admin-panel">';
+  $type = 'cm_airing';
+  $count = db_query('SELECT COUNT(airing_id) FROM {cm_airing}')->fetchField();
+  $output .= '<h3>Airings: ' . $count . ' | ' . $ac_count . ' (' . ($count - $ac_count). ')</h3>';
+  //variable_get('mnn_import_ac_airing_count', '0')
+  
+  //field_data_field_airing_channel
+  //field_airing_channel_tid
+  //965 = Channel 1 
+  //966 = Channel 2
+  //967 = Channel 3
+  //968 = Channel 4
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_channel} WHERE field_airing_channel_tid = 965')->fetchField();;
+  $output .= '- Channel 1: ' . $count . '<br />';
+
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_channel} WHERE field_airing_channel_tid = 966')->fetchField();;
+  $output .= '- Channel 2: ' . $count . '<br />';
+
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_channel} WHERE field_airing_channel_tid = 967')->fetchField();;
+  $output .= '- Channel 3: ' . $count . '<br />';
+
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_channel} WHERE field_airing_channel_tid = 968')->fetchField();;
+  $output .= '- Channel 4: ' . $count . '<br />';
+  
+  //field_data_field_airing_type
+  //970 = Fill
+  //971 = Promo
+  //969 = Series
+  //972 = Series Makeup
+  //973 = Special
+
+   $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_type} WHERE field_airing_type_tid = 970')->fetchField();;
+  $output .= '- Fill: ' . $count . '<br />';
+  
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_type} WHERE field_airing_type_tid = 971')->fetchField();;
+  $output .= '- Promo: ' . $count . '<br />';
+  
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_type} WHERE field_airing_type_tid = 969')->fetchField();;
+  $output .= '- Series: ' . $count . '<br />';
+  
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_type} WHERE field_airing_type_tid = 972')->fetchField();;
+  $output .= '- Series Makeup: ' . $count . '<br />';
+  
+  $count = db_query('SELECT COUNT(entity_id) AS COUNT FROM {field_data_field_airing_type} WHERE field_airing_type_tid = 973')->fetchField();;
+  $output .= '- Special: ' . $count . '<br />';
+  $output .= '</div>';
+
+   
+  //PRODUCERS
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(producer_id) FROM {ac_report_producer_cache}')->fetchField();
+  
+  db_set_active('default');
+  
+  $output .= '<div class="admin-panel">';
+  
+  $count = db_query('SELECT COUNT(uid) FROM {users}')->fetchField();
+  $output .= '<h3>Users (Producers): ' . $count . ' | ' . $ac_count . ' (' . ($count - $ac_count). ')</h3>';
+  $output .= l("See report", "admin/mnn_data_massage/dual_use_user_report");
+  $output .= '</div>';
+  //variable_get('mnn_import_ac_user_count', '0')
+  
+  //AFFILIATE ORG
+  $output .= '<div class="admin-panel">';
+  $count = db_query('SELECT COUNT(id) FROM {civicrm_contact} WHERE contact_type = :type', array(':type' => 'Organization'))->fetchField();
+  $output .= '<h3>Affiliate Org: ' . $count . '</h3>';
+  
+  $orgs = db_query('SELECT display_name, COUNT(*) AS COUNT FROM {civicrm_relationship} JOIN {civicrm_contact} ON contact_id_b = civicrm_contact.id GROUP BY display_name ORDER BY COUNT( * ) DESC LIMIT 0,20');
+  $output .= ' - Affiliate Orgs with the most Producers: <br />';
+  
+  foreach ($orgs AS $org) {
+    $output .= ' ' . $org->display_name . ': ' . $org->count . '<br />';
+  }
+
+  
+  $count = 0;
+  $cities = db_query('SELECT DISTINCT(city) FROM {civicrm_address} JOIN {civicrm_contact} ON contact_id = civicrm_contact.id WHERE contact_type = :type', array(':type' => 'Organization'));
+  $output .= ' - Cities: ';
+
+  foreach ($cities AS $city) {
+    $count++;
+    $output .= $city->city . ', ';
+  }
+
+  $output .= '<br />  - Number of Unique Cities: ' . $count;
+  $output .= '</div>';
+  
+  
+  //CLASSES 
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(class_id) FROM {ac_report_class_cache}')->fetchField();
+  
+  db_set_active('default');
+  
+  $output .= '<div class="admin-panel">';
+  $civicrm_count = db_query('SELECT COUNT(id) FROM {civicrm_event} WHERE is_template != 1')->fetchField();
+  $drupal_count = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => 'civicrm_multiday_event'))->fetchField();
+  $output .= '<h3>Classes: ' . $drupal_count . ' (drupal)/' . $civicrm_count . ' (civicrm) | ' . $ac_count . ' (' . ($drupal_count - $ac_count). ')</h3>';
+  $output .= '</div>';
+  //variable_get('mnn_import_ac_class_count', '0')
+  
+  //INVENTORY
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  
+  //7,884
+  $ac_total_count = db_query('SELECT COUNT(item_id) FROM {ac_report_item_cache}')->fetchField();
+  
+  //1094
+  $ac_reservable_equip_count = db_query("SELECT COUNT(item_id) FROM {ac_report_item_cache} WHERE item_type = 'equipment' AND bucket_id is not null and bucket_id > 0")->fetchField();
+  
+  $ac_nonreservable_equip_count = db_query("SELECT COUNT(item_id) FROM {ac_report_item_cache} WHERE item_type = 'equipment' AND (bucket_id is null or bucket_id=0)")->fetchField();
+
+  
+  //85
+  $ac_reservable_facility_count = db_query("SELECT COUNT(item_id) FROM {ac_report_item_cache} WHERE item_type = 'facility' AND bucket_id is not null AND bucket_id > 0")->fetchField();
+  
+  db_set_active('default');
+  $output .= '<div class="admin-panel">';
+  
+  //743
+  $count_reservable_equip = db_query('SELECT COUNT(nid) FROM {reservations_bucket_node} WHERE reservations_sub_type = 1')->fetchField();
+  
+  //53
+  $count_reservable_facility = db_query('SELECT COUNT(nid) FROM {reservations_resource_node} WHERE reservations_sub_type = 1')->fetchField();
+  
+  //3,830
+  $count_nonreservable_equip = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => "equipment_non_reservable_"))->fetchField();
+  
+  //79
+  $count_nonreservable_facility = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => "facility_non_reservable_"))->fetchField();
+    
+  $count = $count_reservable_equip + $count_reservable_facility + $count_nonreservable_equip + $count_nonreservable_facility;
+  
+  $output .= '<h3>Inventory: ' . $count . ' | ' . $ac_total_count . ' (' . ($count - $ac_total_count). ')</h3>';  
+  $output .= ' - Reservable Equipment: ' .  $count_reservable_equip . ' | ' . $ac_reservable_equip_count . ' (' . ($count_reservable_equip - $ac_reservable_equip_count) . ') <br />';
+  $output .= ' - <a href="/admin/reports/mnn-import/inventory_detail/reservable-facilities">Reservable Facilities: ' .  $count_reservable_facility . ' | ' . $ac_reservable_facility_count . '</a> (' . ($count_reservable_facility - $ac_reservable_facility_count) . ') </br />';
+  $output .= ' - Non-reservable Equipment: ' .  $count_nonreservable_equip . ' | ' . $ac_nonreservable_equip_count . ' (' . ($count_nonreservable_equip - $ac_nonreservable_equip_count) . ') <br />';
+
+
+  
+  
+  $output .= '</div>';
+
+  
+  //RESERVATIONS
+  db_set_active('mnn_data_massage_reporting_database_key');  
+  $ac_count = db_query('SELECT COUNT(reservation_id) FROM {ac_report_reservation_cache}')->fetchField();
+  
+  db_set_active('default');
+  $output .= '<div class="admin-panel">';
+  $type = 'reservations_reservation';
+  $count = db_query('SELECT COUNT(nid) FROM {node} WHERE type = :type', array(':type' => $type))->fetchField();
+  $output .= '<h3>Reservations: ' . $count . ' | ' . $ac_count . ' (' . ($count - $ac_count). ')</h3>';  
+  $output .= '</div>';
+  //variable_get('mnn_import_ac_reservation_count', '0')
+  return $output;
+}
+
+function mnn_import_overview_reservable_facilities() {
+   $return = NULL;
+   $facilities = db_query('SELECT nid, guid FROM reservations_resource_node LEFT JOIN feeds_item ON entity_id = nid WHERE reservations_sub_type =1');
+  
+  foreach($facilities as $facility) {
+    $node_d7 = node_load($facility->nid);
+    $return .= '<a href="/node/' . $node_d7->nid . '">' . $node_d7->nid . ' - '. $node_d7->title . ' : ' .  $node_d7->type . '</a><br />';
+     db_set_active('mnn_data_massage_reporting_database_key'); 
+     $d4 = db_query('SELECT nid, title, type FROM {node} WHERE nid = :nid', array(':nid' => $facility->guid))->fetchObject();
+     dsm($d4);
+  }
+ //dsm('test');
+ return $return;
+  
+}

@@ -1,0 +1,10 @@
+name = MNN Import Overview
+package = MNN Custom
+description = "Queries to compare node counts between D4.7 and D7"
+
+core = 7.x
+files[] = mnn_import.module
+
+configure = admin/config/mnn/mnn-import
+
+

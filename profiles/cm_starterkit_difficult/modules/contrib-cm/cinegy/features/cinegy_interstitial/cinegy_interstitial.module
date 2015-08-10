@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Cinegy Interstitial feature.
+ */
+
+include_once 'cinegy_interstitial.features.inc';

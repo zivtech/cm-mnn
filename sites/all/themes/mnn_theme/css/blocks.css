@@ -1,0 +1,390 @@
+/**
+ * @file
+ * Block Styling
+ */
+/****************
+OUR CUSTOM MIXINS
+*****************/
+/***********
+~SPRITES
+***********/
+.social-sprite, .social-facebook, .social-instagram, .social-linkedin, .social-rss, .social-twitter, .social-vimeo, .social-youtube {
+  background: url('../images/social-scb3fe6f241.png') no-repeat;
+}
+
+.social-facebook {
+  background-position: 0 -312px;
+}
+.social-facebook:hover, .social-facebook.facebook_hover, .social-facebook.facebook-hover {
+  background-position: 0 -288px;
+}
+
+.social-instagram {
+  background-position: 0 -24px;
+}
+.social-instagram:hover, .social-instagram.instagram_hover, .social-instagram.instagram-hover {
+  background-position: 0 0;
+}
+
+.social-linkedin {
+  background-position: 0 -216px;
+}
+.social-linkedin:hover, .social-linkedin.linkedin_hover, .social-linkedin.linkedin-hover {
+  background-position: 0 -192px;
+}
+
+.social-rss {
+  background-position: 0 -72px;
+}
+.social-rss:hover, .social-rss.rss_hover, .social-rss.rss-hover {
+  background-position: 0 -48px;
+}
+
+.social-twitter {
+  background-position: 0 -144px;
+}
+.social-twitter:hover, .social-twitter.twitter_hover, .social-twitter.twitter-hover {
+  background-position: 0 -120px;
+}
+
+.social-vimeo {
+  background-position: 0 -168px;
+}
+.social-vimeo:hover, .social-vimeo.vimeo_hover, .social-vimeo.vimeo-hover {
+  background-position: 0 -96px;
+}
+
+.social-youtube {
+  background-position: 0 -240px;
+}
+.social-youtube:hover, .social-youtube.youtube_hover, .social-youtube.youtube-hover {
+  background-position: 0 -264px;
+}
+
+.channel-icons-sprite, .channel-icons-ch1, .channel-icons-ch2, .channel-icons-ch3, .channel-icons-ch4 {
+  background: url('../images/channel-icons-s9c93aa75ec.png') no-repeat;
+}
+
+.channel-icons-ch1 {
+  background-position: 0 -90px;
+}
+
+.channel-icons-ch2 {
+  background-position: 0 -30px;
+}
+
+.channel-icons-ch3 {
+  background-position: 0 0;
+}
+
+.channel-icons-ch4 {
+  background-position: 0 -60px;
+}
+
+/***********
+~VARIABLES
+***********/
+/***********
+~BREAKPOINTS
+***********/
+/*  Syntax Quick Reference
+  --------------------------
+  column($ratios: 1, $offset: 0, $cycle: 0, $uncycle: 0, $gutter: $jeet-gutter)
+  span($ratio: 1, $offset: 0)
+  shift($ratios: 0, $col_or_span: column, $gutter: $jeet-gutter)
+  unshift()
+  edit()
+  center($max_width: 1410px, $pad: 0)
+  stack($pad: 0, $align: false)
+  unstack()
+  align($direction: both)
+  cf()
+*/
+.block {
+  /* Block wrapper */
+}
+.block.first {
+  /* The first block in the region */
+}
+.block.last {
+  /* The last block in the region */
+}
+.block.odd {
+  /* Zebra striping for each block in the region */
+}
+.block.even {
+  /* Zebra striping for each block in the region */
+}
+.block h2.block-title {
+  /* Block title */
+}
+
+#block-aggregator-category-1 {
+  /* Block for the latest news items in the first category */
+}
+
+#block-aggregator-feed-1 {
+  /* Block for the latest news items in the first feed */
+}
+
+#block-block-1 {
+  /* First block created with "Add block" link */
+}
+
+#block-blog-recent {
+  /* "Recent blog posts" block */
+}
+
+#block-book-navigation {
+  /* "Book navigation" block for the current book's table of contents */
+}
+
+#block-comment-recent {
+  /* "Recent comments" block */
+}
+
+#block-forum-active {
+  /* "Active forum topics" block */
+}
+
+#block-forum-new {
+  /* "New forum topics" block */
+}
+
+#block-locale-language {
+  /* Language switcher block */
+}
+
+#block-menu-menu-NAME {
+  /* Custom menu block */
+}
+
+#block-node-recent {
+  /* "Recent content" block */
+}
+
+#block-node-syndicate {
+  /* "Syndicate" block for primary RSS feed; see also page.css's .feed-icon */
+}
+
+#block-poll-recent {
+  /* "Most recent poll" block */
+}
+
+#block-profile-author-information {
+  /* "Author information" block for the profile of the page's author */
+}
+
+#block-search-form {
+  /* "Search form" block */
+}
+
+#block-shortcut-shortcuts {
+  /* "Shortcuts" block */
+}
+
+#block-statistics-popular {
+  /* "Popular content" block */
+}
+
+#block-system-main-menu {
+  /* "Main menu" block */
+}
+
+#block-system-management {
+  /* "Management" block for Drupal management menu */
+}
+
+#block-system-navigation {
+  /* "Navigation" block for Drupal navigation menu */
+}
+
+#block-system-user-menu {
+  /* "User menu" block for Drupal user menu */
+}
+
+#block-system-help {
+  /* "System help" block */
+}
+
+#block-system-main {
+  /* "Main page content" block */
+}
+
+#block-system-powered-by {
+  /* "Powered by Drupal" block */
+}
+
+#block-user-login {
+  /* "User login form" block */
+}
+#block-user-login .form-item {
+  margin: 10px 0;
+}
+#block-user-login .form-item .form-text {
+  font-size: 12px;
+  width: 100%;
+  padding-left: 10px;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+  border-radius: 4px;
+}
+#block-user-login .links {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+#block-user-new {
+  /* "Who's new" block for a list of the newest users */
+}
+
+#block-user-online {
+  /* "Who's online" block for a list of the online users */
+}
+
+/* Block Producers Login */
+.block.producer-login .prod-login a {
+  font-size: 90%;
+  padding: 0.2em 1.1em 0.3em 1.2em;
+  display: inline-block;
+  cursor: pointer;
+  -webkit-border-radius: 0px;
+  -moz-border-radius: 0px;
+  -ms-border-radius: 0px;
+  -o-border-radius: 0px;
+  border-radius: 0px;
+  filter: progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#FF222222', endColorstr='#FF000000');
+  background-color: #222222;
+  border: 0;
+  color: white;
+  text-shadow: black 0 -1px 0;
+  -webkit-box-shadow: 3px 3px 5px #cccccc;
+  -moz-box-shadow: 3px 3px 5px #cccccc;
+  box-shadow: 3px 3px 5px #cccccc;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+  border-radius: 4px;
+  margin: 0;
+  padding: 0.4em 1.1em 0.5em 1.2em;
+  font-size: 16px;
+  width: 100%;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 10px 0;
+  font-family: 'Roboto Condensed',sans-serif;
+}
+.block.producer-login .prod-login a:hover {
+  text-decoration: none;
+}
+.block.producer-login .prod-login a:hover {
+  background-color: #151515;
+}
+.block.producer-login .prod-login a:active {
+  background-color: #0e0e0e;
+}
+.block.producer-login .prod-login a.disabled, .block.producer-login .prod-login a[disabled] {
+  filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=60);
+  opacity: 0.6;
+  background: false;
+  cursor: default;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+}
+.block.producer-login .prod-login a::-moz-focus-inner {
+  padding: 0 !important;
+  margin: -1px !important;
+}
+.block.producer-login .prod-login a:focus {
+  outline: none;
+  border: 0;
+}
+.block.producer-login .prod-link a {
+  font-size: 90%;
+  padding: 0.2em 1.1em 0.3em 1.2em;
+  display: inline-block;
+  cursor: pointer;
+  -webkit-border-radius: 0px;
+  -moz-border-radius: 0px;
+  -ms-border-radius: 0px;
+  -o-border-radius: 0px;
+  border-radius: 0px;
+  filter: progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#FF888888', endColorstr='#FF555555');
+  background-color: #888888;
+  border: 0;
+  color: white;
+  text-shadow: #484848 0 -1px 0;
+  -webkit-box-shadow: 3px 3px 5px #cccccc;
+  -moz-box-shadow: 3px 3px 5px #cccccc;
+  box-shadow: 3px 3px 5px #cccccc;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+  border-radius: 4px;
+  margin: 0;
+  padding: 0.4em 1.1em 0.5em 1.2em;
+  font-size: 16px;
+  width: 100%;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: 'Roboto Condensed',sans-serif;
+}
+.block.producer-login .prod-link a:hover {
+  text-decoration: none;
+}
+.block.producer-login .prod-link a:hover {
+  background-color: #7b7b7b;
+}
+.block.producer-login .prod-link a:active {
+  background-color: #747474;
+}
+.block.producer-login .prod-link a.disabled, .block.producer-login .prod-link a[disabled] {
+  filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=60);
+  opacity: 0.6;
+  background: false;
+  cursor: default;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+}
+.block.producer-login .prod-link a::-moz-focus-inner {
+  padding: 0 !important;
+  margin: -1px !important;
+}
+.block.producer-login .prod-link a:focus {
+  outline: none;
+  border: 0;
+}
+
+/* MAILCHIMP SIGNUP FORM */
+.block.mailchimp-signup p {
+  font-family: 'Roboto Condensed',sans-serif;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+.block.mailchimp-signup input.email {
+  width: 100%;
+  margin: 5px 0 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  padding: 10px 5px;
+  height: 36px;
+  line-height: 36px;
+  color: #888;
+}
+.block.mailchimp-signup input.email:focus {
+  outline: 0;
+  background: #f8f8f8;
+  border-color: #ccc;
+  color: #333;
+}

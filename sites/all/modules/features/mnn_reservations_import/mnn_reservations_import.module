@@ -1,0 +1,317 @@
+<?php
+/**
+ * @file
+ * Code for the mnn_reservations_import feature.
+ */
+
+include_once('mnn_reservations_import.features.inc');
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mnn_reservations_import_form_node_type_form_alter(&$form, &$form_state) {
+  //admin/structure/types/add/reservable
+  if(arg(4) == 'reservable') {
+    $form['name']['#weight'] = -99;
+  
+    $form['reservations_type_setting'] = $form['reservations']['reservations_type_setting'];
+    $form['reservations_type_setting']['#weight'] = -98;
+    $form['reservations_type_setting']['#default_value'] = 'bucket';
+  
+    unset($form['reservations']['reservations_type_setting']);
+  
+    $form['reservations_max_hours_per_reservation'] = $form['reservations']['reservations_max_hours_per_reservation'];
+    $form['reservations_max_hours_per_reservation']['#weight'] = -97;
+    $form['reservations_max_hours_per_reservation']['#default_value'] = 48;
+  
+    unset($form['reservations']['reservations_max_hours_per_reservation']);
+  
+    $form['reservations_grouping'] = $form['reservations']['reservations_grouping'];
+    $form['reservations_grouping']['#weight'] = -96;
+  
+    unset($form['reservations']['reservations_grouping']);
+  
+    $form['reservations_inventory'] = $form['reservations']['reservations_inventory'];
+    $form['reservations_inventory']['#weight'] = -95;
+    $form['reservations_inventory']['#default_value'] = 806;
+  
+    unset($form['reservations']['reservations_inventory']);
+    
+    $form['reservations_rate_per_hour'] = $form['reservations']['reservations_rate_per_hour'];
+    $form['reservations_rate_per_hour']['#weight'] = -94;
+
+    unset($form['reservations']['reservations_rate_per_hour']);
+    
+    
+    $form['reservations_late_fee_per_hour'] = $form['reservations']['reservations_late_fee_per_hour'];
+    $form['reservations_late_fee_per_hour']['#weight'] = -93;
+
+    unset($form['reservations']['reservations_late_fee_per_hour']);
+
+    
+    $form['reservations']['reservations_allow_overnight']['#default_value'] = 1;
+    $form['reservations']['reservations_push']['#default_value'] = 1;
+    $form['reservations']['reservations_min_cancel_hours']['#default_value'] = 6;
+    
+    
+  
+    //dsm($form);
+  }
+}
+
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mnn_reservations_import_form_alter(&$form, &$form_state, $form_id) {
+  
+  if ($form_id == 'reservations_reservation_node_form') {
+  
+    global $user;
+    if ($user->uid != 1) {
+      return;
+    }
+      
+    $form['override']['#default_value'] = 1;
+      
+  
+  
+  //RECONFIRMING W/ ITEMS
+  if ($form['reservations_reservation_status']['#default_value'] == 2) {
+  
+    //FIX TIME 
+    dsm($form['field_reservations_date'][LANGUAGE_NONE][0]['#default_value']['value']);
+    dsm($form['field_reservations_date'][LANGUAGE_NONE][0]['#default_value']['value2']); 
+     
+    $temp_ids = explode(',', $form['field_temp_reserved_items'][LANGUAGE_NONE][0]['value']['#default_value']);
+     
+   
+     
+     $count = 0;   
+     foreach($temp_ids as $temp_id) { 
+       dsm($temp_id);
+       $count++;
+       $nid = db_query("SELECT entity_id FROM {feeds_item} WHERE guid = :temp_id", array(':temp_id' => $temp_id))->fetchField();
+       //$nid = db_query("SELECT entity_id FROM {field_data_field_invenroty_id} WHERE field_invenroty_id_value = :temp_id", array(':temp_id' => $temp_id))->fetchField();
+      dsm('new item id - ' . $nid);
+      // now we need the type
+      
+      $item_being_reserved_node = node_load($nid);
+      dsm($item_being_reserved_node->type);
+      dsm($item_being_reserved_node->reservations_type_setting);
+      
+      if($item_being_reserved_node->reservations_type_setting == 'resource') {
+       $form['choice_wrapper']['reservations_reservation_items']['choice_' . $count]['reservations_item_nid']['#default_value']  = $nid;
+      } else {
+        $form['choice_wrapper']['reservations_reservation_items']['choice_' . $count]['reservations_item_nid']['#default_value']  = $item_being_reserved_node->type;
+        $includes_bucket = TRUE;
+      }
+       
+     }
+     
+     //items w/ buckets require an additional step in the resave
+     // not sure how they get to reservations_reservation_status = 3
+     if (!$includes_bucket) {
+       $form['reservations_reservation_status']['#default_value'] = 4;
+     }
+   }  
+     
+   
+  //CHECKING OUT
+  if ($form['reservations_reservation_status']['#default_value'] == 3) {
+
+    $temp_ids = explode(',', $form['field_temp_reserved_items'][LANGUAGE_NONE][0]['value']['#default_value']);
+
+     $count = 0;   
+     $new_node_nids = array();
+     
+     foreach($temp_ids as $temp_id) { 
+       $nid = db_query("SELECT entity_id FROM {feeds_item} WHERE guid = :temp_id", array(':temp_id' => $temp_id))->fetchField();
+       
+      $new_node_nids[$count] = $nid;
+      $count++;
+    }
+    
+    dsm($new_node_nids);
+    
+    $count = 0;
+    
+    //dsm($form['choice_wrapper']['reservations_reservation_items'] );
+    
+    foreach( $form['choice_wrapper']['reservations_reservation_items'] as $item ) {
+      
+      
+  
+      if (is_array($item) && $item['reservations_placeholder_nid']['#value']) {
+        //dsm($item);
+        $item['reservations_item_nid']['#default_value'] = $new_node_nids[$count];  
+        dsm($item);
+        $count++;  
+      }
+
+ 
+      //
+    }
+
+  }
+  
+  dsm($form['choice_wrapper']['reservations_reservation_items']);
+  
+     //automattically resaves the node when it is loaded
+     //drupal_add_js("jQuery(document).ready(function () { jQuery('#reservations-reservation-node-form').submit(); });", 'inline');
+     
+    
+  } 
+}
+
+/**
+ * Implements hook_menu()
+ */
+function mnn_reservations_import_menu() {
+    
+  $items['admin/reservations/resave-all'] = array(
+    'title' => 'Resave All Reservations',
+    'description' => '',
+    'page callback' => 'mnn_reservations_import_resave_batch_init',
+    'access arguments' => array('administer reservations'),
+    'type' => MENU_CALLBACK
+  );
+  
+  return $items;
+
+}
+  
+function mnn_reservations_import_resave_batch_init() {
+    
+  $batch = array(
+    'title' => t('Resaving Reservation Nodes...'),
+    'operations' => array(),
+    'init_message' => t('Starting Resave'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error occurred during processing'),
+    'finished' => 'mnn_reservations_import_resave_batch_finished',
+    'progressive' => FALSE
+  );
+    
+  //query all project nodes
+  
+  $result = db_query('SELECT nid FROM {node} WHERE type = :type ORDER BY nid ASC', array(':type' => 'reservations_reservation'));
+  
+  $count = 0;
+  foreach ($result as $record) {
+    if ($count < 6) {
+      $batch['operations'][] = array('mnn_reservations_import_resave_batch_worker', array($record->nid));
+      $count++;
+    }
+  }
+   
+  
+ 
+  batch_set($batch);
+ 
+  batch_process('admin/content');
+}
+ 
+function mnn_reservations_import_resave_batch_worker($nid, &$context) {
+  
+  $node = node_load($nid);
+  //set og to legacy project id
+  
+  dsm($node);
+ 
+  
+  
+  if (empty($node->field_temp_project_id[LANGUAGE_NONE][0]['value']) || $node->field_temp_project_id[LANGUAGE_NONE][0]['value']) {
+	// log error  
+	
+	$error = 'no project id';
+	$nid = db_insert('mnn_reservations_import_error_log')->fields(array(
+      'nid' => $node->nid,
+      'error' => $error,
+      'created' => REQUEST_TIME,
+    ));
+  }
+  
+  //find the legacy node
+  
+  //$node->reservations_reservation_items = array();
+  //$node->reservations_reservation_items[]['reservations_item_nid'] = ;
+  
+  //reservations_add_reservation_items
+  
+    //$item['reservations_placeholder_nid'] = $reservation->nid;
+  
+  /*
+  186 (Array, 8 elements)
+  did (String, 3 characters ) 186
+  reservations_item_status (String, 1 characters ) 1
+  reservations_placeholder_nid (String, 6 characters ) 303579
+  placeholder_title (String, 44 characters ) TR0001-2ND FL. CONFERENCE ROOM (Reservation)
+  reservations_item_nid (String, 5 characters ) 36776
+  item_title (String, 30 characters ) TR0001-2ND FL. CONFERENCE ROOM
+  type (String, 26 characters ) 59th_conference_rooms_fac_
+  name (String, 27 characters ) 59th Conference Rooms (FAC)
+*/
+
+  //$node->reservations_reservation_status = 3;
+  
+  //node_save($node);
+  $context['results']['processed']++;
+  $context['message'] = 'Successfully resaved Reservation #' . $array[0];
+}
+ 
+function mnn_reservations_resave_import_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural($results['processed'], 'One Reservation processed.', '@count Reservation processed.');
+  }
+  else {
+    $message = 'some errors';
+  }
+ 
+  drupal_set_message($message);
+}
+
+function mnn_reservations_import_update_temp_project_ids() {
+	
+	$reservations = db_query("SELECT * FROM {field_data_field_temp_project_id} JOIN node ON field_data_field_temp_project_id.entity_id = node.nid JOIN {field_data_field_reservation_id} ON  field_data_field_reservation_id.entity_id = field_data_field_temp_project_id.entity_id WHERE node.type = 'reservations_reservation'");
+	
+	foreach ($reservations as $reservation) {
+		
+	  $legacy_reservation_id = db_query("SELECT project_id FROM ac_report_reservation_cache WHERE reservation_id = :reservation_id", array(':reservation_id' => $reservation->field_reservation_id_value))->fetchField();
+      		
+	  
+	  
+	  if ($legacy_reservation_id) {
+		 
+		 dsm($reservation->field_temp_project_id_value . '/' . $legacy_reservation_id);
+		 
+		 db_update('field_data_field_temp_project_id') // Table name no longer needs {}
+           ->fields(array(
+           'field_temp_project_id_value' => $legacy_reservation_id,
+         ))
+         ->condition('entity_id', $reservation->nid, '=')
+         ->execute(); 
+         
+         db_update('field_revision_field_temp_project_id') // Table name no longer needs {}
+           ->fields(array(
+           'field_temp_project_id_value' => $legacy_reservation_id,
+         ))
+         ->condition('entity_id', $reservation->nid, '=')
+         ->execute(); 
+	  }
+	  
+	}
+	
+	/*
+
+	ac_report_reservation_cache
+	reservation_id 
+	project_id 
+	
+	 field_data_field_temp_project_id
+	 field_temp_project_id_value
+	 
+	  field_revision_field_temp_project_id 
+*/
+}

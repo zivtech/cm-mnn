@@ -1,0 +1,15 @@
+name = Reservations Feeds 
+package = Reservations
+description = "Provides a feeds processor plugin to import Content Type and Nodes with Reservations API settings."
+
+core = 7.x
+
+dependencies[] = reservations
+dependencies[] = feeds 
+
+
+files[] = reservations_feeds.module
+files[] = reservations_feeds.install
+files[] = ReservationsNodeProcessor.inc
+files[] = ReservationsTypeProcessor.inc
+
