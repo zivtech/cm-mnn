@@ -74,14 +74,22 @@ function mnn_programming_exports_letter_pdfbuild($project_data, $letters) {
 
       $letter_text .= "<br/><br/>The labels included in this package are to be used in the unlikely event that you cannot go live as scheduled. If you are submitting media rather than airing a live program we ask that you follow MNN's media submission guidelines, which are also included in this letter. Please note that if you are unable to attend a live broadcast, the Tape Library will need to have media on file in order to broadcast a program for you. ";
 
+      $letter_text .= "<br/><br/>Please note that this is the last quarter you will receive labels. As of the Winter 2015 Quarter, MNN will only accept digital submissions. You can upload files from your own computer or our upload stations in the 59th St. Facility Lobby. Certified, non-linear producers can upload files from the 59th St. Studios second floor edit stations. ";
+
       $letter_text .= "<br/><br/>If you have any questions, please contact the Programming Department at program@mnn.org or 212-757-2670, x305 or x334.";
 
     }
     else if ($project_array['season_number'] <= 1) {
       $letter_text = "Welcome to Manhattan Neighborhood Network! Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end. <b>Please note that your Project ID is an important identifier that MNN uses to track and program your shows.</b>        You may be asked for this number when submitting requests or communicating with MNN.";
+
+      $letter_text .= "<br/><br/>Please note that this is the last quarter you will receive labels. As of the Winter 2015 Quarter, MNN will only accept digital submissions. You can upload files from your own computer or our upload stations in the 59th St. Facility Lobby. Certified, non-linear producers can upload files from the 59th St. Studios second floor edit stations. ";
+
     }
     else {
       $letter_text = "Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end. <b>Please note that your Project ID is an important identifier that MNN uses to track and program your shows.</b>    You may be asked for this number when submitting requests or communicating with MNN.";
+
+      $letter_text .= "<br/><br/>Please note that this is the last quarter you will receive labels. As of the Winter 2015 Quarter, MNN will only accept digital submissions. You can upload files from your own computer or our upload stations in the 59th St. Facility Lobby. Certified, non-linear producers can upload files from the 59th St. Studios second floor edit stations. ";
+
     }
     $thank_out_text = "Thank you for your involvement with MNN, and best wishes for a successful quarter!";
     $pdf->SetFont(PDF_FONT_NAME_MAIN, "", 8);
