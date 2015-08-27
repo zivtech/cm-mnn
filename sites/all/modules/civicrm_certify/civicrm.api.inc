@@ -12,6 +12,10 @@ function _civicrm_certify_get_civigroups() {
   $params = array(
     'version' => 3,
     'is_active' => 1,
+     // state explicitly since default index differs in Civi versions
+    'sequential' => 1,
+    // increase the limit beyond 25 rows
+    'rowCount' => array('>=' => 0),
   );
 
   $result = civicrm_api( 'group','get',$params );
