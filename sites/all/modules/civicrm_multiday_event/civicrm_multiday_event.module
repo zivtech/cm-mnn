@@ -253,7 +253,6 @@ function civicrm_multiday_event_form($node, $form_state) {
 
 /**
  * Implements hook_form_alter().
- * Customized for mnn to use Event Title instead of Even Type
  */
 function civicrm_multiday_event_form_alter(&$form, &$form_state, $form_id) {
 
@@ -288,12 +287,10 @@ function civicrm_multiday_event_form_alter(&$form, &$form_state, $form_id) {
     $version = CRM_Utils_VersionCheck::singleton()->localVersion;
 
     if ($version < "4.4") {
-      //$result = db_query('SELECT id, template_title FROM {civicrm_event} WHERE is_template = 1 ORDER BY template_title');
-      $result = db_query('SELECT id, title FROM {civicrm_event} WHERE is_template = 1 ORDER BY template_title');
+      $result = db_query('SELECT id, template_title FROM {civicrm_event} WHERE is_template = 1 ORDER BY template_title');
 
       foreach ($result as $record) {
-        //$templates[$record->id] = $record->template_title;
-        $templates[$record->id] = $record->title;
+        $templates[$record->id] = $record->template_title;
       }
     } else {
 			$params = array(
@@ -302,14 +299,12 @@ function civicrm_multiday_event_form_alter(&$form, &$form_state, $form_id) {
 				 'is_template' => 1,
 				 'option.limit' => 9999,
 				 'options' => array(
-				 //'sort' => 'template_title'),
-         'sort' => 'title'),
+				 'sort' => 'template_title'),
 			);
       $result = civicrm_api('Event', 'get', $params);
 
       foreach ($result['values'] as $key => $record) {
-        //$templates[$record['id']] = $record['template_title'];
-        $templates[$record['id']] = $record['title'];
+        $templates[$record['id']] = $record['template_title'];
       }
     }
 
