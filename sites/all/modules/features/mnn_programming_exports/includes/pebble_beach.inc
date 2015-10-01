@@ -137,7 +137,7 @@ function mnn_programming_exports_pebble_beach_xml($data) {
     ';
   
   if (strtolower($data['format']) == 'live') {
-    $livefeed_array = mnn_programming_exports_livefeed_array();
+    $livefeed_array = mnn_programming_exports_livefeed_array($data['channel']);
     $fixed_port = $livefeed_array[$data['livefeed']];
 
     if (!$fixed_port) {
@@ -193,8 +193,9 @@ function mnn_programming_exports_pebble_beach_xml($data) {
   //  " ".$data['runtime']." ".$data['format']."<br/>";
 }
 
-function mnn_programming_exports_livefeed_array() {
-  return array(
+function mnn_programming_exports_livefeed_array($channel) {
+
+  $sources = array(
 	       "ST1" => '<fixed port="PGMSD-PCR1" device="EvertzEMR"/>',
 	       "ST2" => '<fixed port="PGMSD-PCR2" device="EvertzEMR"/>',
 	       "ST3" => '<fixed port="PGMSD-PCR3" device="EvertzEMR"/>',
@@ -209,7 +210,22 @@ function mnn_programming_exports_livefeed_array() {
 	       "BKLN" => '<fixed port="RX-BCAT" device="EvertzEMR"/>',
 	       "BRNX" => '<fixed port="RX-BXNET" device="EvertzEMR"/>',
 	       );
+    
+
+  if($channel == 5) {
+    $hd_sources = array(
+           "ST1_HD" => '<fixed port="PGM-PCR1" device="EvertzEMR"/>',
+           "ST2_HD" => '<fixed port="PGM-PCR2" device="EvertzEMR"/>',
+           "ST3_HD" => '<fixed port="PGM-PCR3" device="EvertzEMR"/>',
+           "ST4_HD" => '<fixed port="PGM-PCR4" device="EvertzEMR"/>',
+           );
+    $sources = array_merge($sources, $hd_sources); // merge the two
+  }
+   
+
+  return $sources;    
 }
+
 function mnn_programming_exports_pebble_beach_download() {
   
   $content = $_SESSION['mnn_pebble_beach_content'];
