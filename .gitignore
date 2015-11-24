@@ -16,3 +16,4 @@ sites/*/private
 # Ignore caches
 sites/all/civi-extensions/cache/*
 sites/all/civi-extensions/cache/.*
+sites/all/civi-extensions/cache/*/*
