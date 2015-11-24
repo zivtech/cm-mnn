@@ -7,6 +7,7 @@ function cm_crew_connect_node_presave($node) {
   //handle presave logic for the crew connect request
   if ($node->type == 'crew_connect_request') {
     //get project id
+//dsm($node); 
     $project_nid = 
       cm_crew_connect_get_single_field_value($node,
 					     'field_crew_project_id',
@@ -15,14 +16,48 @@ function cm_crew_connect_node_presave($node) {
     //FETCH PROJECT AS IT WILL BE USED IN THE REQUEST TITLE
     $project = $project_nid ? node_load($project_nid) : NULL;
 
+//set the location value of the project for use later in creating event
+//using the correct template. 
+// 834 == 59th st
+// 836 == firehouse 
+
+     $project_location_tid = 
+      cm_crew_connect_get_single_field_value($project,
+					     'field_location',
+					     'tid');
+  //FH Template ID on testing is 5354, on Live it's 5360,
+     if ($project_location_tid == 834){
+       $event_template_id == 5326;
+       }elseif ($project_location_tid == 836){
+       $event_template_id == 5354;
+       }
+       //TODO: what do we do if there is a diff location? 
+ //dsm($project_location_tid, 'project_location_tid');
+ 
+ 
+ 
     //FETCH THE POSITION FIELD AS IT WILL BE USED IN THE REQUEST TITLE
     $position =       
       cm_crew_connect_get_single_field_value($node,
 					     'field_crew_positions');
 
     
-    $positions_field = field_info_field('field_crew_positions');
+    $positions_field = field_info_field('field_crew_positions');   
     $allowed_values = list_allowed_values($positions_field);
+
+    // SHOULD STUDIO BE SET TO NONE? IF SO, SET TO NONE
+    // content type dependency handles whether to show studio or not but does
+    // not handle setting studio to null if position set to non-studio position
+    $positions_none = array(
+                  'editor_premiere',
+                  'editor_xpression_cg',
+                  'expess_studios_general',
+                );
+    foreach ($positions_none as $position_none) {
+      if ($position == $position_none) {
+        $node->field_which_studio_is_this_in_ = "- None -";
+      }
+    }
 
     //SET THE CREW CONNECT REQUEST TITLE WITH THE PROJECT AND POSITION
     $node->title = $project->title . ": " . $allowed_values[$position];
@@ -77,6 +112,7 @@ function cm_crew_connect_node_presave($node) {
 				    "default_role_id" => "2",
 				    "description" => $event_desc,
 				    "event_type_id" => "170",
+				     'template_id' => $event_template_id,
 				    ));
       $event_id = $result2['id'];
 
@@ -87,6 +123,18 @@ function cm_crew_connect_node_presave($node) {
 				    'entity_table' => "civicrm_event",
 				    'entity_id' => $result2['id'],
 				    ));
+				    
+           $author_cid = CRM_Core_BAO_UFMatch::getContactID($node->uid);
+      //set the creator to be a participant 
+      	  $result_add_creator_as_participant = civicrm_api3('Participant', 'create', 
+				  array(
+					'sequential' => 1,
+					'event_id' => $result2['id'],
+					'contact_id' => $author_cid,
+					"role_id" => 3,
+					));
+
+      
       
       $id_to_set = (int) $event_id;
     

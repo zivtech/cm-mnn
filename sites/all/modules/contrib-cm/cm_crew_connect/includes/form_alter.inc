@@ -5,75 +5,163 @@
  */
 function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
 
+/*http://cm-testing.mnn.openflows.com/node/add/crew-connect-request?field_crew_project_id=773906&destination=user/207293/cm_crew_connect
+
+http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_crew_connect
+*/
   //The Crew Connect Request Node Form
   if ($form_id == 'crew_connect_request_node_form') {
-    drupal_set_message(t("Please make sure you have a Confirmed Reservation for the relevant facility and time prior to asking for a Crew."), 'warning');
-    $project_nid = filter_input(INPUT_GET, 'field_crew_project_id');
-    $project = $project_nid ? node_load($project_nid) : NULL;
+//dpm($form, 'form');
+//dpm($form_state, 'form_state');
 
-    if (!$project && $form['nid']) {
-      $request = 
-	$form['field_crew_project_id'][LANGUAGE_NONE][0]
-	['target_id']['#entity'];
 
-      $project_nid = 
-	cm_crew_connect_get_single_field_value($request, 
-					       'field_crew_project_id',
-					       'target_id');
-      $project = $project_nid ? node_load($project_nid) : NULL;
-    }
+      $nid = (isset($form['nid']['#value'])) ? $form['nid']['#value'] :
+                NULL;    
+      
+      // EDITING THE FORM
+      if ($nid) {
 
-    $author = ($project && $project->uid) ? user_load($project->uid) :
-      NULL;
+        $request = 
+            $form['field_crew_project_id'][LANGUAGE_NONE][0]
+            ['target_id']['#entity'];
 
-    $name = cm_crew_connect_get_display_name($author->uid);
+        $project_id = 
+            cm_crew_connect_get_single_field_value($request, 
+                           'field_crew_project_id',
+                           'target_id');   
+      }
+      else {
+        
+        // NO NID - FIRST TIME THRU - SETUUP PROJECT CONFIRMATION
+        $project_id = isset($_GET['field_crew_project_id']) ? 
+          $_GET['field_crew_project_id']: NULL;
 
-    $form['field_crew_producer_name'][LANGUAGE_NONE][0]
-      ['value']['#default_value'] = $name;
+        if (!isset($project_id) || !$project_id) {
+          return;
+        }
+      }
+      
+      $project = $project_id ? node_load($project_id) : NULL;            
+//dpm($project, 'project');
+      
+      // create hidden fields
+      cm_crew_connect_request_create_hidden_fields_alter_form(
+                          $form, 
+                          $project);      
+      // location
+      $location_tid = 
+        cm_crew_connect_get_single_field_value($project, 
+                 'field_location',
+                 'tid');              
+      $term = $location_tid ? taxonomy_term_load($location_tid) : NULL;
+      $location = $term ? $term->name : "";
+ 
+      // BASED ON LOCATION SET THE VALUES FOR THE STUDIO FIELD
+      $studio_options = cm_crew_connect_get_studio_dropdown_options(
+                  $form, 
+                  $location_tid);
+      $form['field_which_studio_is_this_in_']
+                [LANGUAGE_NONE]['#options'] = $studio_options;        
 
-    $form['field_crew_public_description'][LANGUAGE_NONE][0]
-      ['value']['#default_value'] = 
-      cm_crew_connect_get_single_field_value($project, 'field_description');
+      
+      
+      // THESE VALUES ARE ONLY SET THE FIRST TIME THROUGH
+      if (!$nid) {
 
-    $form['field_crew_public_url'][LANGUAGE_NONE][0]
-      ['value']['#default_value'] = 
-      cm_crew_connect_get_single_field_value($project, 
-					     'field_project_public_url');
+          // FIXME: for staff and admin this should allow for a search for the
+          // producer (similar to what is done in the project)     
+          // set the name of the producer based on the author_id of the request
+          global $user;
+          $author_id = $user->uid;
+          $name = cm_crew_connect_get_display_name($author_id); 
+          
+          
+          // SHOULD THIS EMAIL BE UPDATED WHEN THE CIVI ONE IS UPDATED? no, 
+          // if the email has already been sent to people, it should not be 
+          // updated
+          $public_email = cm_crew_connect_get_public_email($author_id); 
+          
+    /*************************************   
+          PHASE 2 INTERSTERTIAL FORM
+          $is_project_confirmed = 
+            (isset($_GET['project_confirm']) 
+            && $_GET['project_confirm'] == 'true')?
+            TRUE : FALSE;
 
-    $language_tid = 
-      cm_crew_connect_get_single_field_value($project, 
-					     'field_pbcore_languages',
-					     'tid');
-    $term = $language_tid ? taxonomy_term_load($language_tid) : NULL;
+          if (!$is_project_confirmed === TRUE) {
+            drupal_goto("crew-request-project-confirm/$project_id/$author_id");
+            return;
+          }    
+    *************************************/
 
-    $term_name = $term ? $term->name : "";
-    if ($term_name) {
-      $form['field_crew_language'][LANGUAGE_NONE][0]
-	['value']['#default_value'] = $term_name;
-    }
+ 
+          // SET DEFAULT VALUES FOR FIELDS - when adding a node
+          $form['field_crew_producer_name'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] = $name;
 
-    $form['field_crew_producer_name'][LANGUAGE_NONE]['#disabled'] = TRUE;
-    $form['field_crew_public_description'][LANGUAGE_NONE]['#disabled'] = TRUE;
-    $form['field_crew_public_url'][LANGUAGE_NONE]['#disabled'] = TRUE;
-    $form['field_crew_language'][LANGUAGE_NONE]['#disabled'] = TRUE;
-    
-    if ($project) {
-      $form['title'] = array('#type'=>'hidden',
-			     '#value'=>$project->title);
-    }
+          $form['field_crew_public_description'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] = 
+            cm_crew_connect_get_single_field_value(
+                          $project, 
+                          'field_description');
+               
+          $form['field_crew_location'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] = $location;
+                       
+          $form['field_crew_public_url'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] = 
+                      cm_crew_connect_get_single_field_value($project, 
+                     'field_project_public_url');
 
-    $form['field_crew_start_time']['#prefix'] = "<table><tr><td>";
-    $form['field_crew_start_time']['#suffix'] = "</td>";
-    $form['field_crew_length_of_time']['#prefix'] = "<td>";
-    $form['field_crew_length_of_time']['#suffix'] = "</td></tr></table>";
-    if (!$form['nid']['#value']) {
-      $form['actions']['submit']['#value'] = t('Create Crew Request');
-    }
+          $language_tid = 
+            cm_crew_connect_get_single_field_value($project, 
+                     'field_pbcore_languages',
+                     'tid');
+          $term = $language_tid ? taxonomy_term_load($language_tid) : NULL;
+          $form['field_crew_language'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] =
+                      $term ? $term->name : "";
 
+          $form['field_crew_requesters_pub_email'][LANGUAGE_NONE][0]
+            ['value']['#default_value'] = $public_email;      
+        
+      }
+  
   }
+/*************************  
+ // STUB FOR INTERSTERTIAL FORM
+  if($form_id == "views_form_crew_request_project_settings_page_1"){
+      // display the confirmation form and setup for creating crew request
+      $form['actions']['submit']['#value'] = "Confirm Project Settings";
+
+      $project_id = arg(1);
+      $user_id = arg(2);
+      $destination = "user/" . $user_id . "/cm_crew_connect";
+      $form['#action'] = 
+        "/node/add/crew-connect-request?field_request_project=".$project_id .
+        "&project_confirm=true&destination=" . $destination;
+    
+  }
+***********************************/
 
   //The Crew Connect Applicant Form
   if ($form_id == 'crew_connect_application_node_form') {
+/*http://cm-testing.mnn.openflows.com/node/add/crew-connect-application?field_app_crew_connect_node=779614&field_app_producer=207293&destination=user/207293/cm_crew_connect  
+*/
+
+//dpm($form, 'form');
+
+    $nid = (isset($form['nid']['#value'])) ? $form['nid']['#value'] :
+              NULL; 
+ 
+    if (!$nid) {
+      
+      // FIXME: STAFF NEED TO BE ABLE TO ADD PRODUCER ID AND SET AUTHOR
+      $public_email = cm_crew_connect_get_public_email($form['uid']['#value']);
+      $form['field_app_apps_public_email'][LANGUAGE_NONE][0]
+        ['value']['#default_value'] = $public_email;      
+    }
+    
     $form['actions']['submit']['#value'] = t('Sign Up');
   }
 
@@ -111,3 +199,54 @@ function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+
+function cm_crew_connect_request_create_hidden_fields_alter_form(&$form, $project) {
+
+  $form['field_crew_producer_name'][LANGUAGE_NONE]['#disabled'] = TRUE;
+  $form['field_crew_public_description'][LANGUAGE_NONE]['#disabled'] = TRUE;
+  $form['field_crew_location'][LANGUAGE_NONE]['#disabled'] = TRUE;    
+  $form['field_crew_public_url'][LANGUAGE_NONE]['#disabled'] = TRUE;
+  $form['field_crew_language'][LANGUAGE_NONE]['#disabled'] = TRUE;   
+  
+  if ($project) {
+    $form['title'] = array('#type'=>'hidden',
+         '#value'=>$project->title);
+  }
+
+  $form['field_crew_start_time']['#prefix'] = "<table><tr><td>";
+  $form['field_crew_start_time']['#suffix'] = "</td>";
+  $form['field_crew_length_of_time']['#prefix'] = "<td>";
+  $form['field_crew_length_of_time']['#suffix'] = "</td></tr></table>";
+ 
+  if (!$form['nid']['#value']) {
+    $form['actions']['submit']['#value'] = t('Create Crew Request');  
+  }
+ 
+}
+
+function cm_crew_connect_get_studio_dropdown_options($form, $location_tid) {
+  
+  // 59th St = 834 and Firehouse = 837
+  $studio_options = $form['field_which_studio_is_this_in_']
+            [LANGUAGE_NONE]['#options'];
+            
+  if ($location_tid == '834') {
+    foreach ($studio_options as $key => $value) {
+      $prefix = substr($key, 0, 3);
+      if ($prefix != '59_' && $prefix != '_no') {
+        unset($studio_options[$key]);
+      }
+    }
+  }
+  elseif ($location_tid == '836') {
+    foreach ($studio_options as $key => $value) {
+      $prefix = substr($key, 0, 3);          
+      if ($prefix != 'fh_' && $prefix != '_no') {
+        unset($studio_options[$key]);
+        
+      }
+    }        
+  }
+  
+  return $studio_options;
+}

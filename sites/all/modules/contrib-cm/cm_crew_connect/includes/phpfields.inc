@@ -42,6 +42,7 @@ function cm_crew_connect_add_request_field($row) {
   $project = node_load($row->nid);
   $uid = $project ? "/".$project->uid : "";
 
+  // DESTINATION IS NOT NEEDED IF THERE IS AN INTISTERTIAL FORM
   if (!$uid) {
     return 'N/A';
   }
@@ -49,7 +50,9 @@ function cm_crew_connect_add_request_field($row) {
   $dashboard = 'user/'.$project->uid.'/cm_crew_connect';
   
   $query_args = array('field_crew_project_id'=>$project->nid,
-		      'destination'=>$dashboard);
+  	      'destination'=>$dashboard);
+
+  //$query_args = array('field_crew_project_id'=>$project->nid);  
 
   $link = l(t("Request Crew for your Show"), "node/add/crew-connect-request", 
 	    array('query'=>$query_args));
