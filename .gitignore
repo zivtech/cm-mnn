@@ -1,5 +1,5 @@
 # Ignore .htaccess
-/.htaccess
+/.htaccess*
 
 
 # Ignore everything in default directory
@@ -12,3 +12,7 @@ sites/*/*settings*.php
 # Ignore paths that contain user-generated content.
 sites/*/files
 sites/*/private
+
+# Ignore caches
+sites/all/civi-extensions/cache/*
+sites/all/civi-extensions/cache/.*
