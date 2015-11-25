@@ -4,6 +4,8 @@
  * Implements hook_form_alter().
  */
 function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
+//dpm($form_id, 'form_id');
+//dpm($form, 'form');
 
 /*http://cm-testing.mnn.openflows.com/node/add/crew-connect-request?field_crew_project_id=773906&destination=user/207293/cm_crew_connect
 
@@ -11,8 +13,9 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
 */
   //The Crew Connect Request Node Form
   if ($form_id == 'crew_connect_request_node_form') {
-//dpm($form, 'form');
+
 //dpm($form_state, 'form_state');
+
 
 
       $nid = (isset($form['nid']['#value'])) ? $form['nid']['#value'] :
@@ -197,6 +200,57 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
     $form['actions']['cancel']['#title'] = 'No';
 
   }
+
+  // CONVERTS TEXT FIELD IN VIEW TO DROPDOWN FIELD
+  // https://www.drupal.org/node/1549250
+  if ($form['#id'] == 'views-exposed-form-crew-connect-search-page') {
+  
+    if (isset($form['field_crew_location_value'])) {
+
+        $field_id = 'field_crew_location';
+        
+        // Build a query to get all node ids having the specified field
+        $query = new EntityFieldQuery();
+        $query->entityCondition('entity_type', 'node')
+              ->entityCondition('bundle', 'crew_connect_request')
+              ->fieldCondition($field_id, 'value', 'NULL', '!=')            
+              ->fieldOrderBy($field_id, 'value', 'ASC');                   
+                           
+        $results = $query->execute();
+      
+ 
+        // Attach the field values to the nodes
+        $nodes = $results['node'];
+        field_attach_load(
+            'node', 
+            $nodes, 
+            FIELD_LOAD_CURRENT, 
+            array(
+                'field_id' => $field_id
+                  )
+            );
+
+        // Add a default so the filter is optional
+        $options = array('' => '');
+
+
+        // Build the options array based on the query results, overwriting 
+        // duplicate entries
+        foreach($nodes as $nid => $node) {
+         
+          $value = $node->{$field_id}['und'][0]['value'];
+          $options[$value] = $value;      
+       }
+       
+        // Alter the field
+        $form[$field_id .'_value']['#type'] = 'select';
+        $form[$field_id .'_value']['#options'] = $options;
+        $form[$field_id .'_value']['#size'] = 1;
+  
+    }
+     
+  }
+    
 }
 
 
