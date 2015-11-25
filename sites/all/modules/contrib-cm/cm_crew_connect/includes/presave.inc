@@ -27,9 +27,9 @@ function cm_crew_connect_node_presave($node) {
 					     'tid');
   //FH Template ID on testing is 5354, on Live it's 5360,
      if ($project_location_tid == 834){
-       $event_template_id == 5326;
+       $event_template_id = 5326;
        }elseif ($project_location_tid == 836){
-       $event_template_id == 5354;
+       $event_template_id = 5360;
        }
        //TODO: what do we do if there is a diff location? 
  //dsm($project_location_tid, 'project_location_tid');
@@ -108,11 +108,12 @@ function cm_crew_connect_node_presave($node) {
 				    "start_date" => $start,
 				    "end_date" => $end,
 				    "is_active" => "1",
-				    "loc_block_id" => "4",
+				    //  "loc_block_id" => "4",
 				    "default_role_id" => "2",
 				    "description" => $event_desc,
-				    "event_type_id" => "170",
+				    //				    "event_type_id" => "170",
 				     'template_id' => $event_template_id,
+				    'is_public' => "1",
 				    ));
       $event_id = $result2['id'];
 
