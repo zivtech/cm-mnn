@@ -37,7 +37,7 @@ function mnn_data_massage_menu() {
 }
 function mnn_data_massage_page($function) {
   $functions = array(//"civicrm_uf_match_update",
-		     //"new_entity_field_default_update",
+		     "new_entity_field_default_update",
 		     "function_tester",
 		     //"project_update",
 		     //"project_member_update",
@@ -54,7 +54,7 @@ function mnn_data_massage_page($function) {
 		     //"show_patch_sql",
 		     //"facility_update",
 		     //"equipment_update",
-		     "reservation_node_subtype_update",
+		     //"reservation_node_subtype_update",
 		     //"producer_certification_data_check",
 		     //"replication_data_import",
 		     //"remove_show_from_airing",
@@ -64,7 +64,7 @@ function mnn_data_massage_page($function) {
 		     //"reservation_deleter",
 		     //"producer_role_check",
 		     //"producer_role_update",
-		     "duplicate_inventory",
+		     //"duplicate_inventory",
 		     );
 
   $ret = "";
@@ -1927,7 +1927,7 @@ function mnn_data_massage_new_entity_field_default_update() {
   //$entities = db_query("SELECT airing_id FROM {cm_airing")
   //  ->fetchAllAssoc('airing_id');
 
-  $entities = db_query("SELECT uid FROM {users} where uid>15293")
+  $entities = db_query("SELECT uid FROM {users}")
     ->fetchAllAssoc('uid');
 
 
@@ -1954,10 +1954,24 @@ function mnn_data_massage_new_entity_field_default_update_operation($entity_id,
   //$field_postfix = "value";
   //$value= 0;
 
-  $field_name = "documents_viewfield";
+  /*
+  $field_name = "crew_connect_project_alert";
   $entity_type = "user";
   $field_postfix = "vname";
-  $value = "mnn_documents|documents_view_field";
+  $value = "crew_connect_project_alerts|block_1";
+
+
+  $field_name = "volunteer_for_a_crew";
+  $entity_type = "user";
+  $field_postfix = "vname";
+  $value = "crew_connect_volunteer_for_a_crew|block_1";
+
+  */
+
+  $field_name = "crew_connect_requests";
+  $entity_type = "user";
+  $field_postfix = "vname";
+  $value = "crew_connect_crew_requests|complete_block_display";
 
   
   //automatically set when above is set correctly

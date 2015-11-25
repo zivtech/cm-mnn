@@ -17,14 +17,14 @@ function cm_crew_connect_project_alert_form($form, &$form_state,
   $project = node_load($project_nid);
   $title = $project ? $project->title : "";
 
-  $lable = t("Do you need a Crew For !title?", array('!title'=>$title));
+  $label = t("Do you need a Crew For !title?", array('!title'=>$title));
 
   $form['cm_crew_connect_project_needs'] =
     array(
 	  '#type' => 'select',
 	  '#options'=> $needs,
 	  '#required' => TRUE,
-	  '#prefix'=> "<table><tr><td>$lable</td><td>",
+	  '#prefix'=> "<table><tr><td>$label</td><td>",
 	  '#suffix'=>"</td>",
 	  );
   

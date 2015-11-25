@@ -34,57 +34,73 @@ function cm_crew_connect_user_has_role($roles = array()) {
 }           
 
 function cm_crew_connect_role_position_mapping() {
+
   $ret = array(
-	       'admin' => array(
-				"expess_studios",
+	  'admin' => array(
+				"expess_studios_general",
 				"editor_premiere",
-				"studios_audio",
-				"studios_cameras",
-				"studios_director",
-				"studios_expression_cg",
+				"editor_xpression_cg",
+				"studios_camera_manual",
+				"studios_camera_robotic",
 				"studios_floor_manager",
-				"studios_general_prod_asst",
+				"studios_audio",
 				"studios_switcher",
 				"studios_teleprompter",
-				"studios-robotic",
-				"editor-xpression-cg",
-				),
-	       'Staff - All' => array(
-				      "expess_studios",
-				      "editor_premiere",
-				      "studios_audio",
-				      "studios_cameras",
-				      "studios_director",
-				      "studios_expression_cg",
-				      "studios_floor_manager",
-				      "studios_general_prod_asst",
-				      "studios_switcher",
-				      "studios_teleprompter",
-				      "studios-robotic",
-				      "editor-xpression-cg",
+				"studios_cg_operator",
+				"studios_director",
+        "studios_general_prod_asst",
+		),
+	  'Staff - All' => array(
+				"expess_studios_general",
+				"editor_premiere",
+				"editor_xpression_cg",
+				"studios_camera_manual",
+				"studios_camera_robotic",
+				"studios_floor_manager",
+				"studios_audio",
+				"studios_switcher",
+				"studios_teleprompter",
+				"studios_cg_operator",
+				"studios_director",
+        "studios_general_prod_asst",
+		),
 
-				      ),
-	       'PREM' => array(
-			       "editor_premiere",
-			       ),
-	       
-	       'DSTE' => array(
-			       "expess_studios",
-			       ),
-	       'DSTW' => array(
-			       "expess_studios",
-			       "studios_audio",
-			       "studios_cameras",
-			       "studios_director",
-			       "studios_expression_cg",
-			       "studios_floor_manager",
-			       "studios_general_prod_asst",
-			       "studios_switcher",
-			       "studios_teleprompter",
-			       "studios-robotic",
-			       "editor-xpression-cg",
-
-			       ),
+    'DSTE' => array(
+        "expess_studios_general",
+    ),
+    'FH - Express' => array(
+        "expess_studios_general",
+    ),    
+	  'PREM' => array(
+			  "editor_premiere",
+		),	       
+	  'FH - Premiere' => array(
+			  "editor_premiere",
+		),
+    'DSTW' => array(
+				"editor_xpression_cg",
+				"studios_camera_manual",
+				"studios_camera_robotic",
+				"studios_floor_manager",
+				"studios_audio",
+				"studios_switcher",
+				"studios_teleprompter",
+				"studios_cg_operator",
+				"studios_director",
+        "studios_general_prod_asst",
+    ),
+    'FH - Studio' => array(
+				"editor_xpression_cg",
+				"studios_camera_manual",
+				"studios_camera_robotic",
+				"studios_floor_manager",
+				"studios_audio",
+				"studios_switcher",
+				"studios_teleprompter",
+				"studios_cg_operator",
+				"studios_director",
+        "studios_general_prod_asst",
+    ),            
 	       );
   return $ret;
 }
