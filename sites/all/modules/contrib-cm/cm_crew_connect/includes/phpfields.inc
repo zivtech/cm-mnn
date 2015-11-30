@@ -63,7 +63,29 @@ function cm_crew_connect_add_request_field($row) {
 }
 
 
+// http://cm-testing.mnn.openflows.com/node/779714/delete?destination=admin/cm_crew_connect/search
+function cm_crew_connect_delete_request_field($row, $view) {
+
+  If ($view->name == 'crew_connect_search' 
+      && $view->current_display == 'page_1') {
+
+      if ($row->nid_1) {
+        return "N/A";
+      }
+      
+      $link = l("Delete Request",
+          "node/".$row->nid."/delete",
+          array('query'=>array('destination' => 
+             "admin/cm_crew_connect/search")));
+       
+      return $link;   
+      
+  }
+}
+
 function cm_crew_connect_cancel_request_field($row) {
+dpm($row, 'row');
+  
   if ($row->nid_1) {
     return "N/A";
   }

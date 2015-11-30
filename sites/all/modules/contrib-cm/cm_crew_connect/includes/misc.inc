@@ -37,7 +37,7 @@ function cm_crew_connect_role_position_mapping() {
 
   $ret = array(
 	  'admin' => array(
-				"expess_studios_general",
+				"express_studios_general",
 				"editor_premiere",
 				"editor_xpression_cg",
 				"studios_camera_manual",
@@ -51,7 +51,7 @@ function cm_crew_connect_role_position_mapping() {
         "studios_general_prod_asst",
 		),
 	  'Staff - All' => array(
-				"expess_studios_general",
+				"express_studios_general",
 				"editor_premiere",
 				"editor_xpression_cg",
 				"studios_camera_manual",
@@ -66,10 +66,10 @@ function cm_crew_connect_role_position_mapping() {
 		),
 
     'DSTE' => array(
-        "expess_studios_general",
+        "express_studios_general",
     ),
     'FH - Express' => array(
-        "expess_studios_general",
+        "express_studios_general",
     ),    
 	  'PREM' => array(
 			  "editor_premiere",
@@ -158,16 +158,16 @@ function cm_crew_connect_override_messages() {
   $messages = drupal_get_messages();
   foreach($messages as $type=>$type_msgs) {
     foreach ($type_msgs as $message) {
-      if (strpos($message, 'rew Connect Request') &&
+      if (strpos($message, 'Crew Connect Request') &&
 	  strpos($message, 'has been deleted') ) {
 	$message = t("You have successfully cancelled your Crew Request.");
 
       }
-      else if (strpos($message, 'rew Connect Application') &&
+      else if (strpos($message, 'Crew Connect Application') &&
 	       strpos($message, 'has been deleted') ) {
 	$message = t("You have successfully cancelled your Crew Sign Up.");
       }
-      else if (strpos($message, 'rew Connect Application') &&
+      else if (strpos($message, 'Crew Connect Application') &&
 	  strpos($message, 'has been created') ) {
 	$node = $_SESSION['cm_crew_connect_new_application'];
 	$_SESSION['cm_crew_connect_new_application'] = NULL;

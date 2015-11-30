@@ -111,7 +111,7 @@ function cm_crew_connect_node_presave($node) {
 				    //  "loc_block_id" => "4",
 				    "default_role_id" => "2",
 				    "description" => $event_desc,
-				    //				    "event_type_id" => "170",
+		 				    "event_type_id" => "170",
 				     'template_id' => $event_template_id,
 				    'is_public' => "1",
 				    ));

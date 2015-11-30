@@ -28,7 +28,7 @@ function cm_crew_connect_get_display_name($uid) {
   */
 function cm_crew_connect_get_public_email($uid) {
 
-dpm($uid);
+//dpm($uid);
   
   $cid = cm_crew_connect_get_cid($uid);
   
@@ -39,7 +39,7 @@ dpm($uid);
       'location_type_id' => 6,
     ));               
     
-dpm($result, 'email');      
+//dpm($result, 'email');      
 
     $public_email = (isset($result) && isset($result['values'][0])) ? 
       $result['values'][0]['email'] : NULL;      

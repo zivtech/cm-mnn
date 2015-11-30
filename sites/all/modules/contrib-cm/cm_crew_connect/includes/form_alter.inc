@@ -168,12 +168,6 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
     $form['actions']['submit']['#value'] = t('Sign Up');
   }
 
-  if ($form['#action'] == '/crew-connect/requests-search') {
-    $form['title']['#description'] = 
-      'This only shows Projects that have active Crew Requests.';
-    $form['submit']['#value'] = "Search";
-  }
-
   if ($form_id == 'node_delete_confirm' && 
       $form['#node']->type == 'crew_connect_request') {
     $nid = arg(1);
@@ -201,7 +195,14 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
 
   }
 
-  // CONVERTS TEXT FIELD IN VIEW TO DROPDOWN FIELD
+  // PRODUCER SEARCHES
+  if ($form['#action'] == '/crew-connect/requests-search') {
+    $form['title']['#description'] = 
+      'This only shows Projects that have active Crew Requests.';
+    $form['submit']['#value'] = "Search";
+  }
+
+  // ADMIN SEARCHES - CONVERTS TEXT FIELD IN VIEW TO DROPDOWN FIELD
   // https://www.drupal.org/node/1549250
   if ($form['#id'] == 'views-exposed-form-crew-connect-search-page') {
   
