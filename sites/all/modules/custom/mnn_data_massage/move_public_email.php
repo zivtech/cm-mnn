@@ -20,7 +20,7 @@ if (!empty($result['node'])) {
     if($loop_limiter <= 1){
       $node = node_load($nid, NULL, TRUE);
 print_r($node->nid." \n");
-      $loop_limiter = $loop_limiter +1;
+//      $loop_limiter = $loop_limiter +1;
 
 print_r($node->field_project_public_email);
 $project_public_email = $node->field_project_public_email['und'][0]['value'];
@@ -31,13 +31,14 @@ $project_public_email = $node->field_project_public_email['und'][0]['value'];
 		 if(isset($project_public_email)){
 		     $producer_cid = CRM_Core_BAO_UFMatch::getContactID($node->uid);
 print_r($producer_cid." \n");
-
+if(isset($producer_cid)){
               $result_save_email = civicrm_api3('Email', 'create', array(
               'sequential' => 1,
               'contact_id' => $producer_cid,
               'email' => $project_public_email,
                'location_type_id' => 6,
                ));
+}
       
   }
  }     
