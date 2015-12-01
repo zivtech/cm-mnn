@@ -13,9 +13,9 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
 */
   //The Crew Connect Request Node Form
   if ($form_id == 'crew_connect_request_node_form') {
-
 //dpm($form_state, 'form_state');
-
+    
+      drupal_set_message(t("Please make sure you have a Confirmed Reservation for the relevant facility and time prior to asking for a Crew."), 'warning');
 
 
       $nid = (isset($form['nid']['#value'])) ? $form['nid']['#value'] :
