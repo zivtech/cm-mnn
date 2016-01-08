@@ -71,7 +71,7 @@ function mnn_show_form_alter(&$form, &$form_state, $form_id) {
     if (!$show_node) {
       $airings = mnn_show_airings_for_project($project_id);
     }
-    
+
     if (isset($airings)) {
       $form['mnn_cm_airing'] = 
 	array(
@@ -241,7 +241,7 @@ function mnn_show_airings_for_project($project_id = NULL) {
   $airdates = array(0=>"- Select a value -");;
 
   $results = db_query(
-    "SELECT a.airing_id, at.field_airing_date_value
+    "SELECT a.airing_id,td.name as channel, at.field_airing_date_value
      FROM {cm_airing} a
      INNER JOIN {field_data_field_airing_date} at 
       ON a.airing_id=at.entity_id
@@ -249,6 +249,10 @@ function mnn_show_airings_for_project($project_id = NULL) {
        ON p.entity_id=at.entity_id
      LEFT JOIN {field_data_field_airing_show_ref} s
        ON s.entity_id = at.entity_id
+     INNER JOIN {field_data_field_airing_channel} c
+       ON a.airing_id = c.entity_id
+     INNER JOIN {taxonomy_term_data} td
+       ON td.tid = c.field_airing_channel_tid
      WHERE p.field_airing_project_ref_target_id = :pid
        AND s.field_airing_show_ref_target_id is NULL
        AND at.field_airing_date_value > CURDATE() 
@@ -256,8 +260,9 @@ function mnn_show_airings_for_project($project_id = NULL) {
      ", array(':pid'=>$project_id));
   
   while ($airdate = $results->fetchObject()) {
-    $airdates[$airdate->airing_id] = 
-      date('m-d-y h:ia', strtotime($airdate->field_airing_date_value));
+    $txt = date('m-d-y h:ia', 
+		strtotime($airdate->field_airing_date_value))." ".$airdate->channel;
+    $airdates[$airdate->airing_id] = $txt;
   }
 
   return $airdates;
