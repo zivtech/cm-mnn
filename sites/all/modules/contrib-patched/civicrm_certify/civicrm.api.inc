@@ -13,13 +13,16 @@ function _civicrm_certify_get_civigroups() {
     'version' => 3,
     'is_active' => 1,
      // state explicitly since default index differs in Civi versions
-    'sequential' => 1,
-    // increase the limit beyond 25 rows
-    'rowCount' => array('>=' => 0),
+    'sequential' => 0,
+    'parents' => 44,    // only those in Certifications parent group
+    // otherwise it will be limited to 25
+    'options' => array(
+        'limit' => 1000, 
+    ),
   );
 
   $result = civicrm_api( 'group','get',$params );
-
+ 
   return $result;
 }
 
