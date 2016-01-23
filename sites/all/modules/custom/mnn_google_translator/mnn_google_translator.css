@@ -1,0 +1,16 @@
+#block-google-translator-active-languages {
+  float: right;
+  width: 25%
+}
+#block-google-translator-active-languages .goog-te-combo {
+  display: block;
+}
+
+#google_translator_element .goog-logo-link img {
+  margin-top: 2px;
+}
+
+#google_translator_element .goog-logo-link {
+  display: inline;
+  margin-left: 4px;
+}
