@@ -1,0 +1,69 @@
+<?php
+
+/**
++ * Implements hook_theme_registry_alter().
++ */
+function mnn_google_translator_theme_registry_alter(&$theme_registry) {
+  if (isset($theme_registry['google_translator_language_selector'])) {
+    $theme_registry['google_translator_language_selector']['theme path'] = drupal_get_path('module', 'mnn_google_translator');
+    $theme_registry['google_translator_language_selector']['function'] = 'theme_mnn_google_translator_language_selector';
+  }
+}
+
+/**
+ * returns HTML for the block, and injects CSS and JS
+ */
+function theme_mnn_google_translator_language_selector($vars) {
+
+  //inject the disclaimer to JS
+  $settings = array(
+    'disclaimer' => filter_xss(variable_get('google_translator_disclaimer', '')),
+    'jquery_selector' => GOOGLE_TRANSLATOR_SELECTOR,
+    'acept_text' =>t('Accept'),
+    'donnot_acept_text' =>t('Do Not Accept')
+  );
+  drupal_add_js(array('google_translator' => $settings), 'setting');
+  drupal_add_js(drupal_get_path('module', 'google_translator') .'/theme/google_translator.js','file');
+  drupal_add_css(drupal_get_path('module', 'google_translator') .'/theme/google_translator.css','file');
+  drupal_add_css(drupal_get_path('module', 'mnn_google_translator') .'/mnn_google_translator.css','file');
+  $items = array();
+  $items[] = mnn_google_translator_get_script();
+  return implode("\n", $items);
+}
+
+
+/**
+ * builds the script from the translator api
+ */
+function mnn_google_translator_get_script() {
+
+  $default = '';
+  $active_languages = variable_get('google_translator_active_languages', array());
+  $active_languages = array_flip($active_languages);
+
+  $additional_js = '(function($) { '
+    . 'var outerDiv = $(\'#google_translator_element div.goog-te-gadget\'), '
+    . 'image = $(\'#google_translator_element .goog-logo-link img\'), '
+    . 'link = $(\'#google_translator_element .goog-logo-link\'); '
+    . 'link.html(image); '
+    . 'outerDiv.contents().each(function(counter) { '
+    .   'if (counter == 1) { '
+	  .     '$(this).replaceWith(\'<div class="google_translate_attribution">Translated by</div>\'); '
+    .   '} else if (counter == 2) { '
+	  .     '$(this).replaceWith(\'<div class="google_translate_attribution_link">\' + link.prop(\'outerHTML\') + \'</div>\'); '
+    .   '} '
+    . '}); '
+    . '})(jQuery) ';
+
+  unset($active_languages[0]);
+  if (!empty($active_languages)) {
+    $display_mode = variable_get('google_translator_active_languages_display_mode', '');
+    $display_mode = !empty($display_mode) ? 'layout: google.translate.TranslateElement.InlineLayout.' . $display_mode : '';
+    $default = "<span id='google_translator_element' class='google_translator'></span><script>function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',
+    includedLanguages: '" . implode(',', array_keys($active_languages)) . "'," . $display_mode . " }, 'google_translator_element'); " . $additional_js . "}</script>
+    <script src='//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'></script>";
+  }
+  return $default;
+}
