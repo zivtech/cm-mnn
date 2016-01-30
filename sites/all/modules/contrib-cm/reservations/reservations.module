@@ -1097,7 +1097,15 @@ function reservations_node_update($node) {
   // Process active Reservations node types and reservation nodes.
   if (reservations_is_reservations_type($node->type)) {
     $reservations_type = reservations_type_setting($node->type);
-    if ($node->revision) {
+    
+    //get the reservable settings on the node, if it was created as a non
+    //reservable item it won't have any, so we'll need to treat it as an 
+    //insert when we do the drupal_write_record
+    //this only happens when you can switch content types on a node
+    $item_node_settings = 
+      reservations_reservation_item_node_settings($node->vid);
+
+    if ($node->revision || !$item_node_settings) {
       drupal_write_record('reservations_' . $reservations_type . '_node', $node);
       drupal_write_record('reservations_reservation_item_node', $node);
     }
