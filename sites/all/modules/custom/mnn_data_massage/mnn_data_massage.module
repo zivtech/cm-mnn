@@ -54,7 +54,7 @@ function mnn_data_massage_page($function) {
 		     //"show_patch_sql",
 		     //"facility_update",
 		     //"equipment_update",
-		     //"reservation_node_subtype_update",
+		     "reservation_node_subtype_update",
 		     //"producer_certification_data_check",
 		     //"replication_data_import",
 		     //"remove_show_from_airing",
@@ -766,6 +766,21 @@ function mnn_data_massage_reservation_node_subtype_update() {
 		    );
     db_query($insert_sql,$params);
   }
+
+  $sql = 
+    "select n.nid  FROM node n  left join  reservations_bucket_node bn on bn.nid=n.nid   INNER JOIN taxonomy_index ti on ti.nid=n.nid inner join taxonomy_term_data td on ti.tid=td.tid left join reservations_reservation_item_node inode on inode.nid=n.nid   left join reservations_resource_node rn on rn.nid=n.nid   where n.title not like '%(Reservation)%'  and td.vid=13 and inode.reservations_sub_type = 0 and td.name='Reservable'";
+
+  $results = db_query($sql);
+
+  while($result = $results->fetchObject()) {
+    $sql = "UPDATE reservations_reservation_item_node set reservations_sub_type =1  where nid = " . $result->nid;
+    dsm($sql);
+    db_query($sql);
+    $sql = "UPDATE reservations_bucket_node set reservations_sub_type =1  where nid = " . $result->nid;
+    dsm($sql);
+    db_query($sql);
+  }
+
 
   dsm($log, "here is the log");
 }
