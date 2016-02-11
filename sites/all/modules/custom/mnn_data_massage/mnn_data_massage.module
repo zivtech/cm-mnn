@@ -37,7 +37,7 @@ function mnn_data_massage_menu() {
 }
 function mnn_data_massage_page($function) {
   $functions = array(//"civicrm_uf_match_update",
-		     "new_entity_field_default_update",
+		     //"new_entity_field_default_update",
 		     "function_tester",
 		     //"project_update",
 		     //"project_member_update",
@@ -54,7 +54,7 @@ function mnn_data_massage_page($function) {
 		     //"show_patch_sql",
 		     //"facility_update",
 		     //"equipment_update",
-		     "reservation_node_subtype_update",
+		     //"reservation_node_subtype_update",
 		     //"producer_certification_data_check",
 		     //"replication_data_import",
 		     //"remove_show_from_airing",
@@ -65,6 +65,7 @@ function mnn_data_massage_page($function) {
 		     //"producer_role_check",
 		     //"producer_role_update",
 		     //"duplicate_inventory",
+		     "items_missing_status_update",
 		     );
 
   $ret = "";
@@ -3178,5 +3179,57 @@ function mnn_data_massage_producer_role_update() {
   dsm("Updated $counter users"); 
   drupal_goto('admin/mnn_data_massage/producer_role_check');
 
+
+}
+
+function mnn_data_massage_items_missing_status_update() {
+
+  $sql =
+   "
+SELECT node.title AS node_title, node.nid AS nid,
+field_data_field_equipment_item_status.field_equipment_item_status_tid as status_tid,
+node.type AS node_type,
+reservations_node_type.reservations_active_status AS active_status,
+reservations_reservation_item_node.reservations_default_availability AS default_avai,
+reservations_node_type.reservations_type_setting AS type_setting,
+field_data_field_inventory_number.field_inventory_number_value AS inventory_number
+FROM
+node node
+LEFT JOIN field_data_field_equipment_item_status field_data_field_equipment_item_status
+ON node.nid = field_data_field_equipment_item_status.entity_id
+AND (field_data_field_equipment_item_status.entity_type = 'node' AND field_data_field_equipment_item_status.deleted = '0')
+
+INNER JOIN reservations_node_type reservations_node_type ON node.type = reservations_node_type.type
+
+LEFT JOIN reservations_reservation_item_node reservations_reservation_item_node ON node.vid = reservations_reservation_item_node.vid
+
+LEFT JOIN field_data_field_inventory_number field_data_field_inventory_number
+ON node.nid = field_data_field_inventory_number.entity_id AND (field_data_field_inventory_number.entity_type = 'node'
+AND field_data_field_inventory_number.deleted = '0')
+
+WHERE (( (node.status = '1') AND (node.type NOT IN  ('civicrm_multiday_event', 'crew_connect_application', 'crew_connect_request', 'document',
+'equipment_non_reservable_', 'equipment_template', 'facility_non_reservable_', 'facility_template', 'help', 'cm_project', 'reservations_reservation',
+'cm_show', 'simple_page', 'webform')) AND (field_data_field_equipment_item_status.field_equipment_item_status_tid IS NULL ) ))
+
+   ";
+
+  $results = db_query($sql);
+  $counter = $active_count = $inactive_count = 0;
+  while ($item = $results->fetchObject()) {
+    $counter ++;
+    $node = node_load($item->nid);
+
+    if ($item->active_status == 1) {
+      $node->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] = 811;
+	$active_count ++;
+    }
+    else {
+      $node->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] = 817;
+    }
+    
+    node_save($node);
+  }
+  dsm("updated $counter items");
+  dsm("updated $active_count items");
 
 }
