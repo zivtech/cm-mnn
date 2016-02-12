@@ -25,6 +25,7 @@ define ("MNN_CHANNEL_1_TID", 965);
 define ("MNN_CHANNEL_2_TID", 966);
 define ("MNN_CHANNEL_3_TID", 967);
 define ("MNN_CHANNEL_4_TID", 968);
+define ("MNN_CHANNEL_5_TID", 1657);
 
 define ('MNN_PROGRAMMING_EXPORTS_LIVE_FORMAT_TID', 769);
 
