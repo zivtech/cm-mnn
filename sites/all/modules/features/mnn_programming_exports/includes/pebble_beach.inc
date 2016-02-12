@@ -2,7 +2,7 @@
 
 function mnn_programming_exports_pebble_beach() {
   //fetch our view
-  $view = views_get_view(MNN_DAILY_SHOWS_VIEW);
+  $view = views_get_view(MNN_DAILY_SHOWS_VIEW); //airings_daily_schedule
 
   //execute the query and grab the results
   $view->execute();
@@ -12,7 +12,8 @@ function mnn_programming_exports_pebble_beach() {
       strtotime($view->exposed_input
 		['field_airing_date_value']['value']['date'])
       : strtotime('today');
-    $channels = mnn_programming_exports_pebble_beach_content($results,$date);
+    $channels = mnn_programming_exports_pebble_beach_content($results,$date);    
+    
     foreach ($channels as $channel=>$result) {
       $output .= l("Download Pebble Beach File For Channel #$channel",
 		   "admin/shows/pebble-beach/download/$channel")."<br/>";
@@ -193,35 +194,30 @@ function mnn_programming_exports_pebble_beach_xml($data) {
   //  " ".$data['runtime']." ".$data['format']."<br/>";
 }
 
+// admin/programming
 function mnn_programming_exports_livefeed_array($channel) {
 
   $sources = array(
-	       "ST1" => '<fixed port="PGMSD-PCR1" device="EvertzEMR"/>',
-	       "ST2" => '<fixed port="PGMSD-PCR2" device="EvertzEMR"/>',
-	       "ST3" => '<fixed port="PGMSD-PCR3" device="EvertzEMR"/>',
-	       "ST4" => '<fixed port="PGMSD-PCR4" device="EvertzEMR"/>',
-	       "FH1" => '<fixed port="FH1 SD" device="EvertzEMR"/>',
-	       "FH2" => '<fixed port="FH2 SD" device="EvertzEMR"/>',
-	       "FH3" => '<fixed port="FH3 SD" device="EvertzEMR"/>',
-	       "FH4" => '<fixed port="FH4 SD" device="EvertzEMR"/>',
-	       "DNOW" => '<fixed port="RX-DNOW" device="EvertzEMR"/>',
-	       "ARCH" => '<fixed port="RX-ARCH" device="EvertzEMR"/>',
-	       "FSTV" => '<fixed port="RX-DISH" device="EvertzEMR"/>',
-	       "BKLN" => '<fixed port="RX-BCAT" device="EvertzEMR"/>',
-	       "BRNX" => '<fixed port="RX-BXNET" device="EvertzEMR"/>',
-	       );
-    
-
-  if($channel == 5) {
-    $hd_sources = array(
-           "ST1_HD" => '<fixed port="PGM-PCR1" device="EvertzEMR"/>',
-           "ST2_HD" => '<fixed port="PGM-PCR2" device="EvertzEMR"/>',
-           "ST3_HD" => '<fixed port="PGM-PCR3" device="EvertzEMR"/>',
-           "ST4_HD" => '<fixed port="PGM-PCR4" device="EvertzEMR"/>',
-           );
-    $sources = array_merge($sources, $hd_sources); // merge the two
-  }
-   
+        "ST1" => '<fixed port="PGMSD-PCR1" device="EvertzEMR"/>',
+        "ST2" => '<fixed port="PGMSD-PCR2" device="EvertzEMR"/>',
+        "ST3" => '<fixed port="PGMSD-PCR3" device="EvertzEMR"/>',
+        "ST4" => '<fixed port="PGMSD-PCR4" device="EvertzEMR"/>',
+        "FH1" => '<fixed port="FH1 SD" device="EvertzEMR"/>',
+        "FH2" => '<fixed port="FH2 SD" device="EvertzEMR"/>',
+        "FH3" => '<fixed port="FH3 SD" device="EvertzEMR"/>',
+        "FH4" => '<fixed port="FH4 SD" device="EvertzEMR"/>',
+        "DNOW" => '<fixed port="RX-DNOW" device="EvertzEMR"/>',
+        "ARCH" => '<fixed port="RX-ARCH" device="EvertzEMR"/>',
+        "FSTV" => '<fixed port="RX-DISH" device="EvertzEMR"/>',
+        "BKLN" => '<fixed port="RX-BCAT" device="EvertzEMR"/>',
+        "BRNX" => '<fixed port="RX-BXNET" device="EvertzEMR"/>',
+        "ST1_HD" => '<fixed port="PGM-PCR1" device="EvertzEMR"/>',
+        "ST2_HD" => '<fixed port="PGM-PCR2" device="EvertzEMR"/>',
+        "ST3_HD" => '<fixed port="PGM-PCR3" device="EvertzEMR"/>',
+        "ST4_HD" => '<fixed port="PGM-PCR4" device="EvertzEMR"/>',
+        "DNOW_HD" => '<fixed port="RX-DNOW-HD" device="EvertzEMR"/>',
+        "MAC" => '<fixed port="MAC" device="EvertzEMR"/>', 
+        );
 
   return $sources;    
 }
