@@ -438,12 +438,12 @@ function civicrm_multiday_event_node_presave($node) {
     //COLLECTIONS. THOSE SUBSEQUENT SAVES LOSE THE RECENTLY ADDED TITLE AND 
     //FALL BACK TO PREVIOUS TITLE, THEREFORE WE CACHE IT SO WE CAN ACTUALLY
     //SET A CUSTOM TITLE WHEN WE NEED TO
-    global $cached_title;
-    if (!isset($cached_title)) {
-      $cached_title = $node->title;
+    global $civicrm_multiday_event_cached_title;
+    if (!isset($civicrm_multiday_event_cached_title)) {
+      $civicrm_multiday_event_cached_title = $node->title;
     }
     else {
-      $node->title = $cached_title;
+      $node->title = $civicrm_multiday_event_cached_title;
     }
     //END ADDITION ON 3/5/2016 BY OPENFLOWS MARK LIBKUMAN ON BEHALF OF MNN
     
