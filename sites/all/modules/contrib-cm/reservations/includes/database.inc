@@ -811,7 +811,7 @@ function reservations_load_reservations_for_node_in_timespan($item_nid, $type, $
       $statuses = '1, 2, 3';
     } 
     
-    // TODO: This query needs to be updated to support revisions
+    
     // FROM {reservations_reservation_detail} d
     // WHERE d.nid = :item_nid
     
@@ -819,7 +819,7 @@ function reservations_load_reservations_for_node_in_timespan($item_nid, $type, $
       FROM {node} n
       JOIN {reservations_reservation_detail} d ON n.nid = d.reservations_item_nid
       JOIN {" . $table . "} r ON d.vid = r.revision_id
-      JOIN {reservations_reservation} mr ON r.entity_id = mr.nid
+      JOIN {reservations_reservation} mr ON r.revision_id = mr.vid
       WHERE n.nid = :item_nid
         AND
             mr.reservations_reservation_status IN (" . $statuses .")
@@ -839,6 +839,7 @@ function reservations_load_reservations_for_node_in_timespan($item_nid, $type, $
     ':start5' => $start_date,
     ':start6' => $end_date
   );
+
 
   // If we're checking an existing reservation, exclude it from the
   // reserved items.
