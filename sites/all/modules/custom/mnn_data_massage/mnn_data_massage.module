@@ -64,7 +64,7 @@ function mnn_data_massage_page($function) {
 		     //"reservation_deleter",
 		     //"producer_role_check",
 		     //"producer_role_update",
-		     //"duplicate_inventory",
+		     "duplicate_inventory",
 		     "items_missing_status_update",
 		     );
 
