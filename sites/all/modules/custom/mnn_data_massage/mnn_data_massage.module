@@ -3233,3 +3233,13 @@ WHERE (( (node.status = '1') AND (node.type NOT IN  ('civicrm_multiday_event', '
   dsm("updated $active_count items");
 
 }
+
+function mnn_data_massage_log_query($sql, $args) {
+  $ms = str_replace('{', '', $sql);
+  $ms = str_replace('}', '', $ms);
+  foreach ($args as $i=>$j) {
+    $ms = str_replace($i, $j, $ms);
+  }
+  dsm($ms);
+  dsm($args);
+}
