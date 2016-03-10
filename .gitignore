@@ -1,5 +1,6 @@
 # Ignore .htaccess
 /.htaccess*
+/.htpasswd*
 
 
 # Ignore everything in default directory
