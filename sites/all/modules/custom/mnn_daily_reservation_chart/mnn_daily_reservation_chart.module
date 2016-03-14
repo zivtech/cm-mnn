@@ -1162,7 +1162,9 @@ function mnn_daily_reservation_chart_form_alter(
       }
       $form['choice_wrapper']['reservations_reservation_items']['choice_1']
 	['reservations_item_nid']['#default_value']  = $item_nid;
+
       //dsm($form, 'my form');
+
     }
 
     if (isset($start_time) && is_numeric($start_time)) {

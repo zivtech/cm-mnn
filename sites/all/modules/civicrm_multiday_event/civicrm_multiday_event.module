@@ -433,6 +433,20 @@ function civicrm_multiday_event_node_presave($node) {
       //$node->body[LANGUAGE_NONE][0]['value'] = isset($params['description']) ? $params['description'] : NULL;
     }
 
+    //ADDITION ON 3/5/2016 BY OPENFLOWS MARK LIBKUMAN ON BEHALF OF MNN
+    //THIS HOOK GETS FIRED ONE ON THE NODE, THEN AGAIN FOR EACH OF ITS FIELD
+    //COLLECTIONS. THOSE SUBSEQUENT SAVES LOSE THE RECENTLY ADDED TITLE AND 
+    //FALL BACK TO PREVIOUS TITLE, THEREFORE WE CACHE IT SO WE CAN ACTUALLY
+    //SET A CUSTOM TITLE WHEN WE NEED TO
+    global $civicrm_multiday_event_cached_title;
+    if (!isset($civicrm_multiday_event_cached_title)) {
+      $civicrm_multiday_event_cached_title = $node->title;
+    }
+    else {
+      $node->title = $civicrm_multiday_event_cached_title;
+    }
+    //END ADDITION ON 3/5/2016 BY OPENFLOWS MARK LIBKUMAN ON BEHALF OF MNN
+    
     if (!$node->title || !variable_get('civicrm_multiday_event_allow_title_override', 0)) {
       //reset title to pattern... need template
       $template_event_id = $node->field_civievent_template[LANGUAGE_NONE][0]['value'];
