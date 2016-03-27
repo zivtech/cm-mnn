@@ -197,7 +197,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       $i += $length;
     }
   } 
-  $count_blocks = $start_blocks;
+  $hour_blocks = $start_blocks;
 
   foreach ($results as $view_data) {
 
@@ -272,7 +272,7 @@ function reservations_reports_hourly_breakdown_report_header() {
 	if ($adjusted_start_hour <= $next_start_hour) {
 	  $start_blocks[$next_start_hour][$dow]++;
 	  if ($mode == 'runtime' && $end_object <= $next_end_object) {
-	    $count_blocks[$start][$dow] += $runtime;
+	    $hour_blocks[$next_start_hour][$dow] += $runtime;
 	    //dsm("logged $runtime start: $start runtime: $runtime");
 	    $continue = FALSE;
 	    break;
@@ -280,7 +280,7 @@ function reservations_reports_hourly_breakdown_report_header() {
 	  else if ($mode == 'runtime') {
 	    $partial_runtime = $next_end_object->getTimestamp() - 
 	      $adjusted_start_object->getTimestamp();
-	    $count_blocks[$start][$dow] += $partial_runtime;
+	    $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
 	    //dsm("logged part $partial_runtime start: $start ");
 	    $continue = TRUE;
 	  }
@@ -331,31 +331,51 @@ function reservations_reports_hourly_breakdown_report_header() {
 
   $rows = array();
   $grand_total = 0;
+  $grand_total_hours = 0;
   $dow_counts = array();
+  $dow_hours = array();
   foreach ($start_blocks as $hour => $dows) {
     $row = array($hour);
     $total = 0;
+    $total_hours = 0;
     foreach($dows as $dow=>$count) {
       $dow_counts[$dow] = isset($dow_counts[$dow]) ? $dow_counts[$dow] :  0;
       $total += $count;
       $grand_total += $count;
       $dow_counts[$dow] += $count;
-      $row[] = $count;
+
+      $hours = $hour_blocks[$hour][$dow];
+
+      $dow_hours[$dow] = isset($dow_hours[$dow]) ? $dow_hours[$dow] :  0;
+      $total_hours += $hours;
+      $grand_total_hours += $hours;
+      $dow_hours[$dow] += $hours;
+
+      $row[] = $count . reservations_report_display_hours($hours);
     }
-    $row[] = $total;
+    $row[] = $total . reservations_report_display_hours($total_hours);
     $rows[] = $row;
   }
 
   $row = array("<strong>Totals</strong>");
 
   foreach ($dow_counts as $dow =>$count) {
-    $row[] = $count;
+    $hours = $dow_hours[$dow];
+    $row[] = $count . reservations_report_display_hours($hours);
   }
-  $row[] = $grand_total;
+  $row[] = $grand_total .reservations_report_display_hours($grand_total_hours);
+
   $rows[] = $row;
 
   $ret = theme('table', array('header' => $headers, 'rows' => $rows));
   $ret .= "<br/><br/><hr><br/><h2>Filters and Raw Data</h2><br/><br/>";
 
   return $ret;
+}
+
+function reservations_report_display_hours($seconds) {
+  if ($seconds) {
+    return " (" . ($seconds / (60*60)) . " hours)";
+  }
+  return "";
 }
