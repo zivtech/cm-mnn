@@ -218,22 +218,26 @@ function reservations_reports_hourly_breakdown_report_header() {
 				   new DateTimeZone($date['timezone_db']));
       $end_object->setTimeZone(new DateTimeZone($date['timezone']));
 
-      $start_hour = $start_object->format('H');
+      $start_hour = $start_object->format('G');
 
       $continue = TRUE;
       $dow = $start_object->format('l');
-     
+      $day = new DateTime($start_object->format('Y-m-d')." 00:00",  
+			  new DateTimeZone($date['timezone']));
+
       $next_start_hour = $start;
       $next_start_object = 
-	new DateTime($start_object->format('Y-m-d')." ".$next_start_hour.":00",  
+	new DateTime($start_object->format('Y-m-d')." ".
+		     $next_start_hour.":00",  
 		     new DateTimeZone($date['timezone']));
       $next_end_object = clone $next_start_object;
       $next_end_object->add(new DateInterval("PT".$length."H"));
-      $next_end = $next_end_object->format('H');
+      $next_end = $next_end_object->format('G');
+      
       $runtime = $end_object->getTimestamp() - $start_object->getTimestamp();
       
       $adjusted_start_object = clone $start_object;
-      $adjusted_start_hour = $start_object->format('H');
+      $adjusted_start_hour = $start_object->format('G');
 
       /*
       dsm($start, 'start');
@@ -249,6 +253,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       //loop until we set $continue to FALSE
       while ($continue = TRUE) {
 	$counter ++;
+	
 	/**
 	dsm('------------------------------------------');
 	dsm($adjusted_start_object->format('y-m-d H:i'),
@@ -258,7 +263,9 @@ function reservations_reports_hourly_breakdown_report_header() {
 	dsm($next_start_hour, 'next start');
 	dsm($next_end_object->format('y-m-d H:i'), 'next end');
 	dsm($next_end, 'next end');
-	*/
+	dsm($dow, 'dow');
+	*/	
+
 	//if our $adjusted_start_hour (either the reservation start time or
 	//the time of our next block when a reservation spans from one block
 	//till the next) is less than or equal to our block start time,place it
@@ -285,10 +292,24 @@ function reservations_reports_hourly_breakdown_report_header() {
 	}
 	
 	$next_start_object->add(new DateInterval("PT".$length."H"));
-	$next_start_hour = $next_start_object->format('H');
+	$next_start_hour = $next_start_object->format('G');
+
+	if ($next_start_hour > $end) {
+	  $day->add(new DateInterval("P1D"));
+	  $next_start_object = 
+	    new DateTime($day->format('Y-m-d')." ".
+			 $start.":00",  
+			 new DateTimeZone($date['timezone']));
+	  $next_start_hour = $next_start_object->format('G');
+	  $dow = $start_object->format('l');
+	  $adjusted_start_object = clone $next_start_object;
+	  $adjusted_start_hour= $next_start_hour;
+	}
+
+
 	$next_end_object = clone $next_start_object;
 	$next_end_object->add(new DateInterval("PT".$length."H"));
-	$next_end = $next_end_object->format('H');
+	$next_end = $next_end_object->format('G');
 	if ($adjusted_start_hour < $next_start_hour) {
 	  $adjusted_start_object = clone $next_start_object;
 	  $adjusted_start_hour= $next_start_hour;
@@ -303,11 +324,8 @@ function reservations_reports_hourly_breakdown_report_header() {
 	}
       }
     }
-
-    break;
-    
   }
-  
+
   $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
 		   'Thursday', 'Friday', 'Saturday', 'Total');
 
