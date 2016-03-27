@@ -1,0 +1,52 @@
+<?php
+
+
+/**
+ * @file
+ * reservations Installer / Uninstaller
+ */
+
+/**
+ * Implements hook_install().
+ */
+function reservations_report_install() {
+
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX rateperhour
+    (reservations_rate_per_hour)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation ADD INDEX status
+    (reservations_reservation_status)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation_detail ADD INDEX vidnid
+    (vid,nid)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX vidrateperhour
+    (vid,reservations_rate_per_hour)";
+  db_query($sql);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function reservations_report_uninstall() {
+  /*
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX rateperhour
+    (reservations_rate_per_hour)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation ADD INDEX status
+    (reservations_reservation_status)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation_detail ADD INDEX vidnid
+    (vid,nid)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX vidrateperhour
+    (vid,reservations_rate_per_hour)";
+
+   */
+}
