@@ -9,6 +9,103 @@ function reservations_report_views_api() {
                );
 }
 
+function reservations_report_form_alter(&$form, &$form_state, $form_id) {
+
+
+  if($form['#id'] == "views-exposed-form-reservations-reports-page-1") {
+    $default_value =  filter_input(INPUT_GET, 'reservation_grouping');
+    $default_value = $default_value ? $default_value : 0;
+    
+    $vid = variable_get('reservations_grouping_vid', 0);
+    $terms = taxonomy_get_tree($vid);
+    $bucket_categories = array();
+    $options = array(0=>'<select>');
+    foreach ($terms as $term) {
+      $options[$term->tid] = $term->name;
+    }
+
+    $form['reservation_grouping'] = 
+      array(
+	    '#title' => t("Reservable Item Grouping"),
+	    '#type' => 'select',
+	    '#options'=> $options,
+	    '#default_value' => $default_value,
+	    );
+    
+    $default_value =  filter_input(INPUT_GET, 'calc_mode');
+    $default_value = $default_value ? $default_value : 'duration';
+
+    $form['calc_mode'] = 
+      array(
+	    '#title' => t("Calculation Mode"),
+	    '#description' => 
+	    t("'Duration' choice will tally a reservation for each time row the reservation spans. 'Starts Only' will only tally each reservation once within the row the reservation starts and ignore later rows even if the reservation times span those rows."),
+	    '#type' => 'select',
+	    '#options'=> array('duration'=>'Duration',
+			       'start_only'=>'Starts Only'),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'display_mode');
+    $default_value = $default_value ? $default_value : 'both';
+    
+    $form['display_mode'] = 
+      array(
+	    '#title' => t("Display Mode"),
+	    '#description' => 
+	    t("Choose to display number of uses or hours or both."),
+	    '#type' => 'select',
+	    '#options'=> array('both'=>'Both',
+			       'hours'=>'Hours',
+			       'uses'=>'Uses'),
+	    '#default_value' => $default_value,
+	    );
+    //////////////////////////////////////////////////////////////////////
+
+    $default_value =  filter_input(INPUT_GET, 'row_begin_time');
+    $default_value = $default_value ? $default_value : 9;
+
+    $form['row_begin_time'] = 
+      array(
+	    '#title' => t("Beginning Row Time"),
+	    '#description' =>  t("The time of the first row."),
+	    '#type' => 'select',
+	    '#options'=> reservations_report_get_time_options(),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'row_end_time');
+    $default_value = $default_value ? $default_value : 24;
+
+    $form['row_end_time'] = 
+      array(
+	    '#title' => t("Ending Row Time"),
+	    '#description' => 
+	    t("The latest time that the last row can be set to."),
+	    '#type' => 'select',
+	    '#options'=> reservations_report_get_time_options(),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'length');
+    $default_value = $default_value ? $default_value : 2;
+
+    $form['length'] = 
+      array(
+	    '#title' => t("Row Time Difference"),
+	    '#description' => 
+	    t("The difference between the time of one row and the next."),
+	    '#type' => 'select',
+	    '#options'=> array(1=>1,2=>2,3=>3,4=>4,6=>6,12=>12),
+	    '#default_value' => $default_value,
+	    );
+
+
+  }
+
+
+  $form['submit']['#weight'] = 10;
+}
 
 function reservations_report_usage_counts_report_header() {
     
@@ -162,11 +259,18 @@ function reservations_reports_hourly_breakdown_report_header() {
   $total_value = 0;
   $total_uses = 0;
 
-  //FIXME, SET FROM EXISTING OR NEW SETTINGS VARIABLES
-  $start = 9;
-  $length = 2;
-  $end = 22;
-  $mode = 'runtime';
+  $category =  filter_input(INPUT_GET, 'reservation_grouping');
+  $calc_mode =  filter_input(INPUT_GET, 'calc_mode'); 
+  $display_mode =  filter_input(INPUT_GET, 'display_mode');
+
+  $row_begin_time =  filter_input(INPUT_GET, 'row_begin_time');
+  $row_begin_time = $row_begin_time ? $row_begin_time : 9; 
+
+  $row_end_time =  filter_input(INPUT_GET, 'row_end_time');
+  $row_end_time = $row_end_time ? $row_end_time : 24; 
+
+  $length =  filter_input(INPUT_GET, 'length');
+  $length = $length ? $length : 2; 
   
   $start_blocks = array();
 
@@ -181,15 +285,15 @@ function reservations_reports_hourly_breakdown_report_header() {
 
   $i = 0;
   while ($i < 24) {
-    if ($i < $start) {
-      $start_blocks[$start] = $dows;
-      $i = $start + $length;
+    if ($i < $row_begin_time) {
+      $start_blocks[$row_begin_time] = $dows;
+      $i = $row_begin_time + $length;
     }
-    else if ($i == $end) {
-      $start_blocks[$end] = $dows;
+    else if ($i == $row_end_time) {
+      $start_blocks[$row_end_time] = $dows;
       break;
     }
-    else if ($i > $end) {
+    else if ($i > $row_end_time) {
       break;
     }
     else {
@@ -200,7 +304,6 @@ function reservations_reports_hourly_breakdown_report_header() {
   $hour_blocks = $start_blocks;
 
   foreach ($results as $view_data) {
-
     $reservation_nid = $view_data->nid;
     $reservation = $reservation_nid ? node_load($reservation_nid) : NULL;
 
@@ -225,7 +328,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       $day = new DateTime($start_object->format('Y-m-d')." 00:00",  
 			  new DateTimeZone($date['timezone']));
 
-      $next_start_hour = $start;
+      $next_start_hour = $row_begin_time;
       $next_start_object = 
 	new DateTime($start_object->format('Y-m-d')." ".
 		     $next_start_hour.":00",  
@@ -240,7 +343,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       $adjusted_start_hour = $start_object->format('G');
 
       /*
-      dsm($start, 'start');
+      dsm($row_begin_time, 'row_begin_time');
       dsm($start_hour, 'sh');            
       dsm($start_object->format('y-m-d H:i'), 'start time from res');
       dsm($end_object->format('y-m-d H:i'), 'end time from res');
@@ -271,13 +374,13 @@ function reservations_reports_hourly_breakdown_report_header() {
 	//till the next) is less than or equal to our block start time,place it
 	if ($adjusted_start_hour <= $next_start_hour) {
 	  $start_blocks[$next_start_hour][$dow]++;
-	  if ($mode == 'runtime' && $end_object <= $next_end_object) {
+	  if ($calc_mode == 'duration' && $end_object <= $next_end_object) {
 	    $hour_blocks[$next_start_hour][$dow] += $runtime;
 	    //dsm("logged $runtime start: $start runtime: $runtime");
 	    $continue = FALSE;
 	    break;
 	  }
-	  else if ($mode == 'runtime') {
+	  else if ($calc_mode == 'duration') {
 	    $partial_runtime = $next_end_object->getTimestamp() - 
 	      $adjusted_start_object->getTimestamp();
 	    $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
@@ -290,15 +393,17 @@ function reservations_reports_hourly_breakdown_report_header() {
 	  }
 	  
 	}
-	
+	$prev_start_hour = $next_start_hour;
+
 	$next_start_object->add(new DateInterval("PT".$length."H"));
 	$next_start_hour = $next_start_object->format('G');
 
-	if ($next_start_hour > $end) {
+	if ($next_start_hour > $row_end_time ||
+	    $prev_start_hour > $next_start_hour) {
 	  $day->add(new DateInterval("P1D"));
 	  $next_start_object = 
 	    new DateTime($day->format('Y-m-d')." ".
-			 $start.":00",  
+			 $row_begin_time.":00",  
 			 new DateTimeZone($date['timezone']));
 	  $next_start_hour = $next_start_object->format('G');
 	  $dow = $start_object->format('l');
@@ -378,4 +483,34 @@ function reservations_report_display_hours($seconds) {
     return " (" . ($seconds / (60*60)) . " hours)";
   }
   return "";
+}
+
+function reservations_report_get_time_options() {
+  $options = array(
+		   1 => "1:00am",
+		   2 => "2:00am",
+		   3 => "3:00am",
+		   4 => "4:00am",
+		   5 => "5:00am",
+		   6 => "6:00am",
+		   7 => "7:00am",
+		   8 => "8:00am",
+		   9 => "9:00am",
+		   10 => "10:00am",
+		   11 => "11:00am",
+		   12 => "12:00pm",
+		   13 => "1:00pm",
+		   14 => "2:00pm",
+		   15 => "3:00pm",
+		   16 => "4:00pm",
+		   17 => "5:00pm",
+		   18 => "6:00pm",
+		   19 => "7:00pm",
+		   20 => "8:00pm",
+		   21 => "9:00pm",
+		   22 => "10:00pm",
+		   23 => "11:00pm",
+		   24 => "12:00am",
+		   );
+  return $options;
 }
