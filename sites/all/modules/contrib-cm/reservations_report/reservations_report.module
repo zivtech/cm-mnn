@@ -430,9 +430,34 @@ function reservations_reports_hourly_breakdown_report_header() {
       }
     }
   }
+  if ($display_mode == 'both') {
+    $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+		     'Thursday', 'Friday', 'Saturday', 'Total');
+  }
+  else if ($display_mode == 'hours') {
+    $headers = array('Hour', 
+		     'Sunday <br/>(hours)', 
+		     'Monday <br/>(hours)', 
+		     'Tuesday <br/>(hours)', 
+		     'Wednesday <br/>(hours)', 
+		     'Thursday <br/>(hours)', 
+		     'Friday <br/>(hours)', 
+		     'Saturday <br/>(hours)', 
+		     'Total <br/>(hours)');
+  }
+  else {
+    $headers = array('Hour', 
+		     'Sunday <br/>(uses)', 
+		     'Monday <br/>(uses)', 
+		     'Tuesday <br/>(uses)', 
+		     'Wednesday <br/>(uses)', 
+		     'Thursday <br/>(uses)', 
+		     'Friday <br/>(uses)', 
+		     'Saturday <br/>(uses)', 
+		     'Total <br/>(uses)');
 
-  $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
-		   'Thursday', 'Friday', 'Saturday', 'Total');
+  }
+
 
   $rows = array();
   $grand_total = 0;
@@ -440,7 +465,17 @@ function reservations_reports_hourly_breakdown_report_header() {
   $dow_counts = array();
   $dow_hours = array();
   foreach ($start_blocks as $hour => $dows) {
-    $row = array($hour);
+    if ($hour < 12) {
+      $display_hour = $hour."am";
+    }
+    else if ($hour == 12) {
+      $display_hour = "12pm";
+    }
+    else {
+      $display_hour = ($hour - 12) . "pm";
+    }
+    
+    $row = array($display_hour);
     $total = 0;
     $total_hours = 0;
     foreach($dows as $dow=>$count) {
@@ -456,9 +491,10 @@ function reservations_reports_hourly_breakdown_report_header() {
       $grand_total_hours += $hours;
       $dow_hours[$dow] += $hours;
 
-      $row[] = $count . reservations_report_display_hours($hours);
+      $row[] = reservations_report_display_cell($display_mode, $count, $hours);
     }
-    $row[] = $total . reservations_report_display_hours($total_hours);
+    $row[] = reservations_report_display_cell($display_mode, 
+					      $total, $total_hours);
     $rows[] = $row;
   }
 
@@ -466,9 +502,10 @@ function reservations_reports_hourly_breakdown_report_header() {
 
   foreach ($dow_counts as $dow =>$count) {
     $hours = $dow_hours[$dow];
-    $row[] = $count . reservations_report_display_hours($hours);
+    $row[] = reservations_report_display_cell($display_mode, $count, $hours);
   }
-  $row[] = $grand_total .reservations_report_display_hours($grand_total_hours);
+  $row[] = reservations_report_display_cell($display_mode, $grand_total, 
+					    $grand_total_hours);
 
   $rows[] = $row;
 
@@ -478,11 +515,16 @@ function reservations_reports_hourly_breakdown_report_header() {
   return $ret;
 }
 
-function reservations_report_display_hours($seconds) {
-  if ($seconds) {
-    return " (" . ($seconds / (60*60)) . " hours)";
+function reservations_report_display_cell($mode, $uses, $seconds) {
+  if ($mode == 'both') {
+    return $uses ." (" . ($seconds / (60*60)) . " hours)";
   }
-  return "";
+  else if ($mode == 'hours') {
+    return $seconds / (60*60);           ;
+  }
+  else {
+    return $uses;
+  }
 }
 
 function reservations_report_get_time_options() {
