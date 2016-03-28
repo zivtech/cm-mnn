@@ -12,7 +12,28 @@ function reservations_report_views_api() {
 function reservations_report_form_alter(&$form, &$form_state, $form_id) {
 
 
-  if($form['#id'] == "views-exposed-form-reservations-reports-page-1") {
+  if($form['#id'] == "views-exposed-form-reservations-reports-page") {
+    $default_value =  filter_input(INPUT_GET, 'reservation_grouping');
+    $default_value = $default_value ? $default_value : 0;
+    
+    $vid = variable_get('reservations_grouping_vid', 0);
+    $terms = taxonomy_get_tree($vid);
+    $bucket_categories = array();
+    $options = array(0=>'<select>');
+    foreach ($terms as $term) {
+      $options[$term->tid] = $term->name;
+    }
+
+    $form['reservation_grouping'] = 
+      array(
+	    '#title' => t("Reservable Item Grouping"),
+	    '#type' => 'select',
+	    '#options'=> $options,
+	    '#default_value' => $default_value,
+	    );
+
+  }
+  else if($form['#id'] == "views-exposed-form-reservations-reports-page-1") {
     $default_value =  filter_input(INPUT_GET, 'reservation_grouping');
     $default_value = $default_value ? $default_value : 0;
     
@@ -119,6 +140,8 @@ function reservations_report_usage_counts_report_header() {
   $total_value = 0;
   $total_uses = 0;
 
+  $input_category =  filter_input(INPUT_GET, 'reservation_grouping');
+
   foreach ($results as $view_data) {
 
     $reservation_nid = $view_data->nid;
@@ -138,6 +161,12 @@ function reservations_report_usage_counts_report_header() {
       }
 
       $grouping_tid = $type['reservations_grouping'];
+
+      if ($input_category && $grouping_tid != $input_category) {
+	continue;
+      }
+
+
       $category = $grouping_tid ? taxonomy_term_load($grouping_tid) : NULL;
       $data[$category->name] = 
 	$data[$category->name] ? $data[$category->name] : array();
