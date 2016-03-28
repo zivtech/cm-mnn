@@ -311,6 +311,17 @@ function reservations_reports_hourly_breakdown_report_header() {
     $item = $item_nid ? node_load($item_nid) : NULL;
     
     if ($item) {
+
+      $type = reservations_content_types($item->type);
+      if (!isset($types[$type['type']])) {
+	$types[$type['type']] = node_type_get_name($item);;
+      }
+
+      $grouping_tid = $type['reservations_grouping'];
+      if ($category && $grouping_tid != $category) {
+	continue;
+      }
+
       $date = $view_data->field_field_reservations_date[0]['raw'];
 
       $start_object = new DateTime($date['value'],
@@ -430,7 +441,8 @@ function reservations_reports_hourly_breakdown_report_header() {
       }
     }
   }
-  if ($display_mode == 'both') {
+
+  if (!$display_mode || $display_mode == 'both') {
     $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
 		     'Thursday', 'Friday', 'Saturday', 'Total');
   }
