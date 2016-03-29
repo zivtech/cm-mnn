@@ -289,9 +289,10 @@ function reservations_reports_hourly_breakdown_report_header() {
   $total_uses = 0;
 
   $category =  filter_input(INPUT_GET, 'reservation_grouping');
-  $calc_mode =  filter_input(INPUT_GET, 'calc_mode'); 
+  $calc_mode =  filter_input(INPUT_GET, 'calc_mode');
+  $calc_mode = $calc_mode ? $calc_mode : 'duration';
   $display_mode =  filter_input(INPUT_GET, 'display_mode');
-
+  $display_mode = $display_mode ? $display_mode : 'both';
   $row_begin_time =  filter_input(INPUT_GET, 'row_begin_time');
   $row_begin_time = $row_begin_time ? $row_begin_time : 9; 
 
@@ -346,7 +347,6 @@ function reservations_reports_hourly_breakdown_report_header() {
     } 
   }
   $hour_blocks = $start_blocks;
-  dsm($start_blocks);
   
   foreach ($results as $view_data) {
     if ($interval_points) {
@@ -360,13 +360,7 @@ function reservations_reports_hourly_breakdown_report_header() {
     $item_nid = $view_data->node_reservations_reservation_detail_nid;
     $item = $item_nid ? node_load($item_nid) : NULL;
     
-    //FIXME REMOVE THIS
-    if ($item_nid != 374705) {
-      continue;
-    }
-
     if ($item) {
-
       $type = reservations_content_types($item->type);
       if (!isset($types[$type['type']])) {
 	$types[$type['type']] = node_type_get_name($item);;
@@ -423,7 +417,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       $adjusted_start_object = clone $start_object;
       $adjusted_start_hour = $start_object->format('G');
 
-      
+      /**
       dsm($row_begin_time, 'row_begin_time');
       dsm($row_end_time, 'row_begin_time');
       dsm($start_hour, 'sh');            
@@ -431,8 +425,10 @@ function reservations_reports_hourly_breakdown_report_header() {
       dsm($end_object->format('y-m-d H:i'), 'end time from res');
       dsm($dow, 'dow');
       dsm($runtime, 'runtime');
-      dsm($view_data, 'vd');
+
       dsm("****************************************************");
+      */
+      //counter is set as a safety, too many loops below and we abort
       $counter = 0;
       
       //loop until we set $continue to FALSE
@@ -440,36 +436,36 @@ function reservations_reports_hourly_breakdown_report_header() {
       while ($continue = TRUE) {
 	$counter ++;
 	
-	/**
+	/**	
 	dsm('------------------------------------------');
 	dsm($prev_start_object->format('y-m-d H:i'), 'prev start');
 	dsm($next_start_object->format('y-m-d H:i'), 'next start');
-	dsm($next_start_hour, 'next start');
 	dsm($next_end_object->format('y-m-d H:i'), 'next end');
-	dsm($next_end, 'next end');
-	dsm($dow, 'dow');
 	dsm($adjusted_start_object->format('y-m-d H:i'),
 	    'adjusted start object');
+	dsm($dow, 'dow');
+	dsm($next_start_hour, 'next start');
+	dsm($next_end, 'next end');
 	dsm($adjusted_start_hour, 'adjusted start hour');
 	*/
-		
 
 	//if our $adjusted_start_hour (either the reservation start time or
 	//the time of our next block when a reservation spans from one block
 	//till the next) is less than or equal to our block start time,place it
 	if ($adjusted_start_hour <= $next_start_hour) {
 	  $start_blocks[$next_start_hour][$dow]++;
-	  if ($calc_mode == 'duration' && $end_object <= $next_end_object) {
+	  if ($calc_mode == 'duration' && $end_object <= $next_start_object) {
 	    if (!$pushing) {
 	      $hour_blocks[$next_start_hour][$dow] += $runtime;
-	      dsm("logged " .$runtime." -- $dow $next_start_hour ");
+	      //dsm("logged " .$runtime." -- $dow $next_start_hour ");
 
 	    }
 	    else {
 	      $partial_runtime = $end_object->getTimestamp() - 
 		$prev_start_object->getTimestamp();
 	      $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
-	      dsm("logged " .$partial_runtime." -- $dow $next_start_hour ");
+	      //dsm("logged " .($partial_runtime/(60*60)).
+	      //	  " -- $dow $next_start_hour ");
 
 	    }
 
@@ -487,8 +483,8 @@ function reservations_reports_hourly_breakdown_report_header() {
 		$prev_start_object->getTimestamp();
 	    }
 	    $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
-	    dsm("logged part ". $partial_runtime/(60*60).
-		"hours --  $dow $next_start_hour ");
+	    //dsm("logged part ". $partial_runtime/(60*60).
+	    //	"hours --  $dow $next_start_hour ");
 	    $continue = TRUE;
 	  }
 	  else {
@@ -573,7 +569,7 @@ function reservations_reports_hourly_breakdown_report_header() {
       }
     }
   }
-
+  
   if (!$display_mode || $display_mode == 'both') {
     $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
 		     'Thursday', 'Friday', 'Saturday', 'Total');
@@ -660,7 +656,7 @@ function reservations_reports_hourly_breakdown_report_header() {
 }
 
 function reservations_report_display_cell($mode, $uses, $seconds) {
-  if ($mode == 'both') {
+  if (!$mode || $mode == 'both') {
     return $uses ." (" . ($seconds / (60*60)) . " hours)";
   }
   else if ($mode == 'hours') {
