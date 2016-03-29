@@ -421,6 +421,17 @@ function reservations_reports_hourly_breakdown_report_header() {
       
       $runtime = $end_object->getTimestamp() - $start_object->getTimestamp();
       
+      $exposed_input = $view->exposed_raw_input;
+      $date_input = $exposed_input ? 
+	$exposed_input['field_reservations_date_value']['max'] : "";
+
+      $date_input = $date_input ? $date_input : date('Y-m-d');
+      
+      $filter_end_object = new DateTime($date_input,
+					new DateTimeZone($date['timezone']));
+      $filter_end_object->add(new DateInterval("P1D"));
+      $filter_end_object->sub(new DateInterval("PT1S"));
+
       $adjusted_start_object = clone $start_object;
       $adjusted_start_hour = $start_object->format('G');
 
@@ -443,11 +454,12 @@ function reservations_reports_hourly_breakdown_report_header() {
       while ($continue = TRUE) {
 	$counter ++;
 	
-	/**	
+	/**
 	dsm('------------------------------------------');
 	dsm($prev_start_object->format('y-m-d H:i'), 'prev start');
 	dsm($next_start_object->format('y-m-d H:i'), 'next start');
 	dsm($next_end_object->format('y-m-d H:i'), 'next end');
+	dsm($end_object->format('y-m-d H:i'), 'end of res');
 	dsm($adjusted_start_object->format('y-m-d H:i'),
 	    'adjusted start object');
 	dsm($dow, 'dow');
@@ -459,7 +471,8 @@ function reservations_reports_hourly_breakdown_report_header() {
 	//if our $adjusted_start_hour (either the reservation start time or
 	//the time of our next block when a reservation spans from one block
 	//till the next) is less than or equal to our block start time,place it
-	if ($adjusted_start_hour <= $next_start_hour) {
+	if (($adjusted_start_hour <= $next_start_hour) &&
+	    ($start_object < $next_start_object)) {
 	  $start_blocks[$next_start_hour][$dow]++;
 	  if ($calc_mode == 'duration' && $end_object <= $next_start_object) {
 	    if (!$pushing) {
@@ -566,6 +579,12 @@ function reservations_reports_hourly_breakdown_report_header() {
 	  $adjusted_start_hour= $next_start_hour;
 	}
 
+
+	if ($next_end_object > $filter_end_object) {
+	  $continue = FALSE;
+	  break;
+	}
+
 	$continue = TRUE;
 	
 
@@ -621,8 +640,12 @@ function reservations_reports_hourly_breakdown_report_header() {
     else {
       $display_hour = ($hour - 12) . "pm";
     }
+    $prefix = isset($prev_display_hour) ? $prev_display_hour . "-" : 
+      t("Night-");
+    $prev_display_hour = $display_hour;
     
-    $row = array($display_hour);
+    
+    $row = array($prefix.$display_hour);
     $total = 0;
     $total_hours = 0;
     foreach($dows as $dow=>$count) {
