@@ -9,6 +9,20 @@ function reservations_report_views_api() {
                );
 }
 
+function reservations_report_menu() {
+  $items = array();
+
+  $items['admin/reservations/manage/reports'] = 
+    array(
+	  'title' => t('Reservation Reports'),
+	  'page callback' => 'reservations_report_menu_page',
+	  'access arguments' => array('manage reservations'),
+	  'type' => MENU_NORMAL_ITEM,
+	  );
+  
+  return $items;
+}
+
 function reservations_report_form_alter(&$form, &$form_state, $form_id) {
 
 
@@ -725,4 +739,23 @@ function reservations_report_get_time_options() {
 		   24 => "12:00am",
 		   );
   return $options;
+}
+
+function reservations_report_menu_page() {
+  $ret = "";
+  $ret .= "<ul>";
+
+  $ret .= "<li>";
+  $ret .= l(t("Reservation Breakdown by Hours"), 
+	      "admin/reservations/manage/reports/hours-breakdown");
+  $ret .= "</li>";
+
+  $ret .= "<li>";
+  $ret .= l(t("Reservation Usage Counts"), 
+	      "admin/reservations/manage/reports/usage-counts");
+  $ret .= "</li>";
+
+  $ret .= "</ul>";
+
+  return $ret;
 }
