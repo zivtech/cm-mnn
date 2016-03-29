@@ -121,11 +121,19 @@ function reservations_report_form_alter(&$form, &$form_state, $form_id) {
 	    '#default_value' => $default_value,
 	    );
 
+    $default_value =  filter_input(INPUT_GET, 'interval_points');
+    $default_value = $default_value ? $default_value : 2;
+
+    $form['interval_points'] = 
+      array(
+	    '#title' => t("Interval Points"),
+	    '#description' => 
+	    t("The hours of the day for which to have hourly breakdowns on reports with that feature. Enter in a string of times (in 24 hour format and in ascending order) like this: 10,14,17,19,22 Note! If you add this the 3 Row Time fields above will be ignored in lieue of these values. If you leave this field blank the Row Time fields will be used to determine the row times."),
+	    '#type' => 'textfield',
+	    );
+    $form['submit']['#weight'] = 10;
 
   }
-
-
-  $form['submit']['#weight'] = 10;
 }
 
 function reservations_report_usage_counts_report_header() {
@@ -303,9 +311,8 @@ function reservations_reports_hourly_breakdown_report_header() {
   $length = $length ? $length : 2; 
 
   $interval_points =  filter_input(INPUT_GET, 'interval_points');
-  //FIXME REMOVE DEFAULT
   $interval_points = $interval_points ? $interval_points : 
-    "10,14,17,19,22"; 
+    ""; 
   
   $interval_points = $interval_points ? explode(',', $interval_points) : NULL;
 
