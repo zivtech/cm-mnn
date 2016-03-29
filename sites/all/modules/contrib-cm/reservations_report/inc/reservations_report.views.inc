@@ -20,8 +20,7 @@ function reservations_report_views_default_views() {
   $handler->display->display_options['cache']['type'] = 'none';
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['exposed_form']['type'] = 'basic';
-  $handler->display->display_options['pager']['type'] = 'some';
-  $handler->display->display_options['pager']['options']['items_per_page'] = '100';
+  $handler->display->display_options['pager']['type'] = 'none';
   $handler->display->display_options['pager']['options']['offset'] = '0';
   $handler->display->display_options['style_plugin'] = 'table';
   /* Header: Global: Text area */
@@ -92,6 +91,15 @@ $handler->display->display_options['sorts']['created']['id'] = 'created';
 $handler->display->display_options['sorts']['created']['table'] = 'node';
 $handler->display->display_options['sorts']['created']['field'] = 'created';
 $handler->display->display_options['sorts']['created']['order'] = 'DESC';
+/* Contextual filter: Content: Nid */
+$handler->display->display_options['arguments']['nid']['id'] = 'nid';
+$handler->display->display_options['arguments']['nid']['table'] = 'node';
+$handler->display->display_options['arguments']['nid']['field'] = 'nid';
+$handler->display->display_options['arguments']['nid']['relationship'] = 'item_nid';
+$handler->display->display_options['arguments']['nid']['default_argument_type'] = 'fixed';
+$handler->display->display_options['arguments']['nid']['summary']['number_of_records'] = '0';
+$handler->display->display_options['arguments']['nid']['summary']['format'] = 'default_summary';
+$handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
 /* Filter criterion: Content: Published */
 $handler->display->display_options['filters']['status']['id'] = 'status';
 $handler->display->display_options['filters']['status']['table'] = 'node';
@@ -149,7 +157,7 @@ $handler->display->display_options['filters']['field_reservations_date_value']['
 														   47 => 0,
 														   32 => 0,
 														   );
-$handler->display->display_options['filters']['field_reservations_date_value']['default_date'] = 'now -1 month';
+$handler->display->display_options['filters']['field_reservations_date_value']['default_date'] = 'now -1 week';
 $handler->display->display_options['filters']['field_reservations_date_value']['default_to_date'] = 'now';
 /* Filter criterion: Reservations: Reservation status */
 $handler->display->display_options['filters']['status_1']['id'] = 'status_1';
@@ -204,7 +212,7 @@ $handler->display->display_options['filters']['type_setting']['field'] = 'type_s
 $handler->display->display_options['filters']['type_setting']['relationship'] = 'item_nid';
 $handler->display->display_options['filters']['type_setting']['exposed'] = TRUE;
 $handler->display->display_options['filters']['type_setting']['expose']['operator_id'] = 'type_setting_op';
-$handler->display->display_options['filters']['type_setting']['expose']['label'] = 'Reservations type';
+$handler->display->display_options['filters']['type_setting']['expose']['label'] = 'Reservation Type';
 $handler->display->display_options['filters']['type_setting']['expose']['operator'] = 'type_setting_op';
 $handler->display->display_options['filters']['type_setting']['expose']['identifier'] = 'type_setting';
 $handler->display->display_options['filters']['type_setting']['expose']['remember_roles'] = array(
@@ -240,6 +248,49 @@ $handler->display->display_options['filters']['type_setting']['expose']['remembe
 												  47 => 0,
 												  32 => 0,
 												  );
+/* Filter criterion: Content: Type */
+$handler->display->display_options['filters']['type_1']['id'] = 'type_1';
+$handler->display->display_options['filters']['type_1']['table'] = 'node';
+$handler->display->display_options['filters']['type_1']['field'] = 'type';
+$handler->display->display_options['filters']['type_1']['relationship'] = 'item_nid';
+$handler->display->display_options['filters']['type_1']['exposed'] = TRUE;
+$handler->display->display_options['filters']['type_1']['expose']['operator_id'] = 'type_1_op';
+$handler->display->display_options['filters']['type_1']['expose']['label'] = 'Reservable Item type';
+$handler->display->display_options['filters']['type_1']['expose']['operator'] = 'type_1_op';
+$handler->display->display_options['filters']['type_1']['expose']['identifier'] = 'type_1';
+$handler->display->display_options['filters']['type_1']['expose']['remember_roles'] = array(
+											    2 => '2',
+											    3 => 0,
+											    1 => 0,
+											    44 => 0,
+											    8 => 0,
+											    14 => 0,
+											    10 => 0,
+											    6 => 0,
+											    11 => 0,
+											    4 => 0,
+											    16 => 0,
+											    17 => 0,
+											    20 => 0,
+											    22 => 0,
+											    23 => 0,
+											    25 => 0,
+											    48 => 0,
+											    39 => 0,
+											    28 => 0,
+											    29 => 0,
+											    45 => 0,
+											    26 => 0,
+											    37 => 0,
+											    33 => 0,
+											    34 => 0,
+											    35 => 0,
+											    46 => 0,
+											    36 => 0,
+											    43 => 0,
+											    47 => 0,
+											    32 => 0,
+											    );
 
 /* Display: Usage Counts */
 $handler = $view->new_display('page', 'Usage Counts', 'page');
