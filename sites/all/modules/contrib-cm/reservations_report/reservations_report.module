@@ -1,0 +1,761 @@
+<?php
+
+function reservations_report_views_api() {
+  return array(
+               'api' => 3,
+               'path' =>
+               drupal_get_path('module',
+                               'reservations_report').'/inc'
+               );
+}
+
+function reservations_report_menu() {
+  $items = array();
+
+  $items['admin/reservations/manage/reports'] = 
+    array(
+	  'title' => t('Reservation Reports'),
+	  'page callback' => 'reservations_report_menu_page',
+	  'access arguments' => array('manage reservations'),
+	  'type' => MENU_NORMAL_ITEM,
+	  );
+  
+  return $items;
+}
+
+function reservations_report_form_alter(&$form, &$form_state, $form_id) {
+
+
+  if($form['#id'] == "views-exposed-form-reservations-reports-page") {
+    $default_value =  filter_input(INPUT_GET, 'reservation_grouping');
+    $default_value = $default_value ? $default_value : 0;
+    
+    $vid = variable_get('reservations_grouping_vid', 0);
+    $terms = taxonomy_get_tree($vid);
+    $bucket_categories = array();
+    $options = array(0=>'<select>');
+    foreach ($terms as $term) {
+      $options[$term->tid] = $term->name;
+    }
+
+    $form['reservation_grouping'] = 
+      array(
+	    '#title' => t("Reservable Item Grouping"),
+	    '#type' => 'select',
+	    '#options'=> $options,
+	    '#default_value' => $default_value,
+	    );
+
+  }
+  else if($form['#id'] == "views-exposed-form-reservations-reports-page-1") {
+    $default_value =  filter_input(INPUT_GET, 'reservation_grouping');
+    $default_value = $default_value ? $default_value : 0;
+    
+    $vid = variable_get('reservations_grouping_vid', 0);
+    $terms = taxonomy_get_tree($vid);
+    $bucket_categories = array();
+    $options = array(0=>'<select>');
+    foreach ($terms as $term) {
+      $options[$term->tid] = $term->name;
+    }
+
+    $form['reservation_grouping'] = 
+      array(
+	    '#title' => t("Reservable Item Grouping"),
+	    '#type' => 'select',
+	    '#options'=> $options,
+	    '#default_value' => $default_value,
+	    );
+    
+    $default_value =  filter_input(INPUT_GET, 'calc_mode');
+    $default_value = $default_value ? $default_value : 'duration';
+
+    $form['calc_mode'] = 
+      array(
+	    '#title' => t("Calculation Mode"),
+	    '#description' => 
+	    t("'Duration' choice will tally a reservation for each time row the reservation spans. 'Starts Only' will only tally each reservation once within the row the reservation starts and ignore later rows even if the reservation times span those rows."),
+	    '#type' => 'select',
+	    '#options'=> array('duration'=>'Duration',
+			       'start_only'=>'Starts Only'),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'display_mode');
+    $default_value = $default_value ? $default_value : 'both';
+    
+    $form['display_mode'] = 
+      array(
+	    '#title' => t("Display Mode"),
+	    '#description' => 
+	    t("Choose to display number of uses or hours or both."),
+	    '#type' => 'select',
+	    '#options'=> array('both'=>'Both',
+			       'hours'=>'Hours',
+			       'uses'=>'Uses'),
+	    '#default_value' => $default_value,
+	    );
+    //////////////////////////////////////////////////////////////////////
+
+    $default_value =  filter_input(INPUT_GET, 'row_begin_time');
+    $default_value = $default_value ? $default_value : 9;
+
+    $form['row_begin_time'] = 
+      array(
+	    '#title' => t("Beginning Row Time"),
+	    '#description' =>  t("The time of the first row."),
+	    '#type' => 'select',
+	    '#options'=> reservations_report_get_time_options(),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'row_end_time');
+    $default_value = $default_value ? $default_value : 24;
+
+    $form['row_end_time'] = 
+      array(
+	    '#title' => t("Ending Row Time"),
+	    '#description' => 
+	    t("The latest time that the last row can be set to."),
+	    '#type' => 'select',
+	    '#options'=> reservations_report_get_time_options(),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'length');
+    $default_value = $default_value ? $default_value : 2;
+
+    $form['length'] = 
+      array(
+	    '#title' => t("Row Time Difference"),
+	    '#description' => 
+	    t("The difference between the time of one row and the next."),
+	    '#type' => 'select',
+	    '#options'=> array(1=>1,2=>2,3=>3,4=>4,6=>6,12=>12),
+	    '#default_value' => $default_value,
+	    );
+
+    $default_value =  filter_input(INPUT_GET, 'interval_points');
+    $default_value = $default_value ? $default_value : 2;
+
+    $form['interval_points'] = 
+      array(
+	    '#title' => t("Interval Points"),
+	    '#description' => 
+	    t("The hours of the day for which to have hourly breakdowns on reports with that feature. Enter in a string of times (in 24 hour format and in ascending order) like this: 10,14,17,19,22 Note! If you add this the 3 Row Time fields above will be ignored in lieue of these values. If you leave this field blank the Row Time fields will be used to determine the row times."),
+	    '#type' => 'textfield',
+	    );
+    $form['submit']['#weight'] = 10;
+
+  }
+}
+
+function reservations_report_usage_counts_report_header() {
+    
+  $view = views_get_current_view();
+  $results = $view->result;
+
+  $data = array();
+  $types = array();
+  $items = array();
+  $total_hours = 0;
+  $total_value = 0;
+  $total_uses = 0;
+
+  $input_category =  filter_input(INPUT_GET, 'reservation_grouping');
+
+  foreach ($results as $view_data) {
+
+    $reservation_nid = $view_data->nid;
+    $reservation = $reservation_nid ? node_load($reservation_nid) : NULL;
+
+    $item_nid = $view_data->node_reservations_reservation_detail_nid;
+    $item = $item_nid ? node_load($item_nid) : NULL;
+    
+    if ($item) {
+      if (!isset($items[$item_nid])) {
+	$items[$item_nid] = $item->title;
+      }
+
+      $type = reservations_content_types($item->type);
+      if (!isset($types[$type['type']])) {
+	$types[$type['type']] = node_type_get_name($item);;
+      }
+
+      $grouping_tid = $type['reservations_grouping'];
+
+      if ($input_category && $grouping_tid != $input_category) {
+	continue;
+      }
+
+
+      $category = $grouping_tid ? taxonomy_term_load($grouping_tid) : NULL;
+      $data[$category->name] = 
+	$data[$category->name] ? $data[$category->name] : array();
+
+      $data[$category->name][$type['type']] = $data[$category->name][$type['type']] ? 
+	$data[$category->name][$type['type']] : array();
+
+      $item_index = $item->title . "||||" . $item_nid;
+
+      $data[$category->name][$type['type']][$item_index] = 
+	$data[$category->name][$type['type']][$item_index] ? 
+	$data[$category->name][$type['type']][$item_index] : 
+	array('count' => 0,'hours' => 0,'value' => 0);
+
+      //increase the count by 1
+      $data[$category->name][$type['type']][$item_index]['count']++;
+      $total_uses ++;
+
+      //find number of hours
+      $date = $view_data->field_field_reservations_date[0]['raw'];
+      $start_ts = new DateTime($date['value']);
+      $start_ts = $start_ts->getTimestamp();
+      $end_ts = new DateTime($date['value2']);
+      $end_ts = $end_ts->getTimestamp();
+
+      $hours = ($end_ts-$start_ts)/(60*60);
+
+      $data[$category->name][$type['type']][$item_index]['hours'] += $hours;
+      $total_hours += $hours;
+
+      $data[$category->name][$type['type']][$item_index]['value'] += 
+	$hours * $type['reservations_rate_per_hour'];
+      $total_value += $hours * $type['reservations_rate_per_hour'];
+    }
+
+      /*
+       dsm($view_data, 'vd');
+       dsm($reservation, 'res');
+       dsm($category->name, 'cat');
+       dsm($type, 'type');
+       dsm($item, 'item');
+       break;
+      */
+  }
+
+  foreach($data as $category=>$data_types) {
+    foreach($data_types as $type=>$data_items) {
+      ksort($data[$category][$type]);
+    }
+    ksort($data[$category]);
+  }
+  ksort($data);
+  
+  $headers = array(
+		   t("Item Type"),
+		   t("Item Title"),
+		   t("Number of Uses"),
+		   t("Hours of Use"),
+		   t("Dollar Value"),
+		   );
+  
+  $rows = array();
+  foreach($data as $category=>$data_types) {
+    $row = array(array('colspan' => 5,
+		       'data' => "<h2>$category</h2>"));
+    $rows[] = $row;
+
+    $category_usage_total = $category_hours_total = $category_value_total = 0;
+
+    foreach($data_types as $type=>$data_items) {
+      foreach($data_items as $index => $item_info) {
+	$row = array();
+	$item_array = explode('||||', $index);
+	$row[] = $types[$type];
+	$row[] = $item_array[0];
+
+	foreach($item_info as $key=>$value) {
+	  $category_usage_total += ($key == 'count') ? $value : 0;
+	  $category_hours_total += ($key == 'hours') ? $value : 0;
+	  $category_value_total += ($key == 'value') ? $value : 0;
+	  $value = ($key == 'value') ? "$".$value : $value;
+	  $row[] = array('data' => $value);
+	}
+	$rows[] = $row;
+      }
+    }
+    $category_value_total = "$".$category_value_total;
+
+    $row = array("&nbsp;","<h4>Category Totals</h4>",$category_usage_total, 
+		 $category_hours_total, $category_value_total);
+    $rows[] = $row;
+		 
+  }
+
+  $total_value = ($key == 'total_value') ? "$".  $total_value : $total_value;
+  
+  $row = array("<h2>Grand Totals</h2>","&nbsp;",$total_uses, 
+	       $total_hours, "$".$total_value);
+
+  $rows[] = $row;
+
+
+  $ret = theme('table', array('header' => $headers, 'rows' => $rows));
+  $ret .= "<br/><br/><hr><br/><h2>Filters and Raw Data</h2><br/><br/>";
+ 
+  return $ret;
+}
+
+
+function reservations_reports_hourly_breakdown_report_header() {
+    
+  $view = views_get_current_view();
+  $results = $view->result;
+
+  $data = array();
+  $types = array();
+  $items = array();
+  $total_hours = 0;
+  $total_value = 0;
+  $total_uses = 0;
+
+  $category =  filter_input(INPUT_GET, 'reservation_grouping');
+  $calc_mode =  filter_input(INPUT_GET, 'calc_mode');
+  $calc_mode = $calc_mode ? $calc_mode : 'duration';
+  $display_mode =  filter_input(INPUT_GET, 'display_mode');
+  $display_mode = $display_mode ? $display_mode : 'both';
+  $row_begin_time =  filter_input(INPUT_GET, 'row_begin_time');
+  $row_begin_time = $row_begin_time ? $row_begin_time : 9; 
+
+  $row_end_time =  filter_input(INPUT_GET, 'row_end_time');
+  $row_end_time = $row_end_time ? $row_end_time : 24; 
+
+  $length =  filter_input(INPUT_GET, 'length');
+  $length = $length ? $length : 2; 
+
+  $interval_points =  filter_input(INPUT_GET, 'interval_points');
+  $interval_points = $interval_points ? $interval_points : 
+    ""; 
+  
+  $interval_points = $interval_points ? explode(',', $interval_points) : NULL;
+
+  $start_blocks = array();
+
+  $dows = array('Sunday' => 0,
+		'Monday' => 0,
+		'Tuesday' => 0,
+		'Wednesday' => 0,
+		'Thursday' => 0,
+		'Friday' => 0,
+		'Saturday' => 0,
+		);
+  if ($interval_points) {
+    $row_begin_time = $interval_points[0];
+    foreach($interval_points as $hour) {
+      $start_blocks[$hour] = $dows;
+      $row_end_time = $hour;
+    }
+  }
+  else {
+    $i = 0;
+    while ($i < 24) {
+      if ($i < $row_begin_time) {
+	$start_blocks[$row_begin_time] = $dows;
+	$i = $row_begin_time + $length;
+      }
+      else if ($i == $row_end_time) {
+	$start_blocks[$row_end_time] = $dows;
+	break;
+      }
+      else if ($i > $row_end_time) {
+	break;
+      }
+      else {
+	$start_blocks[$i] = $dows;
+	$i += $length;
+      }
+    } 
+  }
+  $hour_blocks = $start_blocks;
+  
+  foreach ($results as $view_data) {
+    if ($interval_points) {
+      $next_point_array = $interval_points;
+      $interval_point_counter = 0;
+    }
+
+    $reservation_nid = $view_data->nid;
+    $reservation = $reservation_nid ? node_load($reservation_nid) : NULL;
+
+    $item_nid = $view_data->node_reservations_reservation_detail_nid;
+    $item = $item_nid ? node_load($item_nid) : NULL;
+    
+    if ($item) {
+      $type = reservations_content_types($item->type);
+      if (!isset($types[$type['type']])) {
+	$types[$type['type']] = node_type_get_name($item);;
+      }
+
+      $grouping_tid = $type['reservations_grouping'];
+      if ($category && $grouping_tid != $category) {
+	continue;
+      }
+
+      $date = $view_data->field_field_reservations_date[0]['raw'];
+
+      $start_object = new DateTime($date['value'],
+				   new DateTimeZone($date['timezone_db']));
+      $start_object->setTimeZone(new DateTimeZone($date['timezone']));
+
+      $end_object = new DateTime($date['value2'],
+				   new DateTimeZone($date['timezone_db']));
+      $end_object->setTimeZone(new DateTimeZone($date['timezone']));
+
+      $start_hour = $start_object->format('G');
+
+      $continue = TRUE;
+      $dow = $start_object->format('l');
+      $day = new DateTime($start_object->format('Y-m-d')." 00:00",  
+			  new DateTimeZone($date['timezone']));
+
+      $next_start_hour = $row_begin_time;
+      $next_start_object = 
+	new DateTime($start_object->format('Y-m-d')." ".
+		     $next_start_hour.":00",  
+		     new DateTimeZone($date['timezone']));
+
+      $prev_start_object = 
+	new DateTime($start_object->format('Y-m-d')." 00:00",  
+		     new DateTimeZone($date['timezone']));
+
+      if ($interval_points) {
+	$next_end_object = 
+	  new DateTime($start_object->format('Y-m-d')." ".
+		       $interval_points[1].":00",  
+	  new DateTimeZone($date['timezone']));
+
+      }
+      else {
+	$next_end_object = clone $next_start_object;
+	$next_end_object->add(new DateInterval("PT".$length."H"));
+      }
+
+      $next_end = $next_end_object->format('G');
+      
+      $runtime = $end_object->getTimestamp() - $start_object->getTimestamp();
+      
+      $exposed_input = $view->exposed_raw_input;
+      $date_input = $exposed_input ? 
+	$exposed_input['field_reservations_date_value']['max'] : "";
+
+      $date_input = $date_input ? $date_input : date('Y-m-d');
+      
+      $filter_end_object = new DateTime($date_input,
+					new DateTimeZone($date['timezone']));
+      $filter_end_object->add(new DateInterval("P1D"));
+      $filter_end_object->sub(new DateInterval("PT1S"));
+
+      $adjusted_start_object = clone $start_object;
+      $adjusted_start_hour = $start_object->format('G');
+
+      /**
+      dsm($row_begin_time, 'row_begin_time');
+      dsm($row_end_time, 'row_begin_time');
+      dsm($start_hour, 'sh');            
+      dsm($start_object->format('y-m-d H:i'), 'start time from res');
+      dsm($end_object->format('y-m-d H:i'), 'end time from res');
+      dsm($dow, 'dow');
+      dsm($runtime, 'runtime');
+
+      dsm("****************************************************");
+      */
+      //counter is set as a safety, too many loops below and we abort
+      $counter = 0;
+      
+      //loop until we set $continue to FALSE
+      $pushing = FALSE;
+      while ($continue = TRUE) {
+	$counter ++;
+	
+	/**
+	dsm('------------------------------------------');
+	dsm($prev_start_object->format('y-m-d H:i'), 'prev start');
+	dsm($next_start_object->format('y-m-d H:i'), 'next start');
+	dsm($next_end_object->format('y-m-d H:i'), 'next end');
+	dsm($end_object->format('y-m-d H:i'), 'end of res');
+	dsm($adjusted_start_object->format('y-m-d H:i'),
+	    'adjusted start object');
+	dsm($dow, 'dow');
+	dsm($next_start_hour, 'next start');
+	dsm($next_end, 'next end');
+	dsm($adjusted_start_hour, 'adjusted start hour');
+	*/
+
+	//if our $adjusted_start_hour (either the reservation start time or
+	//the time of our next block when a reservation spans from one block
+	//till the next) is less than or equal to our block start time,place it
+	if (($adjusted_start_hour <= $next_start_hour) &&
+	    ($start_object < $next_start_object)) {
+	  $start_blocks[$next_start_hour][$dow]++;
+	  if ($calc_mode == 'duration' && $end_object <= $next_start_object) {
+	    if (!$pushing) {
+	      $hour_blocks[$next_start_hour][$dow] += $runtime;
+	      //dsm("logged " .$runtime." -- $dow $next_start_hour ");
+
+	    }
+	    else {
+	      $partial_runtime = $end_object->getTimestamp() - 
+		$prev_start_object->getTimestamp();
+	      $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
+	      //dsm("logged " .($partial_runtime/(60*60)).
+	      //	  " -- $dow $next_start_hour ");
+
+	    }
+
+	    $continue = FALSE;
+	    break;
+	  }
+	  else if ($calc_mode == 'duration') {
+	    $pushing = TRUE;
+	    if ($start_object > $prev_start_object) {
+	      $partial_runtime = $next_start_object->getTimestamp() - 
+		$start_object->getTimestamp();
+	    }
+	    else {
+	      $partial_runtime = $next_start_object->getTimestamp() - 
+		$prev_start_object->getTimestamp();
+	    }
+	    $hour_blocks[$next_start_hour][$dow] += $partial_runtime;
+	    //dsm("logged part ". $partial_runtime/(60*60).
+	    //	"hours --  $dow $next_start_hour ");
+	    $continue = TRUE;
+	  }
+	  else {
+	    $continue = FALSE;
+	    break;
+	  }
+	  
+	}
+	$prev_start_hour = $next_start_hour;
+	$prev_start_object = clone $next_start_object;
+
+	if ($interval_points) {
+	  $interval_point_counter ++;
+
+	  if (isset($interval_points[$interval_point_counter])) {
+	    $next_start_object = 
+	      new DateTime($next_start_object->format('Y-m-d')." ".
+			   $interval_points[$interval_point_counter].":00",  
+			   new DateTimeZone($date['timezone']));
+	    $next_start_hour = $next_start_object->format('G');
+	  }
+	  else {
+	    $next_start_object = NULL;
+	    //just setting to somehting bigger so it goes to next day below
+	    $next_start_hour = 25;
+	  }
+	}
+	else {
+	  $next_start_object->add(new DateInterval("PT".$length."H"));
+	  $next_start_hour = $next_start_object->format('G');
+	}
+
+
+	if ($next_start_hour > $row_end_time ||
+	    $prev_start_hour > $next_start_hour) {
+	  $day->add(new DateInterval("P1D"));
+	  $next_start_object = 
+	    new DateTime($day->format('Y-m-d')." ".
+			 $row_begin_time.":00",  
+			 new DateTimeZone($date['timezone']));
+	  $next_start_hour = $next_start_object->format('G');
+	  $dow = $next_start_object->format('l');
+	  $adjusted_start_object = clone $next_start_object;
+	  $adjusted_start_hour= $next_start_hour;
+	  $interval_point_counter = 0;
+	}
+
+	if ($interval_points) {
+	  $index = $interval_point_counter + 1;
+	  if (isset($interval_points[$index])) {
+	    $next_hour = $interval_points[$index];
+	    $next_end_object = 
+	      new DateTime($day->format('Y-m-d')." ".$next_hour.":00",
+			   new DateTimeZone($date['timezone']));
+	    
+	  }
+	  else {
+	    $next_end_object->add(new DateInterval("P1D"));
+	    $next_end_object = 
+	      new DateTime($next_end_object->format('Y-m-d')." ".
+			   $interval_points[0].":00",  
+			   new DateTimeZone($date['timezone']));
+	  }
+     	}
+	else {
+	  $next_end_object = clone $next_start_object;
+	  $next_end_object->add(new DateInterval("PT".$length."H"));
+	}
+	$next_end = $next_end_object->format('G');
+	if ($adjusted_start_hour < $next_start_hour) {
+	  $adjusted_start_object = clone $next_start_object;
+	  $adjusted_start_hour= $next_start_hour;
+	}
+
+
+	if ($next_end_object > $filter_end_object) {
+	  $continue = FALSE;
+	  break;
+	}
+
+	$continue = TRUE;
+	
+
+	if ($counter > 100) {
+	  drupal_set_message("ERROR CODE 46738: INFINITE LOOP", 'error');
+	  return "";
+	}
+      }
+    }
+  }
+  
+  if (!$display_mode || $display_mode == 'both') {
+    $headers = array('Hour', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 
+		     'Thursday', 'Friday', 'Saturday', 'Total');
+  }
+  else if ($display_mode == 'hours') {
+    $headers = array('Hour', 
+		     'Sunday <br/>(hours)', 
+		     'Monday <br/>(hours)', 
+		     'Tuesday <br/>(hours)', 
+		     'Wednesday <br/>(hours)', 
+		     'Thursday <br/>(hours)', 
+		     'Friday <br/>(hours)', 
+		     'Saturday <br/>(hours)', 
+		     'Total <br/>(hours)');
+  }
+  else {
+    $headers = array('Hour', 
+		     'Sunday <br/>(uses)', 
+		     'Monday <br/>(uses)', 
+		     'Tuesday <br/>(uses)', 
+		     'Wednesday <br/>(uses)', 
+		     'Thursday <br/>(uses)', 
+		     'Friday <br/>(uses)', 
+		     'Saturday <br/>(uses)', 
+		     'Total <br/>(uses)');
+
+  }
+
+
+  $rows = array();
+  $grand_total = 0;
+  $grand_total_hours = 0;
+  $dow_counts = array();
+  $dow_hours = array();
+  foreach ($start_blocks as $hour => $dows) {
+    if ($hour < 12) {
+      $display_hour = $hour."am";
+    }
+    else if ($hour == 12) {
+      $display_hour = "12pm";
+    }
+    else {
+      $display_hour = ($hour - 12) . "pm";
+    }
+    $prefix = isset($prev_display_hour) ? $prev_display_hour . "-" : 
+      t("Night-");
+    $prev_display_hour = $display_hour;
+    
+    
+    $row = array($prefix.$display_hour);
+    $total = 0;
+    $total_hours = 0;
+    foreach($dows as $dow=>$count) {
+      $dow_counts[$dow] = isset($dow_counts[$dow]) ? $dow_counts[$dow] :  0;
+      $total += $count;
+      $grand_total += $count;
+      $dow_counts[$dow] += $count;
+
+      $hours = $hour_blocks[$hour][$dow];
+
+      $dow_hours[$dow] = isset($dow_hours[$dow]) ? $dow_hours[$dow] :  0;
+      $total_hours += $hours;
+      $grand_total_hours += $hours;
+      $dow_hours[$dow] += $hours;
+
+      $row[] = reservations_report_display_cell($display_mode, $count, $hours);
+    }
+    $row[] = reservations_report_display_cell($display_mode, 
+					      $total, $total_hours);
+    $rows[] = $row;
+  }
+
+  $row = array("<strong>Totals</strong>");
+
+  foreach ($dow_counts as $dow =>$count) {
+    $hours = $dow_hours[$dow];
+    $row[] = reservations_report_display_cell($display_mode, $count, $hours);
+  }
+  $row[] = reservations_report_display_cell($display_mode, $grand_total, 
+					    $grand_total_hours);
+
+  $rows[] = $row;
+
+  $ret = theme('table', array('header' => $headers, 'rows' => $rows));
+  $ret .= "<br/><br/><hr><br/><h2>Filters and Raw Data</h2><br/><br/>";
+
+  return $ret;
+}
+
+function reservations_report_display_cell($mode, $uses, $seconds) {
+  if (!$mode || $mode == 'both') {
+    return $uses ." (" . ($seconds / (60*60)) . " hours)";
+  }
+  else if ($mode == 'hours') {
+    return $seconds / (60*60);           ;
+  }
+  else {
+    return $uses;
+  }
+}
+
+function reservations_report_get_time_options() {
+  $options = array(
+		   1 => "1:00am",
+		   2 => "2:00am",
+		   3 => "3:00am",
+		   4 => "4:00am",
+		   5 => "5:00am",
+		   6 => "6:00am",
+		   7 => "7:00am",
+		   8 => "8:00am",
+		   9 => "9:00am",
+		   10 => "10:00am",
+		   11 => "11:00am",
+		   12 => "12:00pm",
+		   13 => "1:00pm",
+		   14 => "2:00pm",
+		   15 => "3:00pm",
+		   16 => "4:00pm",
+		   17 => "5:00pm",
+		   18 => "6:00pm",
+		   19 => "7:00pm",
+		   20 => "8:00pm",
+		   21 => "9:00pm",
+		   22 => "10:00pm",
+		   23 => "11:00pm",
+		   24 => "12:00am",
+		   );
+  return $options;
+}
+
+function reservations_report_menu_page() {
+  $ret = "";
+  $ret .= "<ul>";
+
+  $ret .= "<li>";
+  $ret .= l(t("Reservation Breakdown by Hours"), 
+	      "admin/reservations/manage/reports/hours-breakdown");
+  $ret .= "</li>";
+
+  $ret .= "<li>";
+  $ret .= l(t("Reservation Usage Counts"), 
+	      "admin/reservations/manage/reports/usage-counts");
+  $ret .= "</li>";
+
+  $ret .= "</ul>";
+
+  return $ret;
+}

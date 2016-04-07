@@ -1,0 +1,91 @@
+<?php
+
+
+/**
+ * @file
+ * reservations Installer / Uninstaller
+ */
+
+/**
+ * Implements hook_install().
+ */
+function reservations_report_install() {
+
+  $args = array();
+
+  $args[] = array('table_name' => 'reservations_resource_node',
+		  'index_name' => 'rateperhour',
+		  'fields' => array('reservations_rate_per_hour'));
+
+  $args[] = array('table_name' => 'reservations_reservation',
+		  'index_name' => 'status',
+		  'fields' => array('reservations_reservation_status'));
+
+  $args[] = array('table_name' => 'reservations_reservation_detail',
+		  'index_name' => 'vidnid',
+		  'fields' => array("vid","nid"));
+
+  $args[] = array('table_name' => 'reservations_resource_node',
+		  'index_name' => 'vidrateperhour',
+		  'fields' => array('vid','reservations_rate_per_hour'));
+
+  foreach ($args as $index) {
+    $sql = "show index from {" . $index['table_name']. 
+      "} where Key_name = :index_name";
+
+    $query_args = array(':index_name' => $index['index_name']);
+
+    $results = db_query($sql, $query_args);
+
+    $index_exists = FALSE;
+    while ($result = $results->fetchObject()) {
+      $index_exists = TRUE;
+      break;
+    }
+    if ($index_exists) {
+      continue;
+    }
+    $sql = "ALTER TABLE {" . $index['table_name']."} ADD INDEX " .
+      $index['index_name'] ." (";
+
+    $is_first = TRUE;
+    $counter = 0;
+    $query_args = array();
+    foreach($index['fields'] as $field) {
+      if ($is_first) {
+	$is_first= FALSE;
+      }
+      else {
+	$sql .= ",";
+      }
+      $counter ++;
+      $sql .= $field;
+    }
+    $sql .= ")";
+    db_query($sql);
+
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function reservations_report_uninstall() {
+  /*
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX rateperhour
+    (reservations_rate_per_hour)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation ADD INDEX status
+    (reservations_reservation_status)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_reservation_detail ADD INDEX vidnid
+    (vid,nid)";
+  db_query($sql);
+
+  $sql = "ALTER TABLE reservations_resource_node ADD INDEX vidrateperhour
+    (vid,reservations_rate_per_hour)";
+
+   */
+}
