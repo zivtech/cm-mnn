@@ -169,7 +169,7 @@ function mnn_programming_exports_pebble_beach_xml($data) {
          <properties>
            <media mediaName="'.$data['house_id'].'"/>
            <mediaStream som="00:00:00;00">
-             <segment type="Markup">
+             <segment type="Media" validationMode="Update">
                <markup orderNo="1" name="Trimmed"/>
              </segment>
              <video jobType="Play"/>
