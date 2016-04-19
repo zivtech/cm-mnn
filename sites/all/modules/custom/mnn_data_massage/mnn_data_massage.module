@@ -86,6 +86,8 @@ function mnn_data_massage_page($function) {
 function mnn_data_massage_function_tester() {
   dsm("hi mom!");
   
+  mnn_airing_replication_replicate_quarterly_airings();
+  return;
   // $project = node_load(6);
   
   $sql = "
