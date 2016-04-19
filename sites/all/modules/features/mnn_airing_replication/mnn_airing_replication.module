@@ -50,6 +50,16 @@ function mnn_airing_replication_page() {
 
   $counter = 0;
   foreach($results as $result) {
+
+    //TESTING HARNESS TO ONLY DO A PROJECT OR A FEW AT AT TIME
+    /*
+    $nids = array(23960, 23023, 20264, 18686, );
+    if (!in_array($result->nid,$nids) )  {
+      continue;
+    }
+    dsm($result, $result->node_title." view result");
+    */
+    
     $counter ++;
 
     if (is_array($result->field_field_replicated_quarters) ) {
@@ -85,8 +95,7 @@ function mnn_airing_replication_page() {
       continue;
     }
     else {
-      drupal_set_message("Missing replication history for ".
-			 $result->nid."!", 'ERROR');
+      $missing_history_projects[] = $result;
       continue;
     }
   }
@@ -295,8 +304,17 @@ function mnn_airing_replication_history_view_field(&$data){
     $history = $data->field_field_replication_history[0]['raw']['value'];
     $history = @unserialize($history);
 
-    if ($history) {
+    $detail_link = l("Click Here for Detail Mode",
+		     "/admin/airings/quarterly-scheduling",
+		     array('query'=>array('detail'=>'yes')));;
+
+    $detail_mode = filter_input(INPUT_GET, 'detail');
+
+    if ($history && $detail_mode) {
       return mnn_airing_replication_get_history_table($history);
+    }
+    else if ($history) {
+      return $detail_link;
     }
     else {
       return "N/A";
@@ -375,6 +393,10 @@ function mnn_airing_replication_slot_channel_tid_transform($slot_name) {
   else if (strpos($slot_name, 'CH-TID968')) {
     return str_replace('CH-TID968', 'CH.4', $slot_name);
   }
+  else if (strpos($slot_name, 'CH-TID1657')) {
+    return str_replace('CH-TID1657', 'CH.5', $slot_name);
+  }
+
   return $slot_name;
 }
 
@@ -410,6 +432,7 @@ function mnn_airing_replication_get_conflicting_project($start,
 		':start' => date('Y-m-d H:i:s', $start),
 		':end' => date('Y-m-d H:i:s', $end),
 		);
+
   $result = db_query($sql, $args)->fetchObject();
   if ($result) {
     return $result->project_nid;
@@ -432,91 +455,94 @@ function mnn_airing_replication_replicate_quarterly_airings() {
       $history = @unserialize($history);
 
       if ($history) {
-	krsort($history);
-	foreach($history as $quarter=>$slots) {
+	ksort($history);
+	$latest_season = array_pop($history);
+	foreach($latest_season as $slot_name=>$airings) {
+	  $source_airing = NULL;
+	  //find latest airing that exists
+	  krsort($airings);
 
-	  foreach($slots as $slot_name=>$airings) {
-
-	    //find latest airing that exists
-	    krsort($airings);
-	    foreach($airings as $start_time=>$airing_id) {
-	      $airings_result_array = 
-		entity_load('airing', array($airing_id));
-	      if ($airings_result_array) {
-		$source_airing = array_shift($airings_result_array);
-		if ($source_airing) {
-		  $source_start_time = $start_time;
-		  break;
-		}
-	      }
-	    }
-
-	    if (!$source_airing) {
-	      continue;
-	    }
-
-	    $channel_tid = 
-	      $source_airing->field_airing_channel[LANGUAGE_NONE][0]['tid'];
-
-	    //get quarters
-	    $source_quarter = timespan_current('mnnquarter',date('Y-m-d'));
-	    $start = date('Y-m-d',strtotime($source_quarter['start']));
-	    $target_quarter = timespan_next('mnnquarter',$start);
-
-	    $target_quarter_start = strtotime($target_quarter['start']);
-	    $target_quarter_end = strtotime($target_quarter['end']);
-
-	    $next_start = $source_start_time;
-	    //increment airing by interval until in next quarter until the 
-	    //end of that quarter to get array of airing dates
-	    $counter = 0;
-	    $airdates = array();
-	    $first_start = 0;
-	    while (($counter < 100) && ($next_start < $target_quarter_end)) {
-	      $counter ++;
-	      if ($next_start >= $target_quarter_start) {
-		$airdates[] = $next_start;
-		if (!$first_start) {
-		  $first_start = date("Y-m-d H:i:s", $next_start);
-		}
-	      }
-	      $next_start = 
-		strtotime(mnn_airing_get_next_air_date(date("Y-m-d H:i:s",
-							    $next_start), 
-						       $interval));
-
-	      $next_end = $next_start + $runtime;
-	      //query for overlaps on airing dates
-	      $conflict_project_id = 
-		mnn_airing_replication_get_conflicting_project($next_start,
-							       $next_end,
-							       $channel_tid);
-	      if ($conflict_project_id) {
-		$airdates = array();
-	
-		//if overlap, set conflict id on project and return
-		$project_node->field_conflicting_project[LANGUAGE_NONE][0]['nid'] = 
-		  $conflict_project_id;
-
-		node_save($project_node);
+	  foreach($airings as $start_time=>$airing_id) {
+	    $airings_result_array = 
+	      entity_load('airing', array($airing_id));
+	    if ($airings_result_array) {
+	      $source_airing = array_shift($airings_result_array);
+	      if ($source_airing) {
+		$source_start_time = $start_time;
 		break;
 	      }
-	      
 	    }
-	    
-	    if ($airdates) {
-	      $_SESSION['cm_schedule_mode'] = 'series';
-	      global $cm_scheduled_first_airing;  
-	      $cm_scheduled_first_airing = TRUE;
-	      $new_airing = mnn_airing_clone($source_airing, $langcode);
-	      $new_airing->field_airing_date[LANGUAGE_NONE][0]['value'] = 
-		$first_start;
+	  }
+	  if (!$source_airing) {
+	    //resave project after pruning the last season which was wiped
+	    //off the books
+	    $project_node->field_replication_history[LANGUAGE_NONE][0] = 
+	      array('value' => serialize($history));
+	    node_save($project_node);
+	    continue;
+	  }
 
-	      $new_airing->cm_use_auto_title = TRUE;
-	      $new_airing->cm_use_auto_endtime = TRUE;
-              unset($new_airing->field_airing_show_ref);
-	      entity_save('airing', $new_airing);
+	  $channel_tid = 
+	    $source_airing->field_airing_channel[LANGUAGE_NONE][0]['tid'];
+
+	  //get quarters
+	  $source_quarter = timespan_current('mnnquarter',date('Y-m-d'));
+	  $start = date('Y-m-d',strtotime($source_quarter['start']));
+	  $target_quarter = timespan_next('mnnquarter',$start);
+	  
+	  $target_quarter_start = strtotime($target_quarter['start']);
+	  $target_quarter_end = strtotime($target_quarter['end']);
+	  
+	  $next_start = $source_start_time;
+	  //increment airing by interval until in next quarter until the 
+	  //end of that quarter to get array of airing dates
+	  $counter = 0;
+	  $airdates = array();
+	  $first_start = 0;
+	  while (($counter < 100) && ($next_start < $target_quarter_end)) {
+	    $counter ++;
+	    if ($next_start >= $target_quarter_start) {
+	      $airdates[] = $next_start;
+	      if (!$first_start) {
+		$first_start = date("Y-m-d H:i:s", $next_start);
+	      }
 	    }
+	    $next_start = 
+	      strtotime(mnn_airing_get_next_air_date(date("Y-m-d H:i:s",
+							  $next_start), 
+						     $interval));
+	  
+	    $next_end = $next_start + $runtime;
+	    //query for overlaps on airing dates
+	    $conflict_project_id = 
+	      mnn_airing_replication_get_conflicting_project($next_start,
+							     $next_end,
+							     $channel_tid);
+
+	    if ($conflict_project_id && 
+		($conflict_project_id != $project->nid)){
+	      $airdates = array();
+	
+	      //if overlap, set conflict id on project and return
+	     $project_node->field_conflicting_project[LANGUAGE_NONE][0]['nid'] 
+	       = $conflict_project_id;
+	     
+	     node_save($project_node);
+	     break;
+	    }
+	  }
+	  if ($airdates) {
+	    $_SESSION['cm_schedule_mode'] = 'series';
+	    global $cm_scheduled_first_airing;  
+	    $cm_scheduled_first_airing = TRUE;
+	    $new_airing = mnn_airing_clone($source_airing, $langcode);
+	    $new_airing->field_airing_date[LANGUAGE_NONE][0]['value'] = 
+	      $first_start;
+	    
+	    $new_airing->cm_use_auto_title = TRUE;
+	    $new_airing->cm_use_auto_endtime = TRUE;
+	    unset($new_airing->field_airing_show_ref);
+	    entity_save('airing', $new_airing);
 	  }
 	}
       }
