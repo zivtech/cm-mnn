@@ -140,3 +140,14 @@ CREDITS
   <weitzman AT tejasa DOT com>
 - Current project maintainer and Drupal 7 author is Amitai Burstein (Amitaibu) -
   gizra.com
+
+  
+Patches
+-------
+Mark Libkuman: patched to use global valid IDs recieved from entityreference
+  module that can override those in the og module;
+  uses a global variable $hacked_valid_ids with ids so that id with a value
+  can be used in og/plugins/entityreference/behavior/OgBehaviorHandler.class.php
+  where this function is returning an empty array when it shouldn't be, 
+  $valid_ids = entityreference_get_selection_handler($field, $instance, 
+  $entity_type, $entity)->validateReferencableEntities($ids);
