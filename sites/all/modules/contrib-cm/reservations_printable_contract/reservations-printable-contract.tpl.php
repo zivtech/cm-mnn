@@ -59,7 +59,7 @@ $logourl = theme_get_setting('logo_path', '');
     }
     if ($item['reservations_item_nid']) {
       $real_item_node = node_load($item['reservations_item_nid']);
-      dsm($real_item_node);
+      //dsm($real_item_node);
       $inv_number = $real_item_node->field_inventory_number[LANGUAGE_NONE][0]['value'];
       $accessories = $real_item_node->field_accessories[LANGUAGE_NONE][0]['value'];
       
