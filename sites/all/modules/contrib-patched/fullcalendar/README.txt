@@ -22,6 +22,9 @@ Patches
   https://www.drupal.org/node/2148083 -
   https://www.drupal.org/files/issues/fullcalendar_december-2148083-1.patch
 
- https://www.drupal.org/node/2185449 -
- https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
+  https://www.drupal.org/node/2185449 -
+  https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
+
+  https://www.drupal.org/node/2148083 
+  https://www.drupal.org/files/issues/ajax_date_format-2185449-17.patch
 

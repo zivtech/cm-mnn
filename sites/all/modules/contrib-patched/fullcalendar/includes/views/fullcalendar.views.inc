@@ -109,7 +109,20 @@ function fullcalendar_views_pre_view(&$view, &$display_id, &$args) {
     // Add an exposed filter for the date field.
     $field_value_id = $field->real_field . str_replace($field->field, '', $field_id);
     if (isset($exposed_input[$field_value_id])) {
-      $timestamp = (strtotime($exposed_input[$field_value_id]['min']['date']) + strtotime($exposed_input[$field_value_id]['max']['date'])) / 2;
+      /*
+       the following line is commented out
+       to fix Undefined index: date in fullcalendar_views_pre_view() after 
+       patch 2185449-4.patch was applied
+       fix source is this patch on April 29, 2016
+       https://www.drupal.org/files/issues/ajax_date_format-2185449-17.patch
+       https://www.drupal.org/node/2148083
+      */      
+      //$timestamp = (strtotime($exposed_input[$field_value_id]['min']['date']) + strtotime($exposed_input[$field_value_id]['max']['date'])) / 2;
+      $exposed = $exposed_input[$field_value_id];
+      $min = mktime(0, 0, 0, $exposed['min']['month'], $exposed['min']['day'],$exposed['min']['year']);
+      $max = mktime(0, 0, 0, $exposed['max']['month'], $exposed['max']['day'],$exposed['max']['year']);
+      $timestamp = ($min + $max) / 2;
+       // end patch 2185449-17
       $min = date('Y-m', $timestamp);
       $max = date('Y-m', strtotime($min . ' +1 month'));
     }
