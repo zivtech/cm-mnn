@@ -16,3 +16,12 @@ To use the FullCalendar module:
   3) Create a view and add filters for the entity
   4) In the "Format" section, change the "Format" to "FullCalendar"
   5) Optionally, enable the "Use AJAX" option under "Advanced"
+  
+Patches
+-------
+  https://www.drupal.org/node/2148083 -
+  https://www.drupal.org/files/issues/fullcalendar_december-2148083-1.patch
+
+ https://www.drupal.org/node/2185449 -
+ https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
+

@@ -130,9 +130,16 @@ function fullcalendar_views_pre_view(&$view, &$display_id, &$args) {
     }
     $min = date('Y-m-d', strtotime($min . ' -2 weeks'));
     $max = date('Y-m-d', strtotime($max . ' +2 weeks'));
+    /*
+     form_type => date_text is commented out and replaced with date_select
+     fix source is this patch on April 29, 2016
+     https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
+     https://www.drupal.org/node/2185449
+    */    
     $options = array(
       'exposed' => TRUE,
-      'form_type' => 'date_text',
+      //'form_type' => 'date_text',
+      'form_type' => 'date_select', 
       'operator' => 'between',
       'default_date' => $min,
       'default_to_date' => $max,
