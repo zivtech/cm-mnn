@@ -117,7 +117,7 @@ function fullcalendar_views_pre_view(&$view, &$display_id, &$args) {
 
       /*
        the following two lines are commented out and the two after that added
-       to fix the bug in the module that impacts only december
+       to fix a bug that appears when scrolling the calendar
        fix source is this patch
        https://www.drupal.org/files/issues/fullcalendar_december-2148083-1.patch
        https://www.drupal.org/node/2148083
@@ -132,6 +132,7 @@ function fullcalendar_views_pre_view(&$view, &$display_id, &$args) {
     $max = date('Y-m-d', strtotime($max . ' +2 weeks'));
     /*
      form_type => date_text is commented out and replaced with date_select
+     to fix a bug that appears when scrolling the calendar     
      fix source is this patch on April 29, 2016
      https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
      https://www.drupal.org/node/2185449

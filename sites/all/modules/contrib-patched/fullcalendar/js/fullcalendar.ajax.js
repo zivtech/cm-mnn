@@ -11,6 +11,7 @@ Drupal.fullcalendar.fullcalendar.prototype.dateChange = function (fields) {
   if (view.name == 'month') {
     /*
      comment the two lines and replace with 5 lines
+     to fix a date format bug that appears when scrolling the calendar
      fix source is this patch on April 29, 2016
      https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
      https://www.drupal.org/node/2185449
@@ -28,6 +29,7 @@ Drupal.fullcalendar.fullcalendar.prototype.dateChange = function (fields) {
     for (var i in fields) {
       /*
        comment 3 lines and add 6 lines
+       to fix a date format bug that appears when scrolling the calendar
        fix source is this patch on April 29, 2016
        https://www.drupal.org/files/issues/ajax_date_format-2185449-4.patch
        https://www.drupal.org/node/2185449
