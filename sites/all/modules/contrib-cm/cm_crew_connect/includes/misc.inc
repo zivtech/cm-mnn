@@ -134,7 +134,7 @@ function cm_crew_connect_role_positions($mapping) {
 
 function cm_crew_connect_other_crew_producers() {
   global $user;
-  $sql = "SELECT uid FROM node WHERE type = 'crew_connect_request'";
+  $sql = "SELECT distinct uid FROM node WHERE type = 'crew_connect_request'";
   $results = db_query($sql);
 
   $users =  "";
