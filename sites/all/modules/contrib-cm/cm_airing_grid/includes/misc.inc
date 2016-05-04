@@ -60,7 +60,7 @@ function cm_airing_grid_extract_grid_data(&$airings_grid_array, $column_time,
         $display_class = cm_airing_grid_grid_display_class_dictionary($airing);
         
 	$link = '<input type="button" id="'.$airing->airing_id.
-	  '" class="cmag use-ajax form-submit '.$airing_class.'" value="'.
+	  '" class="cmag  form-submit '.$airing_class.'" value="'.
 	  $airing->project_nid.'">';
  
 	  
