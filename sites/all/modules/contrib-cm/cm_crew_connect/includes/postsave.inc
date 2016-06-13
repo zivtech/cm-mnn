@@ -14,6 +14,16 @@ function cm_crew_connect_node_postsave(&$node) {
   else if ($node->type == 'crew_connect_application') {
     //setting session variable so we have it to override status message later
     $_SESSION['cm_crew_connect_new_application'] = $node;
+
+    $request_nid = 
+      cm_crew_connect_get_single_field_value($node, 
+					     'field_app_crew_connect_node',
+					     'target_id');
+    $request = node_load($request_nid);
+    if ($request) {
+      node_save($request);
+    }
+
   }
 }
 
