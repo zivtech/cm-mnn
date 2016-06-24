@@ -315,7 +315,12 @@ function reservations_form($node, &$form_state) {
   $form['choice_wrapper']['reservations_reservation_items'] = reservations_build_reservation_table_form($form, $form_state, $node, TRUE);
 
   // Adds 12 items, then hides them if nothing is selected to support node_clone
-  $choice_count = (isset($node->choice_count)) ? $node->choice_count : 12;
+
+  //CHANGE MADE ON 6/22/2016 BY OPENFLOWS MARK LIBKUMAN
+  //GETTING RID OF THE ADD MORE BUTTON, WILL ALWAYS BE SET TO 12
+  //$choice_count = (isset($node->choice_count)) ? $node->choice_count : 12;
+  $choice_count = 12;
+
 
   //if (isset($form_state['post']['op']) && $form_state['post']['op'] == "Add more items") {
   //  $choice_count += 3;
@@ -490,15 +495,11 @@ function reservations_form($node, &$form_state) {
     //$form['myboxes']['bar'] = array('#disabled' => TRUE,);
 
   }
-
+  
   $options = array();
   for ($i = 1; $i < 13; $i++) {
     $options[$i] = $i;
   }
-
-  $form['choice_wrapper']['reservations_more'] = array(
-    '#markup' => '<input type="button" id="edit-reservations-more" class="form-submit" value="Add more items">',
-  );
 
 
   if (user_access('manage reservations')) {
