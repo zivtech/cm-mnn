@@ -194,7 +194,7 @@ function reservations_node_access($node, $op, $account) {
  */
 function reservations_init() {
   drupal_add_css(drupal_get_path('module', 'reservations') . '/reservations.css');
-  drupal_add_js(drupal_get_path('module', 'reservations') . '/reservations.js');
+
 }
 
 
