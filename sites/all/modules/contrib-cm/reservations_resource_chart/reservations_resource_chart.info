@@ -1,0 +1,12 @@
+name = Reservations: Resource Chart
+description = "Will display a chart(s) of resource reservations"
+package = Reservations
+core = 7.x
+files[] = reservations_resource_chart.css
+
+version = "7.x-cma-1.0"
+
+
+
+
+
