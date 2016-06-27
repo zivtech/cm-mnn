@@ -73,7 +73,7 @@ function mnn_menu_menu() {
 		'path'=>'admin/reservations/manage/search'),
 	  array('title'=>t('Add 59th Reservation'),
 		'menu_alias'=>'add-59th-reservation',
-		'path'=>'node/add/reservations-reservation/inventory/804'),
+		'path'=>'node/add/reservations-reservation/inventory/1680'),
 	  array('title'=>t('Add Firehouse Reservation'),
 		'menu_alias'=>'add-firehouse-reservations',
 		'path'=>'node/add/reservations-reservation/inventory/1043'),
