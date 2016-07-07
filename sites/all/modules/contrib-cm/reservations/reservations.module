@@ -598,9 +598,12 @@ function reservations_form_alter(&$form, $form_state, $form_id) {
       //BEGIN HACK BY MNN OPENFLOWS MARK LIBKUMAN
       //WHEN ADDING GENERIC INVENTORY ITEMS, DISPLAY RESERVATION SETTINGS
       $template_mode = 
-	(($type == 'equipment_template') || ($type == 'facility_template')) ?
+	(($type == 'equipment_template') || 
+	 ($type == 'facility_template') ||
+	 ($type == 'equipment_non_reservable_') ||
+	 ($type == 'facility_non_reservable_') ) ?
 	TRUE : FALSE;
-	
+
       if (reservations_is_reservations_type($type) || $template_mode) {
       //if (reservations_is_reservations_type($type)) {
       //END HACK BY MNN OPENFLOWS MARK LIBKUMAN
