@@ -68,39 +68,3 @@ table.reservations-availability-schedule td.hourborder {
   border-right: #000 solid 1px;
 }
   
-/* hide choices 4-12 by default, shown with javascript  */  
-.form-item-reservations-reservation-items-choice-4-reservations-item-nid {
-  display: none;
-}  
-
-.form-item-reservations-reservation-items-choice-5-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-6-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-7-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-8-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-9-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-10-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-11-reservations-item-nid {
-  display: none;
-}
-
-.form-item-reservations-reservation-items-choice-12-reservations-item-nid {
-  display: none;
-}

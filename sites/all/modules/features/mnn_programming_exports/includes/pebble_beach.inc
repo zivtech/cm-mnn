@@ -134,7 +134,12 @@ function mnn_programming_exports_pebble_beach_xml($data) {
   $house_id_info = 
     '
      <event title="'.$data['title'].'" houseId="'.
-     $data['house_id'].'" validationMode="Update"/>
+     $data['house_id'].'" validationMode="Update">
+       <classifications>
+         <classification category="Next" classification="AutoPromo"/>
+       </classifications>
+     </event>
+     
     ';
   
   if (strtolower($data['format']) == 'live') {
