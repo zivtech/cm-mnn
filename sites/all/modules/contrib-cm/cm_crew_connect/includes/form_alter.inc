@@ -51,22 +51,14 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
       cm_crew_connect_request_create_hidden_fields_alter_form(
                           $form, 
                           $project);      
-      // location
-      $location_tid = 
-        cm_crew_connect_get_single_field_value($project, 
-                 'field_location',
-                 'tid');              
-      $term = $location_tid ? taxonomy_term_load($location_tid) : NULL;
-      $location = $term ? $term->name : "";
- 
-      // BASED ON LOCATION SET THE VALUES FOR THE STUDIO FIELD
-      $studio_options = cm_crew_connect_get_studio_dropdown_options(
-                  $form, 
-                  $location_tid);
-      $form['field_which_studio_is_this_in_']
-                [LANGUAGE_NONE]['#options'] = $studio_options;        
+   
 
-      
+      //UNSETTING THESE FIELDS AS THE CONDITIONAL TMP VALUES WILL COLLECT 
+      //THEM AND THEN IN PRESAVE WE WILL SET THESE FIELDS BASED ON THE TMP 
+      //FIELDS. 
+      $form['field_crew_location'] = array();
+      $form['field_crew_positions'] = array();
+      $form['field_which_studio_is_this_in_'] = array();
       
       // THESE VALUES ARE ONLY SET THE FIRST TIME THROUGH
       if (!$nid) {
@@ -107,10 +99,7 @@ http://cm-testing.mnn.openflows.com/node/779616/edit?destination=user/207293/cm_
             cm_crew_connect_get_single_field_value(
                           $project, 
                           'field_description');
-               
-          $form['field_crew_location'][LANGUAGE_NONE][0]
-            ['value']['#default_value'] = $location;
-                       
+
           $form['field_crew_public_url'][LANGUAGE_NONE][0]
             ['value']['#default_value'] = 
                       cm_crew_connect_get_single_field_value($project, 
@@ -259,7 +248,6 @@ function cm_crew_connect_request_create_hidden_fields_alter_form(&$form, $projec
 
   $form['field_crew_producer_name'][LANGUAGE_NONE]['#disabled'] = TRUE;
   $form['field_crew_public_description'][LANGUAGE_NONE]['#disabled'] = TRUE;
-  $form['field_crew_location'][LANGUAGE_NONE]['#disabled'] = TRUE;    
   $form['field_crew_public_url'][LANGUAGE_NONE]['#disabled'] = TRUE;
   $form['field_crew_language'][LANGUAGE_NONE]['#disabled'] = TRUE;   
   
@@ -277,31 +265,4 @@ function cm_crew_connect_request_create_hidden_fields_alter_form(&$form, $projec
     $form['actions']['submit']['#value'] = t('Create Crew Request');  
   }
  
-}
-
-function cm_crew_connect_get_studio_dropdown_options($form, $location_tid) {
-  
-  // 59th St = 834 and Firehouse = 837
-  $studio_options = $form['field_which_studio_is_this_in_']
-            [LANGUAGE_NONE]['#options'];
-            
-  if ($location_tid == '834') {
-    foreach ($studio_options as $key => $value) {
-      $prefix = substr($key, 0, 3);
-      if ($prefix != '59_' && $prefix != '_no') {
-        unset($studio_options[$key]);
-      }
-    }
-  }
-  elseif ($location_tid == '836') {
-    foreach ($studio_options as $key => $value) {
-      $prefix = substr($key, 0, 3);          
-      if ($prefix != 'fh_' && $prefix != '_no') {
-        unset($studio_options[$key]);
-        
-      }
-    }        
-  }
-  
-  return $studio_options;
 }

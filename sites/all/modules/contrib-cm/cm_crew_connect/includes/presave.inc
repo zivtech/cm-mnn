@@ -7,7 +7,6 @@ function cm_crew_connect_node_presave($node) {
   //handle presave logic for the crew connect request
   if ($node->type == 'crew_connect_request') {
     //get project id
-//dsm($node); 
     $project_nid = 
       cm_crew_connect_get_single_field_value($node,
 					     'field_crew_project_id',
@@ -15,53 +14,90 @@ function cm_crew_connect_node_presave($node) {
 
     //FETCH PROJECT AS IT WILL BE USED IN THE REQUEST TITLE
     $project = $project_nid ? node_load($project_nid) : NULL;
-
-//set the location value of the project for use later in creating event
-//using the correct template. 
-// 834 == 59th st
-// 836 == firehouse 
-
-     $project_location_tid = 
-      cm_crew_connect_get_single_field_value($project,
-					     'field_location',
-					     'tid');
-  //FH Template ID on testing is 5354, on Live it's 5360,
-     if ($project_location_tid == 834){
-       $event_template_id = 5326;
-       }elseif ($project_location_tid == 836){
-       $event_template_id = 5360;
-       }
-       //TODO: what do we do if there is a diff location? 
- //dsm($project_location_tid, 'project_location_tid');
- 
- 
- 
-    //FETCH THE POSITION FIELD AS IT WILL BE USED IN THE REQUEST TITLE
-    $position =       
-      cm_crew_connect_get_single_field_value($node,
-					     'field_crew_positions');
-
     
-    $positions_field = field_info_field('field_crew_positions');   
-    $allowed_values = list_allowed_values($positions_field);
+    //get teh civi template id from the field_tmp_crew_location field
+    $event_template_id = 
+      cm_crew_connect_get_single_field_value($node,
+					     'field_tmp_crew_location',
+					     'value');
+    
 
-    // SHOULD STUDIO BE SET TO NONE? IF SO, SET TO NONE
-    // content type dependency handles whether to show studio or not but does
-    // not handle setting studio to null if position set to non-studio position
-    $positions_none = array(
-                  'editor_premiere',
-                  'editor_xpression_cg',
-                  'expess_studios_general',
-                );
-    foreach ($positions_none as $position_none) {
-      if ($position == $position_none) {
-        $node->field_which_studio_is_this_in_ = "- None -";
+    ////////////////////////////////////////////////////////////////////
+    //LOCATION
+    //FETCH CURRENT LOCATION
+    $location = 
+      cm_crew_connect_get_single_field_value($node,
+					     'field_crew_location',
+					     'value');
+
+    $location_field = field_info_field('field_tmp_crew_location');   
+    $allowed_values = list_allowed_values($location_field);
+
+    //CHECK FOR TMP LOCATION FIELDS
+    $tmp_location = 
+      cm_crew_connect_get_single_field_value($node,
+					     'field_tmp_crew_location',
+					     'value');
+    $location = $tmp_location ? $allowed_values[$tmp_location] : $location;
+    
+    $node->field_crew_location[LANGUAGE_NONE][0]['value'] = $location;
+    ///////////////////////////////////////////////////////////////////////
+    //POSITION
+
+    //FETCH CURRENT POSITION
+    $position = 
+      cm_crew_connect_get_single_field_value($node,
+					     'field_crew_positions',
+					     'value');
+
+    //CHECK FOR TMP POSITION FIELD
+    $index = count($allowed_values);
+    $new_position = '';
+
+    //THIS A HACK, I BUILD FIELD NAMES BY GOING OFF THE REVERSE ORDER OF 
+    //LOCATION FIELD
+    foreach ($allowed_values as $k=>$v) {
+      if ($k == $tmp_location) {
+	$field_name = 'field_tmp'.$index.'_crew_position';
+	$new_position = 
+	  cm_crew_connect_get_single_field_value($node,$field_name,'value');
+	break;
       }
+      $index --;
+	    
     }
 
+    $position = $new_position ? $new_position : $position;
+
+    $node->field_crew_positions[LANGUAGE_NONE][0]['value'] = $position;
+
+
+    //FETCH THE POSITION FIELD AS IT WILL BE USED IN THE REQUEST TITLE
+    $positions_field = field_info_field('field_crew_positions');   
+    $allowed_values = list_allowed_values($positions_field);
+     
     //SET THE CREW CONNECT REQUEST TITLE WITH THE PROJECT AND POSITION
     $node->title = $project->title . ": " . $allowed_values[$position];
 
+    ///////////////////////////////////////////////////////////////////////
+    //STUDIO
+
+    //GET CURRENT WHICH STUDIO 
+    $studio = 
+      cm_crew_connect_get_single_field_value($node,
+                                             'field_which_studio_is_this_in',
+                                             'value');
+
+    //CHECK FOR TMP STUDIO FIELDS
+    $field_name = 'field_tmp'.$index.'_which_studio';
+
+    $new_studio = 
+      cm_crew_connect_get_single_field_value($node,$field_name,'value');
+
+    $studio = $new_studio ? $new_studio : $studio;
+    
+    $node->field_which_studio_is_this_in_[LANGUAGE_NONE][0]['value'] = $studio;
+   
     //SEE IF WE HAVE A CIVI EVENT
     $event_id = 
       cm_crew_connect_get_single_field_value($node,
