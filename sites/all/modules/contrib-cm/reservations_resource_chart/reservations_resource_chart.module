@@ -444,7 +444,12 @@ function reservations_resource_chart_search_filters($form,$form_state,
   $item_options = array_merge(array('<select>'), $item_options);
 
   asort($category_options);
-  $category_options = array_merge(array('<select>'), $category_options);
+
+  $tmp = array(0=>'<select>');
+  foreach ($category_options as $k=>$v) {
+    $tmp[$k] = $v;
+  }
+  $category_options = $tmp;
 
   $form['filters'] = array(
 				 '#type' => 'fieldset',

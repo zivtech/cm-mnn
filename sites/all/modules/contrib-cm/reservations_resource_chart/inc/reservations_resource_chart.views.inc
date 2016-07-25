@@ -119,7 +119,7 @@ function reservations_resource_chart_views_default_views() {
   $handler->display->display_options['fields']['type']['id'] = 'type';
   $handler->display->display_options['fields']['type']['table'] = 'node';
   $handler->display->display_options['fields']['type']['field'] = 'type';
-  /* Field: Content: Reservations Inventory */
+  /* Field: Content: Inventory */
   $handler->display->display_options['fields']['field_reservations_inventory']['id'] = 'field_reservations_inventory';
   $handler->display->display_options['fields']['field_reservations_inventory']['table'] = 'field_data_field_reservations_inventory';
   $handler->display->display_options['fields']['field_reservations_inventory']['field'] = 'field_reservations_inventory';
@@ -132,7 +132,9 @@ function reservations_resource_chart_views_default_views() {
   $handler->display->display_options['arguments']['field_reservations_date_value']['summary']['number_of_records'] = '0';
   $handler->display->display_options['arguments']['field_reservations_date_value']['summary']['format'] = 'default_summary';
   $handler->display->display_options['arguments']['field_reservations_date_value']['summary_options']['items_per_page'] = '25';
-  /* Contextual filter: Content: Reservations Inventory (field_reservations_inventory) */
+  $handler->display->display_options['arguments']['field_reservations_date_value']['granularity'] = 'day';
+  $handler->display->display_options['arguments']['field_reservations_date_value']['granularity_reset'] = 0;
+  /* Contextual filter: Content: Inventory (field_reservations_inventory) */
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['id'] = 'field_reservations_inventory_tid';
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['table'] = 'field_data_field_reservations_inventory';
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['field'] = 'field_reservations_inventory_tid';
@@ -141,6 +143,7 @@ function reservations_resource_chart_views_default_views() {
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['summary']['number_of_records'] = '0';
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['summary']['format'] = 'default_summary';
   $handler->display->display_options['arguments']['field_reservations_inventory_tid']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['field_reservations_inventory_tid']['break_phrase'] = TRUE;
   /* Filter criterion: Content: Type */
   $handler->display->display_options['filters']['type']['id'] = 'type';
   $handler->display->display_options['filters']['type']['table'] = 'node';
