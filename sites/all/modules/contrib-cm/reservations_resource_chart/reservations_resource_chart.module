@@ -504,6 +504,8 @@ function reservations_resource_chart_search_filters($form,$form_state,
        array(
 	     '#type' => 'date_popup',
 	     '#date_label_position' => 'within',
+	     '#description' => t("Note: large date ranges may cause long page".
+				 " load times, possibly a full minute."),
 	     '#size' => 15,
 	     '#date_format' => 'm/d/Y',
 	     '#default_value' => $default_end,
