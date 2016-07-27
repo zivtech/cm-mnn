@@ -401,6 +401,19 @@ function reservations_resource_chart_form_validate($form,$form_state) {
 		       "or equal to the start date."));
 
   }
+
+  //fetch the max advance time
+  $max_advance = 
+    variable_get('reservations_max_days_advance_reservation', 30);
+
+  //see if max advance time is greater than max advance time
+  $diff = $end_object->getTimestamp() - $start_object->getTimestamp();
+  $diff = $diff / (60*60*24);
+  if ($diff > $max_advance) {
+    form_set_error('filters][end',
+		   t("You may only search for @max days at a time.",
+		     array('@max' => $max_advance)));
+  }
 }
 
 
