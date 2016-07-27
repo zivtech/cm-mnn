@@ -169,6 +169,13 @@ function reservations_resource_chart_settings_form($form, $form_state) {
   }
 
   $elements = array(
+		    'multiple_chart_orientation' =>  
+		    array('title'=>t('Multiple Days Chart Orientation'),
+			  'options'=> array(1=>'Vertically', 
+					    0=>'Horizontally'),
+			  'help'=>
+			  t('Should Different Days dipslay horizontally 
+                             or Vertically.')),
 		    'staff_category' => 
 		    array('title'=>t('Display Category Dropdown to Staff?'),
 			  'options'=> array(1=>'Yes', 0=>'No'),
@@ -335,12 +342,18 @@ function reservations_resource_chart_form($form, $form_state,
     $markup = reservations_resource_chart_get_no_resources_msg($args);
   }
   else {
+    $vert_orientation = 
+      variable_get('reservations_resource_chart_multiple_chart_'.
+		   'orientation_filter', 0);
     $markup = "<table><tr>";
     ksort($charts);
     foreach ($charts as $day => $chart) {
       if ($chart) {
 	$markup .= "<td><h2>".date('l F d, Y', strtotime($day)).
 	  "</h2>$chart</td>";
+	if ($vert_orientation) {
+	  $markup .= "</tr><tr>";
+	}
       }
     }
     $markup .= "</tr></table>";
