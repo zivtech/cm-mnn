@@ -467,7 +467,12 @@ function reservations_resource_chart_search_filters($form,$form_state,
   $type_options = array_merge(array('<select>'), $type_options);
 
   asort($item_options);
-  $item_options = array_merge(array('<select>'), $item_options);
+
+  $tmp = array(0=>'<select>');
+  foreach ($item_options as $k=>$v) {
+    $tmp[$k] = $v;
+  }
+  $item_options = $tmp;
 
   asort($category_options);
 
