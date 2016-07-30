@@ -209,9 +209,19 @@ function reservations_resource_chart_settings_form($form, $form_state) {
 		    array('title'=>t('Display End Date?'),
 			  'options'=> array(1=>'Yes', 0=>'No'),
 			  'help'=>t('Display Item Filter on Public Chart?.')),
-
+		    
+		    'staff_dow' =>
+		    array('title'=>t('Display Day of Week?'),
+			  'options'=> array(1=>'Yes', 0=>'No'),
+			  'help'=>
+			  t('Display Day of Week Filter on Public Chart?.')),
+		    'public_dow' =>
+		    array('title'=>t('Display Day of Week?'),
+			  'options'=> array(1=>'Yes', 0=>'No'),
+			  'help'=>
+			  t('Display Day of Week Filter on Staff Chart?.')),
 		    );
-
+  
   foreach ($elements as $name=>$values) {
     $var_name = 'reservations_resource_chart_' . $name . '_filter';
     $form['chart_settings'][$var_name] = 
@@ -332,6 +342,13 @@ function reservations_resource_chart_form($form, $form_state,
 	
       }
     }
+    $input_dow = filter_input(INPUT_GET, 'dow');
+    $dow = date('l', strtotime($day));
+
+    if (isset($input_dow) && $input_dow && $input_dow != $dow) {
+      continue;
+    }
+
     //HTML TABLE DISPLAYING THE CART
     $charts[$day] = 
       reservations_resource_chart_get_chart_html($bucket_categories, 
@@ -436,6 +453,7 @@ function reservations_resource_chart_form_submit($form,$form_state) {
 
   $type = $form_state['values']['filters']['type'];
   $item = $form_state['values']['filters']['item'];
+  $dow = $form_state['values']['filters']['dow'];
   $category = $form_state['values']['filters']['category'];
 
 
@@ -445,7 +463,8 @@ function reservations_resource_chart_form_submit($form,$form_state) {
 			  'end'=>$end_object->format('Y-m-d'),
 			  'type'=>$type,
 			  'item'=>$item,
-			  'category'=>$category)));
+			  'category'=>$category,
+			  'dow'=>$dow)));
 }
 
 function reservations_resource_chart_search_filters($form,$form_state,
@@ -458,6 +477,7 @@ function reservations_resource_chart_search_filters($form,$form_state,
   $input_type = filter_input(INPUT_GET, 'type');
   $input_item = filter_input(INPUT_GET, 'item');
   $input_category = filter_input(INPUT_GET, 'category');
+  $input_dow = filter_input(INPUT_GET, 'dow');
   $start = filter_input(INPUT_GET, 'start');
   $end = filter_input(INPUT_GET, 'end');
   $default_start = $start ? $start : date('Y-m-d H:i:s', strtotime('now'));
@@ -482,12 +502,25 @@ function reservations_resource_chart_search_filters($form,$form_state,
   }
   $category_options = $tmp;
 
+  $dow_options = array(
+		       0=>'<select>',
+		       'Monday' => 'Monday',
+		       'Tuesday' => 'Tuesday',
+		       'Wednesday' => 'Wednesday',
+		       'Thursday' => 'Thursday',
+		       'Friday' => 'Friday',
+		       'Saturday' => 'Saturday',
+		       'Sunday' => 'Sunday',
+		       );
+
   $form['filters'] = array(
 				 '#type' => 'fieldset',
 				 "#prefix" => '<div id="form-slot_grid">',
 				 "#suffix" => '</div>',
 				 '#collapsible' => FALSE,
 				 );
+
+  
 
   $form['filters']['start'] =  
     array(
@@ -515,7 +548,22 @@ function reservations_resource_chart_search_filters($form,$form_state,
 	     '#date_format' => 'm/d/Y',
 	     '#default_value' => $default_end,
 	     '#prefix' => "<td><strong>End:</strong></td><td>",
-	     '#suffix' => "</td></tr></table><table><tr>",
+	     '#suffix' => "</td>",
+	     );
+   }
+
+
+   if (($is_admin_mode && 
+	variable_get('reservations_resource_chart_staff_dow_filter', 1)) ||
+       (!$is_admin_mode &&
+	variable_get('reservations_resource_chart_public_dow_filter',1))){
+     $form['filters']['dow'] = 
+       array(
+	     '#type' => 'select',
+	     '#options' => $dow_options,
+	     '#default_value' => $input_dow,
+	     '#prefix' => "<td><strong>Day of Week: </strong></td><td>",
+	      '#suffix' => "</td></tr></table><table><tr>",
 	     );
    }
    
@@ -1087,6 +1135,15 @@ function reservations_resource_chart_get_item_reservations(&$results) {
     if ($status == RESERVATIONS_STATUS_CANCELLED ||
 	$status == RESERVATIONS_STATUS_DENIED ||
 	$status == RESERVATIONS_STATUS_NO_SHOW) {
+      continue;
+    }
+
+    $should_ignore_unconfirmed = 
+      variable_get('reservations_ignore_unconfirmed_reservations', FALSE);
+    
+    if ($should_ignore_unconfirmed && 
+	$status == RESERVATIONS_STATUS_UNCONFIRMED) {
+      dsm('woo');
       continue;
     }
 
