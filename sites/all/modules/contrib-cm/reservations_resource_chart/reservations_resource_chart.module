@@ -119,20 +119,10 @@ function reservations_resource_chart_settings_form($form, $form_state) {
 		    array('size'=>3,
 			  'title'=>t('Staff Start'),
 			  'help'=>t('The start time of the chart for staff.')),
-		    'producer_start' =>  
-		    array('size'=>3,
-			  'title'=>t('Producer Start'),
-			  'help'=>
-			  t('The start time of the chart for producers')),
 		    'staff_end' =>  
 		    array('size'=>3,
 			  'title'=>t('Staff End'),
 			  'help'=>t('The end time of the chart for staff.')),
-		    'producer_end' =>  
-		    array('size'=>3,
-			  'title'=>t('Producer End'),
-			  'help'=>
-			  t('The end time of the chart for producers.')),
 		    'custom_chart_item_ids' => 
 		    array('size'=>50,
 			  'title'=>t("Custom Chart nid's"),
@@ -689,15 +679,33 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   //does logged in user have manage reservations perms?
   $is_manager = user_access('manage reservations');
   $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
+  $dow = date('l', strtotime($start_date));
   
-  $header_start = ($is_manager) ? 
-    variable_get('reservations_resource_chart_staff_start', 12) :
-    variable_get('reservations_resource_chart_producer_start', 9);
+  if (!$is_manager) {
+    $var_name = 'reservations_hours_' . strtolower($dow);
+    $hours = variable_get($var_name);
+    if (!$hours) {
+      return t("Sorry, the facility is not open on this day. ");
+    }
+    $hours_array = explode('-', $hours);
 
-  $header_end = ($is_manager) ? 
-    variable_get('reservations_resource_chart_staff_end', 24) :
-    variable_get('reservations_resource_chart_producer_end', 24);
+    $time = array_shift($hours_array);
+    $time_array = explode(':', $time);
+    $header_start = ($time_array[1] == '00') ? $time_array[0] :
+      $time_array[0] + 1;
 
+    $time = array_shift($hours_array);
+    $time_array = explode(':', $time);
+    $header_end = ($time_array[1] == '00') ? $time_array[0] :
+      $time_array[0] + 1;
+  }
+  else {
+    $header_start = 
+      variable_get('reservations_resource_chart_staff_start', 9);
+
+    $header_end = 
+      variable_get('reservations_resource_chart_staff_end', 24);
+  }
 
   //find inventory tid (if it exists) from the URL
   $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
@@ -711,6 +719,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 		       'start'  => $header_start, //integer
 		       'end'  => $header_end, //integer
 		       'day' => $start_date, //string 
+		       'dow' => strtolower($dow),
 		       );
   
   //declare hook_resource_chart_hours_alter
