@@ -56,6 +56,7 @@ function reservations_resource_chart_menu() {
 	  'page callback' => 'drupal_get_form',
 	  'page arguments' => array('reservations_resource_chart_form'),    
 	  'access arguments' => array('manage reservations'),
+	  'description' => t("Chart showing reservations"),
 	  );
 
   //A CHART FOCUSED FOR PRODUCERS RATHER THAN ADMINS
@@ -79,6 +80,7 @@ function reservations_resource_chart_menu() {
 	    'page callback' => 'reservations_resources_chart_page_redirect',
 	    'page arguments' => array(2),
 	    'access arguments' => array('manage reservations'),
+	    'description' =>t("Chart showing reservations for this inventory"),
 	    'type' => MENU_NORMAL_ITEM,
 	    'weight' => 1000,
 	    );
@@ -265,37 +267,92 @@ function reservations_resource_chart_form($form, $form_state,
   //loop through reservations and store in thier proper day index
   $chart_reservations = array();
   foreach($view_results as $result) {
+
     $date_field = $result->field_field_reservations_date[0]['raw'];
-    $object = new DateTime($date_field['value'], 
-			   new DateTimeZone($date_field['timezone_db']));
+    $start_object =
+      new DateTime($date_field['value'], 
+		   new DateTimeZone($date_field['timezone_db']));
 
-    $object->setTimeZone(new DateTimeZone($date_field['timezone']));
-    $date_index = $object->format('Y-m-d');
+    $start_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+    $start_day = $start_object->format('d');
 
-    $chart_reservations[$date_index] = $chart_reservations[$date_index] ? 
-      $chart_reservations[$date_index] : array();
+    $end_object =
+      new DateTime($date_field['value2'], 
+		   new DateTimeZone($date_field['timezone_db']));
 
-    $charts[$date_index] = $charts[$date_index] ? 
-      $charts[$date_index] : array();
-    
-    $chart_reservations[$date_index][] = $result;
+    $end_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+    if ($end_object->format('H:i:s') == '00:00:00') {
+      date_modify($end_object, '-1 second');
+    }
+    $end_day = $end_object->format('d');
+
+    $result->start_time = $start_object->format('Y-m-d H:i:s');
+    $result->end_time = $end_object->format('Y-m-d H:i:s');
+      
+    if ($start_day != $end_day) {
+      $interval = DateInterval::createFromDateString('1 day');
+
+      $period_start = 
+	new DateTime($start_object->format('Y-m-d 00:00:00'));
+
+      $period_end = 
+	new DateTime($end_object->format('Y-m-d 00:00:01'));
+
+      $period = new DatePeriod($period_start, $interval, 
+			       $period_end);
+
+      foreach($period as $date_object) {
+	$date_index = $date_object->format('Y-m-d');
+	
+	$day = $date_object->format('d');
+	if ($start_day != $day) {
+	  $result->start_time = $date_object->format('Y-m-d 00:00:00');
+	}
+
+	if ($end_day != $day) {
+	  $result->end_time = $date_object->format('Y-m-d 23:59:59');
+	}
+	else {
+	  $result->end_time = $end_object->format('Y-m-d H:i:s');
+	}
+
+	$chart_reservations[$date_index] = $chart_reservations[$date_index] ? 
+	  $chart_reservations[$date_index] : array();
+
+	$chart_reservations[$date_index][] = clone $result;
+	
+	if ($date_object > $args['end_object']) {
+	  break;
+	}
+      }
+    }
+    else {
+      $date_index = $start_object->format('Y-m-d');
+      $chart_reservations[$date_index] = $chart_reservations[$date_index] ? 
+	$chart_reservations[$date_index] : array();
+      
+      $chart_reservations[$date_index][] = clone $result;
+    }    
   }
 
   $has_items_to_display = FALSE;
 
   $interval = DateInterval::createFromDateString('1 day');
-
   
   $period = new DatePeriod($args['start_object'], $interval, 
 			   $args['end_object']->modify( '+1 day'));
 
+  $content_types = node_type_get_types();
+
   foreach($period as $date_object) {
     $day = $date_object->format('Y-m-d');
-    $results = $chart_reservations[$day] ? $chart_reservations[$day] : array();
+    $bucket_res[$day] = $bucket_res[$day] ? $bucket_res[$day] : array();
 
     //ITEM RESERVATIONS
     $reservation_items =
-      reservations_resource_chart_get_item_reservations($results);
+      reservations_resource_chart_get_item_reservations($day,
+							$chart_reservations,
+							$bucket_res);
 
     //BUCKET CATEGORIES
     $vid = variable_get('reservations_grouping_vid', 0);
@@ -322,12 +379,11 @@ function reservations_resource_chart_form($form, $form_state,
 	
 	$items = reservations_resource_chart_get_items_for_type
 	  ($reservation_items, $bucket_content_type, $args, $grouping_tid, 
-	   $item_options, $type_options, $category_options);
-
+	   $item_options, $type_options, $category_options, $content_types);
 	if (count($items)) {
 	  $has_items_to_display = TRUE;
 	}
-	
+
 	$bucket_categories[$grouping_tid][$bucket_content_type] = $items;
 	
       }
@@ -335,6 +391,8 @@ function reservations_resource_chart_form($form, $form_state,
     $input_dow = filter_input(INPUT_GET, 'dow');
     $dow = date('l', strtotime($day));
 
+    //THIS IS THE DAY OF WEEK FILTER, IF IT DOESN'T MATCH GO UP TO THE TOP OF 
+    //THE LOOP
     if (isset($input_dow) && $input_dow && $input_dow != $dow) {
       continue;
     }
@@ -342,6 +400,7 @@ function reservations_resource_chart_form($form, $form_state,
     //HTML TABLE DISPLAYING THE CART
     $charts[$day] = 
       reservations_resource_chart_get_chart_html($bucket_categories, 
+						 $bucket_res[$day],
 						 $day);
   }
 
@@ -673,7 +732,8 @@ function reservations_resource_chart_inventory_check($type_inventory_tids,
   return FALSE;
 }
 
-function reservations_resource_chart_get_chart_html($bucket_categories, 
+function reservations_resource_chart_get_chart_html($bucket_categories,
+						    $bucket_res, 
 						    $start_date) {
   global $user;
   //does logged in user have manage reservations perms?
@@ -706,7 +766,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     $header_end = 
       variable_get('reservations_resource_chart_staff_end', 24);
   }
-
+  
   //find inventory tid (if it exists) from the URL
   $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
   $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
@@ -735,7 +795,40 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     reservations_resource_chart_get_timestamp($start_date, $header_start);
 
   foreach($bucket_categories as $bucket_tid => $buckets) {
+    
     foreach ($buckets as $bucket_name => $bucket_items) {
+      $todays_reservations = $bucket_res[$bucket_name];
+      if ($todays_reservations) {
+	$reservations = array();
+	
+	$reservation_count = count($todays_reservations);
+
+	$placed_reservation = FALSE;
+	foreach ($todays_reservations as $index => $item_reservation) {
+	  reset($bucket_items);
+	  foreach ($bucket_items as $key=>$bucket_item) {
+	    $var_name = 'last_end_time_' . $bucket_item->type . '_' .$key;
+	    if (!$$var_name) {
+	      $$var_name = 0;
+	    }
+	    $tmp = date('h:ia', $$var_name);
+
+	    if (strtotime($item_reservation->reserve_start_time) >=
+		$$var_name) {
+	      $bucket_items[$key]->reservations[] = $item_reservation;
+	      $$var_name = strtotime($item_reservation->reserve_end_time);
+	      $placed_reservation = TRUE;
+	      break;
+	    }
+	    $placed_reservation = FALSE;
+	  }
+	  if ($bucket_items && $is_manager && $placed_reservation == FALSE) {
+	    drupal_set_message(t("Error Code #343431: Could not place bucket ".
+				 "reservation."));
+	    
+	  }
+	}
+      }
       foreach ($bucket_items as $bucket_item) {
 	$permission = 'edit own '.$bucket_item->type.' content';
 	$can_reserve_item = user_access($permission);
@@ -756,14 +849,26 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	else {
 	  $item_title = $bucket_item->title;
 	}
-  
+
 	$reservations = (isset($bucket_item->reservations) && 
 			 is_array($bucket_item->reservations)) ? 
-			 $bucket_item->reservations : array();
-
+	  $bucket_item->reservations : array();
+      
 	$has_reservations = false;
         $reservation_start_blocks = array();
-	foreach ($reservations as $item_reservation) {
+
+	foreach ($reservations as $index => $item_reservation) {
+	  $tmp = strtotime($item_reservation->reserve_start_time);
+
+	  if (date('H', $tmp) < $header_start) {
+	    $item_reservation->reserve_start_time = 
+	      date('Y-m-d H:i:s', mktime($header_start, 
+					 date('i', $tmp),
+					 date('s', $tmp),
+					 date('m', $tmp),
+					 date('d', $tmp)));
+	  }
+
 	  if ($item_reservation->check_out_time) {
 	     $check_out_time = strtotime($item_reservation->check_out_time);
           }
@@ -995,7 +1100,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 		
 	      if ($is_manager) {
 		$edit_reservation_link =
-		  l($reservation_name, "node/".$reservation_id."/edit",
+		  l($reservation_name. " " .$reservation_id, "node/".$reservation_id."/edit",
 		    array(
 			  'attributes' => 
 			  array(
@@ -1129,16 +1234,20 @@ function reservations_resource_chart_get_headers($header_start,
   return $headers;
 }
 
-function reservations_resource_chart_get_item_reservations(&$results) {
+/**
+ * @param $results the reservations for a particular day 
+ */
+function reservations_resource_chart_get_item_reservations($day,
+							   $results,
+							   &$bucket_res) {
 
   $field = field_info_field('field_reservations_date');
   $field_tz = $field['settings']['tz_handling'];
 
   //iterate over results, store in array
-  foreach($results as $k=>$result) {
+  foreach($results[$day] as $k=>$result) {
 
     $data = $result->_field_data['nid']['entity'];
-
     $status = $data->reservations_reservation_status;      
     //THESE SHOULD BE FILTERED OUT BY THE VIEW, BUT KEEPING HERE JUST IN CASE
     if ($status == RESERVATIONS_STATUS_CANCELLED ||
@@ -1152,37 +1261,15 @@ function reservations_resource_chart_get_item_reservations(&$results) {
     
     if ($should_ignore_unconfirmed && 
 	$status == RESERVATIONS_STATUS_UNCONFIRMED) {
-      dsm('woo');
       continue;
     }
 
-    $reserve_start_time = $data->field_reservations_date['und'][0]['value'];
+    $reserve_start_time = $result->start_time;
 
-    $reserve_end_time = $data->field_reservations_date['und'][0]['value2'];
+    $reserve_end_time = $result->end_time;
+    
     $reserve_end_time = 
       reservations_resource_chart_end_time_shift($reserve_end_time);
-    
-    $start_object = 
-      new DateTime($reserve_start_time, new DateTimeZone('UTC'));
-    
-    $end_object = 
-      new DateTime($reserve_end_time, new DateTimeZone('UTC'));
-    
-    $timezone = NULL;
-    if ($field_tz == 'site') {
-      $timezone = date_default_timezone(FALSE);
-    }
-    else if ($field != 'utc') {
-      //fixme handle cases where field is set to 'date' or 'user'
-    }
-    
-    if ($timezone) {
-      $start_object->setTimeZone(new DateTimeZone($timezone));
-      $end_object->setTimeZone(new DateTimeZone($timezone));
-    }
-    
-    $reserve_start_time = $start_object->format('Y-m-d H:i:s');
-    $reserve_end_time = $end_object->format('Y-m-d H:i:s');
     
     if ($status == RESERVATIONS_STATUS_PENDING ||
 	$status == RESERVATIONS_STATUS_UNCONFIRMED) {
@@ -1209,11 +1296,21 @@ function reservations_resource_chart_get_item_reservations(&$results) {
       $item_reservation->reservation_id = $data->nid;
       $item_reservation->reserve_start_time = $reserve_start_time;
       $item_reservation->reserve_end_time = $reserve_end_time;
-      $reservation_items[$item_result['reservations_item_nid']][] = 
-	$item_reservation;
 
+      $type = $item_result['type'];
+      $bucket_res[$day][$type] = $bucket_res[$day][$type] ? 
+	$bucket_res[$day][$type] : array();
+
+      if (reservations_type_setting($type) == 'bucket') {
+	$bucket_res[$day][$type][] = $item_reservation;
+      }
+      else {
+	$reservation_items[$item_result['reservations_item_nid']][] = 
+	  $item_reservation;
+      }
     }
   }
+
   return $reservation_items;
 }
 
@@ -1243,7 +1340,8 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
 							$category_id,
 							&$item_options, 
 							&$type_options, 
-							&$category_options) {
+							&$category_options,
+							$content_types) {
 
   $cache_var_name = 'reservation_resource_chart_item_cache_'.
     $bucket_content_type;
@@ -1253,7 +1351,13 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
   global $$cache_var_name;
 
   if (isset($$cache_var_name)) {
-    $items = $$cache_var_name;
+    $tmp = $$cache_var_name;
+    $items = array();
+    foreach ($tmp as $item) {
+      $item->reservations = NULL;
+      $items[] = $item;
+    }
+    $$cache_var_name = $tmp;
   }
   else {
     $items = array();
@@ -1281,17 +1385,21 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
       INNER JOIN reservations_node_type nt ON n.type = nt.type 
       LEFT JOIN reservations_reservation_item_node i ON n.vid = i.vid 
       $facility_code_join
-      WHERE nt.reservations_type_setting = 'resource'
-      AND i.reservations_sub_type = 1     
+      WHERE i.reservations_sub_type = 1     
       AND n.type='$bucket_content_type' 
       AND i.reservations_default_availability = 1 
       ORDER BY n.title desc
     ";
     $results = db_query($sql);
-    
+   
+    $counter = 0;
+    $buckets = array();
     while ($result = $results->fetchObject()) {
+      $counter ++;
       $item = new stdClass();
-      $item->title = $result->title;
+      $item->title = (reservations_type_setting($result->type) == 'bucket') ?
+	$content_types[$result->type]->name . " #". $counter : $result->title;
+
       $item->nid = $result->nid;
       $item->type = $bucket_content_type;
       $item->code = $result->code;
@@ -1307,7 +1415,9 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
       }
 
       //fill the arrays to be used on teh dropdown filters
-      $item_options[$item->nid] = $item->title;
+      if (reservations_type_setting($result->type) != 'bucket') {
+	$item_options[$item->nid] = $item->title;
+      }
 
       $type_options[$bucket_content_type] = 
 	node_type_get_name(node_load($item->nid));
@@ -1331,16 +1441,21 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
       }
 
       //item passed all tests, display the row for the item on teh chart
+      $item->reservations = NULL;
       $items[] = $item;
     }
     $$cache_var_name = $items;
   }
-  $item->reservations = NULL;
+
 
   $ret = array();
+
   foreach ($items as $item) {
-    if (isset($reservation_items[$item->nid])) {
-       $item->reservations = $reservation_items[$item->nid];
+    //if we aren't a bucket, stick the item's reservations on the item
+    if (reservations_type_setting($result->type) != 'bucket') {
+      if (isset($reservation_items[$item->nid])) {
+	$item->reservations = $reservation_items[$item->nid];
+      }
     }
     $ret[] = $item;
   }

@@ -50,7 +50,6 @@ function reservations_inventory_menu() {
     // Adds Block of Menu Options for Each Active Inventory
     $items['admin/reservations/' . $term->tid] = array(
       'title' => $term->name . ' Inventory',
-      'description' => 'Block of Inventory Related Menu Options',
       'position' => $position,
       'page callback' => 'system_admin_menu_block_page',
       'access arguments' => array('manage reservations'),
