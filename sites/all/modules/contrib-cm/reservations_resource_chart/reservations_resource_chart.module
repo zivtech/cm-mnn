@@ -475,7 +475,9 @@ function reservations_resource_chart_form_validate($form,$form_state) {
   //see if max advance time is greater than max advance time
   $diff = $end_object->getTimestamp() - $start_object->getTimestamp();
   $diff = $diff / (60*60*24);
-  if ($diff > $max_advance) {
+  $is_manager = user_access('manage reservations');
+
+  if (!$is_manager && $diff > $max_advance) {
     form_set_error('filters][end',
 		   t("You may only search for @max days at a time.",
 		     array('@max' => $max_advance)));
@@ -643,7 +645,7 @@ function reservations_resource_chart_search_filters($form,$form_state,
 	     '#suffix' => "</td>",
 	     );
    }
-   if (($is_admin_mode && 
+   if ($item_options && count($item_options) > 1 && ($is_admin_mode && 
 	variable_get('reservations_resource_chart_staff_item_filter', 1)) ||
        (!$is_admin_mode &&
 	variable_get('reservations_resource_chart_public_item_filter',1))){
@@ -1039,10 +1041,12 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	    $url_timestamp = $block_end_timestamp-60*30;
         
 	    $title = date('g:ia', $url_timestamp) . " ".$bucket_item->title;
+
 	    $add_reservation_link =  
 	      reservations_resource_chart_get_add_link($label, $item_nid,
-						      $title,
-						      $url_timestamp);
+						       $bucket_item->type,
+						       $title,
+						       $url_timestamp);
 	    
 	    $data = $add_reservation_link;
 	    
@@ -1139,6 +1143,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 		$bucket_item->title;
 	      $add_reservation_link = 
 		reservations_resource_chart_get_add_link($label, $item_nid,
+							 $bucket_name,
 							 $title,
 							 $url_timestamp);
 	      
@@ -1177,7 +1182,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 }
 
 function reservations_resource_chart_get_add_link($label, $item_nid, 
-						  $title,
+						  $bucket_name, $title,
 						  $url_timestamp) {
   $add_reservation_link =
     l($label, "node/add/reservations-reservation",
@@ -1190,7 +1195,8 @@ function reservations_resource_chart_get_add_link($label, $item_nid,
 	    
 	    'query' => array(
 			     'start_time' => $url_timestamp,
-			     'item_nid' => $item_nid
+			     'item_nid' => $item_nid,
+			     'bucket_name' => $bucket_name,
 			     ),
 	    'html' => TRUE,
 	    ));
@@ -1663,14 +1669,18 @@ function reservations_resource_chart_form_alter(&$form,&$form_state,$form_id) {
     $lang = $form['language']['#value'];
     
     $item_nid = filter_input(INPUT_GET, 'item_nid');
+    $bucket_name = filter_input(INPUT_GET, 'bucket_name');
     //set item_nid from query string
-    if (isset($item_nid) && is_numeric($item_nid)) {
+
+    if (isset($item_nid) && is_numeric($item_nid) &&
+	reservations_type_setting($bucket_name) != 'bucket') {
       if (!arg(3)) {
 	$item = node_load($item_nid);
 	$inventory_tid = $item->field_reservations_inventory[$lang][0]['tid'];
 	drupal_goto("node/add/reservations-reservation/inventory/".
 		    $inventory_tid,
 		    array('query'=>array('item_nid'=>$item_nid,
+					 'bucket_name'=>$bucket_name, 
 					 'start_time'=>$start_time
 					 )
 			  )
@@ -1679,6 +1689,11 @@ function reservations_resource_chart_form_alter(&$form,&$form_state,$form_id) {
       }
       $form['choice_wrapper']['reservations_reservation_items']['choice_1']
 	['reservations_item_nid']['#default_value']  = $item_nid;
+    }
+    else if ($bucket_name && 
+	     reservations_type_setting($bucket_name) == 'bucket') {
+      $form['choice_wrapper']['reservations_reservation_items']['choice_1']
+	['reservations_item_nid']['#default_value']  = $bucket_name;
     }
 
     if (isset($start_time) && is_numeric($start_time)) {
