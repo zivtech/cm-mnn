@@ -168,6 +168,12 @@ function reservations_resource_chart_settings_form($form, $form_state) {
 			  'help'=>
 			  t('Should Different Days dipslay horizontally 
                              or Vertically.')),
+		    'display_reservation_id' =>  
+		    array('title'=>t('Display Reservation ID on Chart?'),
+			  'options'=> array(1=>'Display ID', 
+					    0=>'Hide ID'),
+			  'help'=>
+			  t('Can help with visual debugging.')),
 		    'staff_category' => 
 		    array('title'=>t('Display Category Dropdown to Staff?'),
 			  'options'=> array(1=>'Yes', 0=>'No'),
@@ -846,7 +852,19 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	if ($is_manager) {
 	  $item_title = isset($bucket_item->code) ? 
 	    $bucket_item->code : $bucket_item->title;
-	  $item_title = l($item_title, 'node/' . $item_nid);
+	  $item_title = 
+	    l($item_title, 'node/' . $item_nid, 
+	      array(
+		    'attributes' => 
+		    array(
+			  'title' => 
+			  t("This represents a slot in a bucket, not an " .
+			    " actual item"),
+			  ),
+	    	    'html' => TRUE,
+		    )
+	      );
+	  
 	}
 	else {
 	  $item_title = $bucket_item->title;
@@ -1103,14 +1121,21 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	      $text .= "<span class='$display_class'>";
 		
 	      if ($is_manager) {
+		$link_label = $reservation_name;
+		$var_name = 'reservations_resource_chart_display_' .
+		  'reservation_id_filter';
+		$display_id = variable_get($var_name);
+		$link_label .= $display_id ? " " .$reservation_id : "";
+		
 		$edit_reservation_link =
-		  l($reservation_name. " " .$reservation_id, "node/".$reservation_id."/edit",
+		  l($link_label, "node/".$reservation_id."/edit",
 		    array(
 			  'attributes' => 
 			  array(
 				'class' =>
 				array('resource-chart-username'),
-				'title' => $title,
+				'title' => $title . ' (' . $reservation_id .
+				')',
 				),
 			    ));	
 		$text .= $edit_reservation_link;
@@ -1148,7 +1173,6 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 							 $url_timestamp);
 	      
 	      $data = $add_reservation_link;
-	    
 	      $block_start_timestamp = $block_end_timestamp;
 	      $row_values[] = array('data'=>$data);
 	    }
@@ -1184,8 +1208,16 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 function reservations_resource_chart_get_add_link($label, $item_nid, 
 						  $bucket_name, $title,
 						  $url_timestamp) {
+
+  //find inventory tid (if it exists) from the URL
+  $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
+  $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
+  $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
+
+  $url = "node/add/reservations-reservation";
+  $url .= ($inventory_tid) ? "/inventory/" . $inventory_tid : "";
   $add_reservation_link =
-    l($label, "node/add/reservations-reservation",
+    l($label, $url,
       array(
 	    'attributes' => array(
 				  'class' =>
@@ -1674,19 +1706,6 @@ function reservations_resource_chart_form_alter(&$form,&$form_state,$form_id) {
 
     if (isset($item_nid) && is_numeric($item_nid) &&
 	reservations_type_setting($bucket_name) != 'bucket') {
-      if (!arg(3)) {
-	$item = node_load($item_nid);
-	$inventory_tid = $item->field_reservations_inventory[$lang][0]['tid'];
-	drupal_goto("node/add/reservations-reservation/inventory/".
-		    $inventory_tid,
-		    array('query'=>array('item_nid'=>$item_nid,
-					 'bucket_name'=>$bucket_name, 
-					 'start_time'=>$start_time
-					 )
-			  )
-		    );
-	return;
-      }
       $form['choice_wrapper']['reservations_reservation_items']['choice_1']
 	['reservations_item_nid']['#default_value']  = $item_nid;
     }
@@ -1694,11 +1713,18 @@ function reservations_resource_chart_form_alter(&$form,&$form_state,$form_id) {
 	     reservations_type_setting($bucket_name) == 'bucket') {
       $form['choice_wrapper']['reservations_reservation_items']['choice_1']
 	['reservations_item_nid']['#default_value']  = $bucket_name;
+      
     }
 
     if (isset($start_time) && is_numeric($start_time)) {
       $start_time = $start_time - date('Z', $start_time);
-      $end_time = $start_time + 60*60;
+      if ($bucket_name && 
+	  reservations_type_setting($bucket_name) == 'bucket') {
+	$end_time = $start_time + 24*60*60;
+      }
+      else {
+	$end_time = $start_time + 60*60;
+      }
 
       //set start date/end date and time
       $form['field_reservations_date'][$lang][0]['#default_value'] = 
