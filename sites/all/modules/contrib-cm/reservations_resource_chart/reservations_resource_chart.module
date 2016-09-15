@@ -747,17 +747,72 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   //does logged in user have manage reservations perms?
   $is_manager = user_access('manage reservations');
   $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
+
+  //$is_manager = FALSE; // ********** testing non-managers
+  //$is_admin_mode = FALSE; // ************* testing non-managers
+  
   $dow = date('l', strtotime($start_date));
   
-  if (!$is_manager) {
-    $var_name = 'reservations_hours_' . strtolower($dow);
-    $hours = variable_get($var_name);
-    if (!$hours) {
-      return t("Sorry, the facility is not open on this day. ");
-    }
-    $hours_array = explode('-', $hours);
+  // managers are automatically set to use the resource config hours
+  // even if a facility is closed, managers can override
+  if ($is_manager) {
+    $header_start = 
+      variable_get('reservations_resource_chart_staff_start', 9);
 
-    $time = array_shift($hours_array);
+    $header_end = 
+      variable_get('reservations_resource_chart_staff_end', 24);     
+  } 
+  else {
+    // non-managers use inventory hours if they exists,
+    // if not, use reservation api configured hours
+  
+    //find inventory tid (if it exists) from the URL
+    $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
+    $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
+    
+    $inventory_tid = 1680; // ********** testing non-manager 
+    
+   
+    //build array for alter hook to allow other modules to change start/end time
+    $alter_array = array(
+             'is_manager' => $is_manager, //boolean
+             'is_admin_mode'  => $is_admin_mode, //boolean
+             'inventory_tid' => $inventory_tid, //integer 
+             'start'  => $header_start, //string
+             'end'  => $header_end, //string
+             'date' => $start_date, //string 
+             'dow' => strtolower($dow),
+             'exist_tid_hrs' => FALSE,
+             );
+    
+    //declare hook_resource_chart_hours_alter
+    drupal_alter('resource_chart_hours', $alter_array);
+    dpm($alter_array, 'alter_array');
+//$alter_array['exist_tid_hrs'] = false; 
+ 
+    if($alter_array['exist_tid_hrs']) {
+      if (is_null($alter_array['start'])) {
+        return t("Sorry, the facility is not open on this day. ");
+      }
+      //reset start and end
+      $hours_array = array(
+        $alter_array['start'],
+        $hours_array = $alter_array['end'],
+      );  
+    }
+    else {  // no inventory hours of operation avaialble
+      $var_name = 'reservations_hours_' . strtolower($dow);
+      $hours = variable_get($var_name);     
+      if (!$hours) {
+        return t("Sorry, the facility is not open on this day. ");
+      }
+
+      $hours_array = explode('-', $hours);
+    }
+    
+    // resource chart expects values as integers
+    // if not on the hour, go to the next full hour to allow for an integer
+    $time = array_shift($hours_array);    
     $time_array = explode(':', $time);
     $header_start = ($time_array[1] == '00') ? $time_array[0] :
       $time_array[0] + 1;
@@ -766,36 +821,8 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     $time_array = explode(':', $time);
     $header_end = ($time_array[1] == '00') ? $time_array[0] :
       $time_array[0] + 1;
+ 
   }
-  else {
-    $header_start = 
-      variable_get('reservations_resource_chart_staff_start', 9);
-
-    $header_end = 
-      variable_get('reservations_resource_chart_staff_end', 24);
-  }
-  
-  //find inventory tid (if it exists) from the URL
-  $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
-  $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
-
-  //build array for alter hook to allow other modules to change start/end time
-  $alter_array = array(
-		       'is_manager' => $is_manager, //boolean
-		       'is_admin_mode'  => $is_admin_mode, //boolean
-		       'inventory_tid' => $inventory_tid, //integer 
-		       'start'  => $header_start, //integer
-		       'end'  => $header_end, //integer
-		       'day' => $start_date, //string 
-		       'dow' => strtolower($dow),
-		       );
-  
-  //declare hook_resource_chart_hours_alter
-  drupal_alter('resource_chart_hours', $alter_array);
-
-  //reset start and end
-  $header_start = $alter_array['start'];
-  $header_end = $alter_array['end'];
 
   $row_end_timestamp = 
     reservations_resource_chart_get_timestamp($start_date, $header_end);
