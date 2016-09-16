@@ -748,6 +748,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   $is_manager = user_access('manage reservations');
   $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
 
+  //fixme only here for testing
   //$is_manager = FALSE; // ********** testing non-managers
   //$is_admin_mode = FALSE; // ************* testing non-managers
   
@@ -756,11 +757,14 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   // managers are automatically set to use the resource config hours
   // even if a facility is closed, managers can override
   if ($is_manager) {
-    $header_start = 
+    $header_start_hour = 
       variable_get('reservations_resource_chart_staff_start', 9);
 
-    $header_end = 
+    $header_end_hour = 
       variable_get('reservations_resource_chart_staff_end', 24);     
+    
+    $header_start_minute = 0;
+    $header_end_minute = 0;
   } 
   else {
     // non-managers use inventory hours if they exists,
@@ -769,11 +773,12 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     //find inventory tid (if it exists) from the URL
     $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
     $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
+
+    //fixme remove this, only here for testing
+    //$inventory_tid = 806; // ********** testing non-manager 
     
-    $inventory_tid = 1680; // ********** testing non-manager 
-    
-   
-    //build array for alter hook to allow other modules to change start/end time
+    //build array for alter hook to allow other modules to change 
+    //start/end time
     $alter_array = array(
              'is_manager' => $is_manager, //boolean
              'is_admin_mode'  => $is_admin_mode, //boolean
@@ -784,11 +789,8 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
              'dow' => strtolower($dow),
              'exist_tid_hrs' => FALSE,
              );
-    
     //declare hook_resource_chart_hours_alter
     drupal_alter('resource_chart_hours', $alter_array);
-    dpm($alter_array, 'alter_array');
-//$alter_array['exist_tid_hrs'] = false; 
  
     if($alter_array['exist_tid_hrs']) {
       if (is_null($alter_array['start'])) {
@@ -814,20 +816,34 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     // if not on the hour, go to the next full hour to allow for an integer
     $time = array_shift($hours_array);    
     $time_array = explode(':', $time);
-    $header_start = ($time_array[1] == '00') ? $time_array[0] :
-      $time_array[0] + 1;
+    $header_start_hour = $time_array[0];
+    $header_start_minute = ($time_array[1] >= 0 && $time_array[1] < 30) 
+      ? 0 : 30;
 
     $time = array_shift($hours_array);
     $time_array = explode(':', $time);
-    $header_end = ($time_array[1] == '00') ? $time_array[0] :
-      $time_array[0] + 1;
- 
+    $header_end_hour = $time_array[0];
+    if ($time_array[1] == '00') {
+      $header_end_minute = 0;
+    }
+    else if ($time_array[1] > 30 && $time_array[1] < 60) {
+      $header_end_hour++;
+      $header_end_minute = 0;
+    }
+    else {
+      $header_end_minute = 30;
+    } 
   }
 
   $row_end_timestamp = 
-    reservations_resource_chart_get_timestamp($start_date, $header_end);
+    reservations_resource_chart_get_timestamp($start_date, 
+					      $header_end_hour,
+					      $header_end_minute);
   $row_start_timestamp = 
-    reservations_resource_chart_get_timestamp($start_date, $header_start);
+    reservations_resource_chart_get_timestamp($start_date, 
+					      $header_start_hour,
+					      $header_start_minute);
+
 
   foreach($bucket_categories as $bucket_tid => $buckets) {
     
@@ -907,13 +923,9 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	foreach ($reservations as $index => $item_reservation) {
 	  $tmp = strtotime($item_reservation->reserve_start_time);
 
-	  if (date('H', $tmp) < $header_start) {
+	  if ($tmp < $row_start_timestamp) {
 	    $item_reservation->reserve_start_time = 
-	      date('Y-m-d H:i:s', mktime($header_start, 
-					 date('i', $tmp),
-					 date('s', $tmp),
-					 date('m', $tmp),
-					 date('d', $tmp)));
+	      date('Y-m-d H:i:s', $row_start_timestamp);
 	  }
 
 	  if ($item_reservation->check_out_time) {
@@ -1080,7 +1092,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 
 	if (!$has_reservations) {
           for ($block_end_timestamp = $block_start_timestamp + 60*30;
-	       $block_end_timestamp <= $row_end_timestamp;
+	       $block_end_timestamp < $row_end_timestamp + 60 * 30;
 	       $block_end_timestamp += 60*30) {
 	   
 	    $url_timestamp = $block_end_timestamp-60*30;
@@ -1213,8 +1225,10 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   }// end of bucket terms
 
 
-  $headers = reservations_resource_chart_get_headers($header_start,
-						     $header_end);
+  $headers = reservations_resource_chart_get_headers($header_start_hour,
+						     $header_start_minute,
+						     $header_end_hour,
+						     $header_end_minute);
 
   $attributes = array(
 		      'border'      => 1,
@@ -1276,26 +1290,43 @@ function reservations_resource_chart_get_timestamp($date_string,
   return $ret_stamp;
 }
 
-function reservations_resource_chart_get_headers($header_start,
-						 $header_end) {
-
+function reservations_resource_chart_get_headers($header_start_hour,
+						 $header_start_minute,
+						 $header_end_hour,
+						 $header_end_minute){
   $headers = array();
 
-  $column_count = (($header_end - $header_start) * 2) + 1;
+  $column_count = (($header_end_hour - $header_start_hour));
+
+  if ($header_end_minute > $header_start_minute) {
+    $column_count ++;
+  }
+  else if ($header_start_minute > 0 && $header_end_minute > 0) {
+    $column_count ++;
+  }
 
   $data = t("ITEM");
   $headers[] = array('data' => $data);
 
-  for ($i = $header_start; $i < $header_end; $i++) {
+  for ($i = $header_start_hour; 
+       $i < $column_count + $header_start_hour; 
+       $i++) {
+
     $hour = ($i<=12) ? $i : $i-12;
      
-    $data = $hour.":00";
-    $headers[] = array('data' => $data);
-
-    $data = $hour.":30";
-    $headers[] = array('data' => $data);
+    if (!($i == $header_start_hour && $header_start_minute > 0)) {
+      $data = $hour.":00";
+      $headers[] = array('data' => $data);
+    }
+    if (!($i == $column_count + $header_start_hour - 1 && 
+	  $header_end_minute > 0)) {
+      
+      $data = $hour.":30";
+      $headers[] = array('data' => $data);
+      
+    }
+    
   }
-
   return $headers;
 }
 
