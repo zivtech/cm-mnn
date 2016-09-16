@@ -170,7 +170,6 @@ function reservations_inventory_load_hours_of_operation() {
   //variable_set('reservations_inventory_hours_operation', NULL);
   $hours = variable_get('reservations_inventory_hours_operation', '');
 
-  dpm($hours, 'hours');
   return $hours;
 }
 
