@@ -747,6 +747,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
   
   //does logged in user have manage reservations perms?
   $is_manager = user_access('manage reservations');
+  $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;      
   //$is_manager = FALSE; // ********** fixme: testing non-managers
 
   
@@ -773,13 +774,11 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     $exist_inventory_hrs = FALSE;
     if (module_exists('reservations_inventory')) {
       //find inventory tid (if it exists) from the URL
-      $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;      
       $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
       $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
       
       //$is_admin_mode = FALSE; //********** fixme: testing non-manager
       //$inventory_tid = 1680; // ********** fixme: testing non-manager 
-         
       $hours_of_operation_inv = module_invoke(
             'reservations_inventory', 'get_hours_of_operation', $inventory_tid);            
       $exist_inventory_hrs = $hours_of_operation_inv['exist_inventory_hrs'];
