@@ -121,10 +121,16 @@ class OgBehaviorHandler extends EntityReference_BehaviorHandler_Abstract {
     $states = array();
     foreach ($items as $item) {
       $gid = $item['target_id'];
-      if (empty($item['state']) || !in_array($gid, $diff['insert'])) {
+
+      // Must provide correct state in the event that approval is required.
+      if (empty($item['state']) && $entity_type == 'user' && !og_user_access($group_type, $gid, 'subscribe without approval', $entity)) {
+        $item['state'] = OG_STATE_PENDING;
+      }
+      elseif (empty($item['state']) || !in_array($gid, $diff['insert'])) {
         // State isn't provided, or not an "insert" operation.
         continue;
       }
+
       $states[$gid] = $item['state'];
     }
 
@@ -283,13 +289,6 @@ class OgBehaviorHandler extends EntityReference_BehaviorHandler_Abstract {
 
       $instance['field_mode'] = $field_mode;
       $valid_ids = entityreference_get_selection_handler($field, $instance, $entity_type, $entity)->validateReferencableEntities($ids);
-
-      ////////////////////////////////////////////////////////////////////////
-      //OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN 4/23/2016
-      global $hacked_valid_ids;
-      $valid_ids = $hacked_valid_ids;
-      //END OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN
-
 
       if ($invalid_entities = array_diff($ids, $valid_ids)) {
         foreach ($invalid_entities as $id) {

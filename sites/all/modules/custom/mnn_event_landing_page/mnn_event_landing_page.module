@@ -5,6 +5,8 @@
  * Creates a custom event landing page that checks for prerequisite 
  * requirements for events before allowing a producer to register
  * for an event
+ *
+ * add an extra line just to make a difference from lottie
  */
 
 define("MNN_EVENT_LANDING_PAGE_PATH", "event_landing_page/");
