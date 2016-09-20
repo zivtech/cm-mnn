@@ -7,9 +7,9 @@
  * Implements hook_form_alter().
  */
 function mnn_reservations_form_alter(&$form, &$form_state, $form_id) {
-
-  if ($form['#node_edit_form'] == TRUE && 
-      $form['type']['#value'] == 'reservations_reservation') {
+  if (isset($form['type']['#value'])
+          && $form['type']['#value'] == 'reservations_reservation'
+          && $form['#node_edit_form'] == TRUE) {
 
     global $user;
     $nid = $form['nid']['#value'];

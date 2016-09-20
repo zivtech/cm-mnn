@@ -759,10 +759,15 @@ function reservations_get_count($type, $default_availability = RESERVATIONS_AVA_
     )->fetchField();
 }
 
-function reservations_is_item_reservable($item_nid, $type, $start, $end, $exclude_vid = NULL) {
+function reservations_is_item_reservable($type, $start, $end, $item_nid, 
+                          $exclude_vid = NULL) {
   //dsm('reservations_is_item_reservable');
-  //dsm($start);
-  //dsm($end);
+  //dpm($type, 'type');
+  //dsm($start, 'start');
+  //dsm($end, 'end');
+  //dsm($item_nid, 'nid');  
+  //dpm($exclude_vid, 'exclude_vid');
+
   $items = reservations_load_reservations_for_node_in_timespan($item_nid, $type, $start, $end, $exclude_vid);
 
   // If we are checking an item?

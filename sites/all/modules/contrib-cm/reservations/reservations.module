@@ -1177,7 +1177,15 @@ function reservations_theme() {
     ),
     'reservations_conflict_grid' => array(
       'template' => 'reservations_conflict_grid',
-      'variables' => array('type' => NULL, 'title' => NULL, 'start' => NULL, 'end' => NULL, 'nid' => NULL, 'reservation_vid' => NULL),
+      'variables' => array(
+        'type' => NULL, 
+        'title' => NULL, 
+        'start' => NULL, 
+        'end' => NULL,
+        'nid' => NULL, 
+        'reservation_vid' => NULL,
+        'inventory_tid' => NULL,
+      ),
       'path' => drupal_get_path('module', 'reservations') . '/theme',
       'file' => 'theme.inc',
     ),
@@ -1461,8 +1469,20 @@ function reservations_ahah_output($selected_portion, $show_status = FALSE) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function reservations_theme_conflict_grid($type, $title, $start, $end, $value, $vid) {
-  return theme('reservations_conflict_grid', array('type' => $type, 'title' => $title, 'start' => $start, 'end' => $end, 'nid' => $value, 'reservation_vid' => $vid));
+function reservations_theme_conflict_grid(
+ $type, $title, $start, $end, $nid, $vid, $inventory_tid) {
+                    
+  return theme('reservations_conflict_grid', 
+           array(
+              'type' => $type, 
+              'title' => $title, 
+              'start' => $start, 
+              'end' => $end,
+              'nid' => $nid, 
+              'reservation_vid' => $vid,
+              'inventory_tid' => $inventory_tid,
+            )
+          );         
 }
 
 /**
