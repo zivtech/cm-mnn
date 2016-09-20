@@ -117,7 +117,7 @@ function reservations_admin_settings($form, &$form_state) {
   $form['reservations_hours']['reservations_hours_admin'] = array(
     '#title' => t('Admin hours'),
     '#default_value' => variable_get('reservations_hours_admin', '07:00-22:00'),
-    '#description' => t('This setting controls the hours shown on the conflict grid for users with Administer Reservations permissions.  The conflict grid is normally limited to the days and hours the set above.  Because users with Administer Reservations rights can create Reservations outside the normal hours of operation, they need to see conflicts during those times as well.'),
+    '#description' => t('This setting controls the hours shown on the conflict grid for users with create Reservations outside the normal hours of operation. The conflict grid is normally limited to the days and hours the set above. Because users with this permission can create Reservations outside the normal hours of operation, they need to see conflicts during those times as well.'),
     '#type' => 'textfield',
     '#size' => 11,
     '#maxlength' => 11,

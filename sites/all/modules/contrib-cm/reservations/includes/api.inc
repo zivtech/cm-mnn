@@ -38,8 +38,8 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
   //dsm($end);
 
   $messages = array();
+  
   foreach ($node->reservations_reservation_items as $did => $item) {
-
     if (empty($item['reservations_item_nid'])) {
       continue;
     }
@@ -52,10 +52,12 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
     // Get the title of the item.
     // Also get the content type for new resource items.
     if (!isset($item['item_title']) or ! isset($item['type'])) {
-      $new_item = node_load($item['reservations_item_nid']);
+      $new_item = node_load($item['reservations_item_nid']);      
       if ($new_item) {
         $item['item_title'] = $new_item->title;
         $item['type']       = $new_item->type;
+        $item['inventory_tid'] = 
+                  $new_item->field_reservations_inventory[$langcode][0]['tid'];
       }
       else {
         //TODO: should not be doing theming here.
@@ -70,6 +72,13 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
       $type     = $item['type'];
       $item_nid = $item['reservations_item_nid'];
       $title    = $item['item_title'];
+      $inventory_tid = $item['inventory_tid'];
+
+      // get hours of operation for inventory if exists
+      if (module_exists('reservations_inventory')) {      
+        $hours_of_operation = module_invoke(
+            'reservations_inventory', 'get_hours_of_operation', $inventory_tid);
+      }
 
 
       // Is this content type active?
@@ -119,9 +128,11 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
       // Are we checking an existing item?
       $vid = isset($item['did']) ? $node->vid : NULL;
 
-      $count = reservations_is_item_reservable($item_nid, $type, $start, $end, $vid);
+      $count = 
+          reservations_is_item_reservable($type, $start, $end, $item_nid, $vid);
       if (!$count) {
-        $messages[$did] = reservations_theme_conflict_grid($type, $title, $start, $end, $item_nid, $node->vid);
+        $messages[$did] = reservations_theme_conflict_grid(
+                $type, $title, $start, $end, $item_nid, $vid, $inventory_tid);
         form_set_error("reservations_reservation_items][$did][reservations_item_nid", $messages[$did]);
         continue;
       }
@@ -160,10 +171,12 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
           }
        }
  
-       $count = reservations_is_item_reservable($item_nid, $type, $start, $end, $vid);
+       $count = 
+          reservations_is_item_reservable($type, $start, $end, $item_nid, $vid);
  
        if (!$count) {
-         $messages[$did] = reservations_theme_conflict_grid($type, $title, $start, $end, $item_nid, $node->vid);
+         $messages[$did] = reservations_theme_conflict_grid(
+                $type, $title, $start, $end, $item_nid, $node->vid, $inventory_tid);
          //$messages[$did] = 'testing';
           form_set_error("reservations_reservation_items][$did][reservations_item_nid", $messages[$did]);
           continue;
@@ -220,14 +233,34 @@ function reservations_validate_reservations_reservation_date($form, &$form_state
   $end_day_of_week    = (int) date_format($end_object, 'w');
   $start_month_day    = date_format($start_object, 'm-d');
   $end_month_day      = date_format($end_object, 'm-d');
-
+  
+  
   // Hours of operation restrictions, max days, and closed dates checks
-  $hours_of_operation = reservations_load_hours_of_operation();
-    
-  if (empty($hours_of_operation)) {
-    form_set_error('Reservations', 'You cannot make a Reservation until the Hours of Operation have been configured in the Reservation admin settings.');
+  //closed days are only avaialable from global hours so we have to retrieve
+  //both hours even if inventory exists;   
+  $hours_of_operation_global = reservations_load_hours_of_operation();
+
+  if (empty($hours_of_operation_global)) {
+    form_set_error('Reservations', "You cannot make a Reservation until " .
+    "the Hours of Operation have been configured in the Reservation admin " .
+    "settings.");
     return;
-  }
+  }  
+  
+  $exist_inventory_hrs = FALSE;
+  if (module_exists('reservations_inventory')) {
+    // get the inventory tid
+    $inventory_tid = $node->field_reservations_inventory[$langcode][0]['tid'];
+    
+    $hours_of_operation_inv = module_invoke(
+            'reservations_inventory', 'get_hours_of_operation', $inventory_tid);           
+    $exist_inventory_hrs = $hours_of_operation_inv['exist_inventory_hrs'];
+  }  
+  
+  // if no inventory hours, use global hours  
+  $hours_of_operation = 
+    $exist_inventory_hrs ? $hours_of_operation_inv : $hours_of_operation_global;          
+
   
   $start_hours        = $hours_of_operation[$start_day_of_week];
   $end_hours          = $hours_of_operation[$end_day_of_week];
@@ -260,11 +293,11 @@ function reservations_validate_reservations_reservation_date($form, &$form_state
     // Can't start or end a reservation on days that are
     // closed dates.
     reservations_verbose_logging('CHECKING Closed Dates');
-    if (in_array($start_month_day, $hours_of_operation['closed_days'])) {
+    if (in_array($start_month_day, $hours_of_operation_global['closed_days'])) {
       $name = date_format($start_object, 'F jS');
       form_set_error('field_reservations_date][0][value][date', t('Sorry, but we are closed on %day for a holiday or special event.', array('%day' => $name)));
     }
-    if (in_array($end_month_day, $hours_of_operation['closed_days'])) {
+    if (in_array($end_month_day, $hours_of_operation_global['closed_days'])) {
       $name = date_format($end_object, 'F jS');
       form_set_error('field_reservations_date][0][value2][date', t('Sorry, but we are closed on %day for a holiday or special event.', array('%day' => $name)));
     }
@@ -596,6 +629,7 @@ function reservations_check_content_type_restrictions($content_type, $start, $en
         }
         // Do we allow extending a reservtion over days we are closed?
         if (user_access('push forward over closed days')) {
+          //FIXME: this sends a parameter $content_type but the load does nothing with it
           $hours_of_operation = reservations_load_hours_of_operation($content_type);
           for ($i = 1; $i <= 6; $i++) {
             if (empty($hours_of_operation[$i])) {
@@ -797,6 +831,11 @@ function reservations_get_suggested_bucket_item($content_type, $start, $end, $it
 /**
  * Builds an array representing the hours of operation for the facility.
  *
+ * @param
+ *  $content_type
+ *  $display - if displaying, we must have some hours; if no API hours have
+ *     been set, then use default admin hours
+ *
  * @return
  *   An associative array with the following key/value pairs:
  *     [php_day_of_week_number_as_in_date_function] => An associative
@@ -805,8 +844,13 @@ function reservations_get_suggested_bucket_item($content_type, $start, $end, $it
  *         'close' => Closing time (military).
  *     'closed_days' => An array of closed dates in mm-dd format.
  */
-function reservations_load_hours_of_operation($content_type = '', $display = NULL) {
+function reservations_load_hours_of_operation(
+                                  $content_type = '', $display = NULL) {
+
+  // FIXME: a content type can be passed as a parameter but this function
+  // does nothing with it
   $hours = variable_get('reservations_hours_operation', '');
+  
   $adminhours = explode('-', variable_get('reservations_hours_admin', '07:00-22:00'));
   
   if ($display) {

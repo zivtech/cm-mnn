@@ -6,35 +6,57 @@
  */
 
 function template_preprocess_reservations_conflict_grid(&$variables) {
+//dpm('template_preprocess_reservations_conflict_grid');
+//dpm($variables, 'variables');
 
   $type = $variables['type'];
   $title = $variables['title'];
   $start = $variables['start'];
-  $end = $variables['end'];
-  $nid = $variables['nid'];
+  $end = $variables['end']; 
+  $nid = $variables['nid'];  
   $reservation_vid = $variables['reservation_vid'];
+  $inventory_tid = $variables['inventory_tid'];
 
   $hours = array();
-  if (user_access('create reservations outside hours of operation')) {
-    $adminhours = explode('-', variable_get('reservations_hours_admin', '07:00-23:00'));
+  
+  $exist_inventory_hrs = FALSE;
+  $exist_inventory_hrs = FALSE;
+  if (module_exists('reservations_inventory')) {
 
-    for ($day = 0; $day < 7; $day++) {
-      $hours[$day]['open'] = $adminhours[0];
-      $hours[$day]['close'] = $adminhours[1];
+    // get hours of operation
+    $hours_of_operation_inv = module_invoke(
+            'reservations_inventory', 'get_hours_of_operation', $inventory_tid);
+
+    $exist_inventory_hrs = $hours_of_operation_inv['exist_inventory_hrs'];
+
+    // use expanded (admin) hours
+    if ($exist_inventory_hrs
+            && user_access('create reservations outside hours of operation')) {
+              
+      $adminhours = $hours_of_operation_inv['admin'];
+      
+      for ($day = 0; $day < 7; $day++) {
+        $hours[$day]['open'] = $adminhours['open'];
+        $hours[$day]['close'] = $adminhours['close'];
+      }
     }
   }
-  else {
-    $hours = reservations_load_hours_of_operation(NULL, TRUE);
-  }
+  
+  if (!$exist_inventory_hrs) {
+    if (user_access('create reservations outside hours of operation')) {
+      $adminhours = explode('-', variable_get('reservations_hours_admin', '07:00-23:00'));
 
-  $timezone = variable_get('date_default_timezone', 'UTC');
-  // Convert the start and end dates to the site timezone.
-  /*
-  $start = date_create($start, "UTC");
-  $end = date_create($end, "UTC");
-  date_timezone_set($start, timezone_open($timezone));
-  date_timezone_set($end, timezone_open($timezone));
-   */
+      for ($day = 0; $day < 7; $day++) {
+        $hours[$day]['open'] = $adminhours[0];
+        $hours[$day]['close'] = $adminhours[1];
+      }
+    }
+    else {
+      $hours = reservations_load_hours_of_operation(NULL, TRUE);
+    }
+  }
+ //dpm($hours, 'theme');
+      
   $start_object       = reservations_create_local_date_object($start);
   $end_object         = reservations_create_local_date_object($end);
 

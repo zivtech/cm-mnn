@@ -27,12 +27,14 @@ function reservations_inventory_menu() {
   $i = 0;
   // Standard Administration settings.
   $items['admin/config/reservations/inventory'] = array(
-    'title' => 'Inventory',
+    'title' => 'Reservations Inventory',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('reservations_inventory_admin_settings'),
     'access callback' => 'user_access',
     'access arguments' => array('administer reservations'),
     'description' => 'Configure settings for Reservations Inventory.',
+    'file' => 'includes/reservations_inventory.admin.inc',
+    'weight' => -99,
     'type' => MENU_NORMAL_ITEM,
   );
   
@@ -50,7 +52,6 @@ function reservations_inventory_menu() {
     // Adds Block of Menu Options for Each Active Inventory
     $items['admin/reservations/' . $term->tid] = array(
       'title' => $term->name . ' Inventory',
-      'description' => 'Block of Inventory Related Menu Options',
       'position' => $position,
       'page callback' => 'system_admin_menu_block_page',
       'access arguments' => array('manage reservations'),
@@ -124,27 +125,73 @@ function reservations_inventory_check_in_out_redirect($tid) {
 
 
 /**
- * Builds the admininstration settings form.
+ * Modified version of the Drupal core system_settings_form that allows
+ * for not saving all the form variables since there are so many
+ * and they do not need to be save separately; the variables are saved as 
+ * an array by a submit function
+ * 
+ * @param type $form
+ * @return $form
  */
-function reservations_inventory_admin_settings($form, &$form_state) {
+function reservations_inventory_system_settings_form($form) {
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
 
-  $vid = variable_get('reservations_inventory_vid', 0);   
-  $tid = variable_get('reservations_inventory_default_reservation_inventory', '');
-      
-   // weighted -9
-   $grouping_array = reservations_taxonomy_term_select(t('Default Inventory'), NULL, $tid, $vid, t('If configured, when creating a reservation the reservable items will be filtered to this inventory by default.'), 0, '<' . t('Select') . '>');
-
-  $form['reservations_inventory_default_reservation_inventory'] = $grouping_array;
-
-  return system_settings_form($form);
+  if (!empty($_POST) && form_get_errors()) {
+    drupal_set_message(t('The settings have not been saved because of the errors.'), 'error');
+  }
+  //$form['#submit'][] = 'system_settings_form_submit';
+  // By default, render the form using theme_system_settings_form().
+  if (!isset($form['#theme'])) {
+    $form['#theme'] = 'system_settings_form';
+  }
+  return $form;
 }
 
+ /**
+ * Returns hours of operation for the facility for producers and admin (staff).
+ * 
+ * @return
+ *   A multidimensional arry with the following key/value pairs:
+ *     [term_tid] => An associative array with the following key/value pairs:
+ *        [day_of_week or admin_hours] => An associative array with the 
+ *          following key/values pairs:
+ *             'open'  => Opening time (military).
+ *             'close' => Closing time (military).
+ */
+function reservations_inventory_load_hours_of_operation($content_type = '') {
+
+  $hours = variable_get('reservations_inventory_hours_operation', '');
+  //dpm($hours, 'load');  
+  return $hours;
+}
+
+/**
+ * Returns hours of operation for a specified inventory
+ *
+ * Called by module_invoke(
+ *       'reservation_inventory', 'get_hours_of_operation', $inventory_tid);
+ * 
+ * @Param: $inventory_tid => integer
+ * @Return: hours of operation for inventory
+ *
+ **/
+function reservations_inventory_get_hours_of_operation($inventory_tid) {
+      
+    $hours = reservations_inventory_load_hours_of_operation();
+    
+    // if inventory_tid available - return inventory hours
+    $hours = $inventory_tid ? $hours[$inventory_tid] : NULL;
+    return $hours;
+}
 
 function reservations_inventory_get_inventory_tids($type) {
   $tids = db_query("SELECT tids FROM {reservations_inventory_node_type} WHERE type = :type", array(':type' => $type))->fetchField();
   return ($tids) ? explode(',', $tids) : NULL;
 }
-
 
 /**
  * Implements hook_form_FORM_ID_alter().
@@ -169,7 +216,6 @@ function reservations_inventory_form_reservations_reservation_node_form_alter(&$
       $form['field_reservations_inventory']['#type'] = 'hidden';
     }
   }
-   
 }
 
 /**
@@ -264,7 +310,6 @@ function reservations_inventory_node_type_save_validate($form, &$form_state) {
     $node->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] = $values['reservations_inventory'];
     node_save($node);
   }
-  
 }
 
 /**
@@ -299,7 +344,6 @@ function reservations_inventory_node_type_sync() {
     }
   }
 }
-
 
 /**
  * Sets Inventory value
