@@ -1,9 +1,7 @@
 CiviVolunteer
 =============
 
-The CiviVolunteer extension provides tools for signing up, managing and tracking volunteers.
-The features for this release focus on volunteering at events, but the design creates a
-foundation for adding support for volunteering in a wide variety of situations.
+The CiviVolunteer extension provides tools for signing up, managing, and tracking volunteers.
 
 What Volunteers are Needed and When
 ===================================
@@ -11,7 +9,7 @@ After installing the extension using the automated installer from Manage Extensi
 you'll see a new Volunteers tab for each event (Manage Events > Configure). Check the
 'Enable Volunteer Management' box to get started.
 
-You can then build a list of volunteer shifts by clicking 'Define Volunteer Needs.'
+You can then build a list of volunteer shifts by clicking 'Define Volunteer Opportunities.'
 Shifts consist of a volunteer role (e.g. Usher, Box Office, etc.) plus a date and time
 period. For each shift you can specify the number of volunteers required.
 
@@ -22,7 +20,8 @@ form as part of your public event. A "Volunteer Now" button will appear on your 
 info page (next to the "Register" button). Volunteers can select a shift or let you
 know that they are available for any shift.
 
-You will need to enable the "CiviVolunteer: register to volunteer permission" if you
+You will need to enable the "CiviVolunteer: register to volunteer" and
+"CiviCRM: access AJAX API" permissions if you
 want to provide self-service signup for anonymous and/or authenticated users.
 (Joomla users should see [Known Issues](#known-issues) for more information about
 permissions.)
@@ -42,7 +41,8 @@ you want to keep track of your organization's cumulative volunteering totals.
 
 Dependencies
 ============
-- CiviCRM version 4.5.x or 4.6.x
+- CiviCRM version 4.6.x
+- [Angular Profiles](https://github.com/ginkgostreet/org.civicrm.angularprofiles)
 
 Known Issues
 ============

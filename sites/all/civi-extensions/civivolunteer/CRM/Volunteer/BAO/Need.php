@@ -58,21 +58,57 @@ class CRM_Volunteer_BAO_Need extends CRM_Volunteer_DAO_Need {
    * @static
    */
   static function &create($params) {
+    $need = new CRM_Volunteer_BAO_Need();
+    $need->copyValues($params);
+    $projectId = $need->getProjectId();
+
+    if ($projectId === FALSE) {
+      CRM_Core_Error::fatal('Missing required Need ID or Project ID');
+    }
+
+    // creating a Need constitutes updating a Project
+    $op = CRM_Core_Action::UPDATE;
+    if (!empty($params['check_permissions']) && !CRM_Volunteer_Permission::checkProjectPerms($op, $projectId)) {
+      CRM_Utils_System::permissionDenied();
+
+      // FIXME: If we don't return here, the script keeps executing. This is not
+      // what I expect from CRM_Utils_System::permissionDenied().
+      return FALSE;
+    }
 
     if (empty($params)) {
       return;
     }
 
-    $need = new CRM_Volunteer_DAO_Need();
-
-    $need->copyValues($params);
     $need->save();
 
     return $need;
   }
 
   /**
-   * Gets label to be used for Flexible Needs.
+   * Returns the Need's Project ID.
+   *
+   * @return mixed
+   *   On success, int project ID. On failure, boolean FALSE.
+   */
+  public function getProjectId() {
+    // If the project ID was passed into the create method, or if the object is
+    // already fully loaded, we already have the project ID and can return it...
+    if (isset($this->project_id) && CRM_Utils_Type::validate($this->project_id, 'Positive', FALSE)) {
+      return (int) $this->project_id;
+    }
+
+    // ... otherwise we have to look it up from the database
+    if (isset($this->id) && CRM_Utils_Type::validate($this->id, 'Positive', FALSE)) {
+      $dbNeed = $this->findById($this->id);
+      return $dbNeed->project_id;
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Gets role label to be used for Flexible Needs.
    *
    * Implemented as a function in case we need to use logic later (e.g., if we
    * allow users to set this on a per-project basis).
@@ -80,41 +116,57 @@ class CRM_Volunteer_BAO_Need extends CRM_Volunteer_DAO_Need {
    * @return string
    */
   static function getFlexibleRoleLabel() {
-    return ts("I'm Flexible", array('domain' => 'org.civicrm.volunteer'));
+    return ts("Any", array('domain' => 'org.civicrm.volunteer'));
+  }
+
+  /**
+   * Gets display time to be used for Flexible Needs.
+   *
+   * Implemented as a function in case we need to use logic later (e.g., if we
+   * allow users to set this on a per-project basis).
+   *
+   * @return string
+   */
+  static function getFlexibleDisplayTime() {
+    return ts("Any", array('domain' => 'org.civicrm.volunteer'));
   }
 
   /**
    * Returns a string representing the times of a shift. Times will be formatted
-   * according to the user's defined time display settings. If no duration is
-   * given, only the formatted start time will be returned.
+   * according to the user's defined time display settings. If no duration/end
+   * date is given, only the formatted start time will be returned.
    *
-   * @param string $start Should be a parseable time string
-   * @param mixed $duration An int or a string, in minutes, or NULL for no end time
-   * @return mixed Returns a string on success, boolean FALSE if $start is not
-   * a parseable time.
+   * @param string $start
+   *   Should be a parseable time string
+   * @param mixed $duration
+   *   An int or a string, in minutes, or NULL for none
+   * @param mixed $end
+   *   Should be a parseable time string, or NULL for none
+   * @return mixed
+   *   Returns a string on success, boolean FALSE if $start is not
+   *   a parseable time.
    */
-  static function getTimes($start, $duration = NULL) {
-    $result = FALSE;
+  static function getTimes($start, $duration = NULL, $end = NULL) {
+    if (!strtotime($start)) {
+      return FALSE;
+    }
 
-    if (strtotime($start)) {
-      $config = CRM_Core_Config::singleton();
-      $timeFormat = $config->dateformatDatetime;
-      $result = CRM_Utils_Date::customFormat($start, $timeFormat);
+    $config = CRM_Core_Config::singleton();
+    $timeFormat = $config->dateformatDatetime;
+    $result = CRM_Utils_Date::customFormat($start, $timeFormat);
 
-      if (
-        $duration
-        && (is_int($duration) || ctype_digit($duration))
-      ) {
-        $date = new DateTime($start);
-        $startDay = $date->format('Y-m-d');
-        $date->add(new DateInterval("PT{$duration}M"));
-        $end = $date->format('Y-m-d H:i:s');
-        // If days are the same, only show time
-        if ($date->format('Y-m-d') == $startDay) {
-          $timeFormat = $config->dateformatTime;
-        }
-        $result .= ' - ' . CRM_Utils_Date::customFormat($end, $timeFormat);
+    if (strtotime($end)) {
+      $result .= ' - ' . CRM_Utils_Date::customFormat($end, $timeFormat);
+    } elseif (CRM_Utils_Type::validate($duration, 'Positive', FALSE)) {
+      $date = new DateTime($start);
+      $startDay = $date->format('Y-m-d');
+      $date->add(new DateInterval("PT{$duration}M"));
+      $end = $date->format('Y-m-d H:i:s');
+      // If days are the same, only show time
+      if ($date->format('Y-m-d') == $startDay) {
+        $timeFormat = $config->dateformatTime;
       }
+      $result .= ' - ' . CRM_Utils_Date::customFormat($end, $timeFormat);
     }
 
     return $result;
