@@ -124,9 +124,6 @@ function reservations_inventory_check_in_out_redirect($tid) {
 }
 
 
-
-
-
 /**
  * Modified version of the Drupal core system_settings_form that allows
  * for not saving all the form variables since there are so many
@@ -165,73 +162,31 @@ function reservations_inventory_system_settings_form($form) {
  *             'open'  => Opening time (military).
  *             'close' => Closing time (military).
  */
-function reservations_inventory_load_hours_of_operation() {
+function reservations_inventory_load_hours_of_operation($content_type = '') {
 
-  //variable_set('reservations_inventory_hours_operation', NULL);
   $hours = variable_get('reservations_inventory_hours_operation', '');
-
+  //dpm($hours, 'load');  
   return $hours;
 }
 
 /**
- * Returns hours of operation to resource chart based on criteria in parameter
+ * Returns hours of operation for a specified inventory
  *
- * Called by drupal_alter('resource_chart_hours', $alter_array) in
- * reservations_resource_chart.module
- *
- * @param $alter_array
- *   An array that contains the following:
- *		[is_manager]     => does user have the "manage reservations" permission
- *    [is_admin_mode]  => is_admin_mode as boolean - admin in url
- *		[inventory_tid]  => inventory term id as integer 
- *		[start]          => start time as string
- *		[end]            => end time as string
- *		[date]            => $start_date as string 
- *		[dow]            => day of the week - full textual respresentation
- *    [exist_tid_hrs]      => hours for the day of the week
+ * Called by module_invoke(
+ *       'reservation_inventory', 'get_hours_of_operation', $inventory_tid);
+ * 
+ * @Param: $inventory_tid => integer
+ * @Return: hours of operation for inventory
  *
  **/
-function reservations_inventory_resource_chart_hours_alter(&$alter_array) {
-  
-  // we only need to set hours for non-managers
-  if ((isset($alter_array)) && (!$alter_array['is_manager'])) {
-    $tid = $alter_array['inventory_tid'];
-    $hours_dow = $alter_array[$tid];
-    $dow_num = date('N', strtotime($alter_array['dow']));    
-    
+function reservations_inventory_get_hours_of_operation($inventory_tid) {
+      
     $hours = reservations_inventory_load_hours_of_operation();
-    $exist_tid_hrs = $hours[$tid]['exist_tid_hrs'];
-
-    if ($hours[$tid][$dow_num] === NULL) {
-      $start_time = NULL;
-      $end_time = NULL;
-    }
-    else {
-      $start_time = $hours[$tid][$dow_num]['open'];
-      $end_time = $hours[$tid][$dow_num]['close'];      
-    }
     
-/**
-$message = 
-  //"is_manager =" . $alter_array['is_manager'] . ";" .
-  //"is_admin_mode =" . $alter_array['is_admin_mode'] . ";" .
-  //"inventory_tid =" . $tid . ";" .
-  "start =" . $start_time . ";" .
-  "end =" . $end_time . ";" .
-  //"date =" . $alter_array['date'] . ";" .
-  //"dow =" . $dow_num . ";" .
-  "exist_tid_hrs=" . $exist_tid_hrs;
-watchdog("resource_chart", $message, NULL, WATCHDOG_INFO, $link = NULL);
-**/
-     
-    $alter_array['start'] = $start_time;
-    $alter_array['end'] = $end_time;
-    $alter_array['exist_tid_hrs'] = $exist_tid_hrs; //do hours exist for tid
-  }
-
+    // if inventory_tid available - return inventory hours
+    $hours = $inventory_tid ? $hours[$inventory_tid] : NULL;
+    return $hours;
 }
-
-
 
 function reservations_inventory_get_inventory_tids($type) {
   $tids = db_query("SELECT tids FROM {reservations_inventory_node_type} WHERE type = :type", array(':type' => $type))->fetchField();

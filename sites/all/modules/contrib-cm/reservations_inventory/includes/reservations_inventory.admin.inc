@@ -91,11 +91,11 @@ function reservations_inventory_admin_settings($form, &$form_state) {
     }    
     
     $form['reservations_hours'][$term_tid]
-             ['reservations_inventory_hours_expanded'. '_' . $term_tid] = array(
+             ['reservations_inventory_hours_admin'. '_' . $term_tid] = array(
       '#type' => 'textfield',
       '#title' => t('Expanded Hours'),
-      '#default_value' => isset($hours_of_operation[$term_tid]['expanded']) ?
-             implode('-', $hours_of_operation[$term_tid]['expanded']) : '',
+      '#default_value' => isset($hours_of_operation[$term_tid]['admin']) ?
+             implode('-', $hours_of_operation[$term_tid]['admin']) : '',
       '#description' => 
         t(
           "This setting controls the hours shown on the conflict grid for " .
@@ -133,7 +133,7 @@ function reservations_inventory_admin_settings($form, &$form_state) {
  *
  *   A multidimensional arry with the following key/value pairs:
  *     [term_tid] => An associative array with the following key/value pairs:
- *        [day_of_week or expanded] => An associative array with the 
+ *        [day_of_week or admin] => An associative array with the 
  *          following key/values pairs:
  *             'open'  => Opening time (military).
  *             'close' => Closing time (military).
@@ -174,14 +174,14 @@ function reservations_inventory_admin_settings_submit($form, &$form_state) {
     }  
      
     $expanded_hrs = $form_state['values']
-            ['reservations_inventory_hours_expanded_' . $term_tid];
+            ['reservations_inventory_hours_admin_' . $term_tid];
     if (empty($expanded_hrs)) {
-      $hours_of_operation[$term_tid]['expanded'] = NULL;
+      $hours_of_operation[$term_tid]['admin'] = NULL;
     }
     else {
       list ($open, $close) = explode('-', $expanded_hrs);
-      $hours_of_operation[$term_tid]['expanded']['open'] = trim($open);
-      $hours_of_operation[$term_tid]['expanded']['close'] = trim($close);
+      $hours_of_operation[$term_tid]['admin']['open'] = trim($open);
+      $hours_of_operation[$term_tid]['admin']['close'] = trim($close);
     }
 
     // Need to determine if the hours of operation have been 
@@ -189,18 +189,17 @@ function reservations_inventory_admin_settings_submit($form, &$form_state) {
     $hours_tid = $hours_of_operation[$term_tid];
     foreach($hours_tid as $key => $value) {
       if(!is_null($hours_tid[$key]['open'])) {
-        $exist_tid_hrs = TRUE;
+        $exist_inventory_hrs = TRUE;
         break;
       }
       else {
-        $exist_tid_hrs = FALSE;
+        $exist_inventory_hrs = FALSE;
       }
     }
-    $hours_of_operation[$term_tid]['exist_tid_hrs'] = $exist_tid_hrs;    
+    $hours_of_operation[$term_tid]['exist_inventory_hrs'] = $exist_inventory_hrs;    
 
   }
-  
-  //dpm($hours_of_operation, "hours of operation submit");
+  //dpm($hours_of_operation, 'hours submit');
   variable_set('reservations_inventory_hours_operation', $hours_of_operation);
   
 }

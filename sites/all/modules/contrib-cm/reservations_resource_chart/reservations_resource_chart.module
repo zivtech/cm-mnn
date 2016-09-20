@@ -744,16 +744,16 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 						    $bucket_res, 
 						    $start_date) {
   global $user;
+  
   //does logged in user have manage reservations perms?
   $is_manager = user_access('manage reservations');
-  $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
+  //$is_manager = FALSE; // ********** fixme: testing non-managers
 
-  //fixme only here for testing
-  //$is_manager = FALSE; // ********** testing non-managers
-  //$is_admin_mode = FALSE; // ************* testing non-managers
   
   $dow = date('l', strtotime($start_date));
-  
+  $dow_int = date('N', strtotime($dow));
+
+
   // managers are automatically set to use the resource config hours
   // even if a facility is closed, managers can override
   if ($is_manager) {
@@ -767,56 +767,36 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
     $header_end_minute = 0;
   } 
   else {
-    // non-managers use inventory hours if they exists,
-    // if not, use reservation api configured hours
-  
-    //find inventory tid (if it exists) from the URL
-    $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
-    $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
+    // non-managers use inventory hours if they exists, if not, 
+    // use reservation api configured hours
 
-    //fixme remove this, only here for testing
-    //$inventory_tid = 806; // ********** testing non-manager 
+    $exist_inventory_hrs = FALSE;
+    if (module_exists('reservations_inventory')) {
+      //find inventory tid (if it exists) from the URL
+      $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;      
+      $inventory_arg = $is_admin_mode ? arg(4) : arg(2);
+      $inventory_tid = is_numeric($inventory_arg) ? $inventory_arg : 0;
+      
+      //$is_admin_mode = FALSE; //********** fixme: testing non-manager
+      //$inventory_tid = 1680; // ********** fixme: testing non-manager 
+         
+      $hours_of_operation_inv = module_invoke(
+            'reservations_inventory', 'get_hours_of_operation', $inventory_tid);            
+      $exist_inventory_hrs = $hours_of_operation_inv['exist_inventory_hrs'];
+      $hours_array = $hours_of_operation_inv[$dow_int];   
+    }    
     
-    //build array for alter hook to allow other modules to change 
-    //start/end time
-    $alter_array = array(
-             'is_manager' => $is_manager, //boolean
-             'is_admin_mode'  => $is_admin_mode, //boolean
-             'inventory_tid' => $inventory_tid, //integer 
-             'start'  => $header_start, //string
-             'end'  => $header_end, //string
-             'date' => $start_date, //string 
-             'dow' => strtolower($dow),
-             'exist_tid_hrs' => FALSE,
-             );
-    //declare hook_resource_chart_hours_alter
-    drupal_alter('resource_chart_hours', $alter_array);
- 
-    if($alter_array['exist_tid_hrs']) {
-      if (is_null($alter_array['start'])) {
-        return t("Sorry, the facility is not open on this day. ");
-      }
-      //reset start and end
-      $hours_array = array(
-        $alter_array['start'],
-        $hours_array = $alter_array['end'],
-      );  
-    }
-    else {  // no inventory hours of operation avaialble
+    if (!$exist_inventory_hrs) {
+      // no inventory hours of operation avaialble
       $var_name = 'reservations_hours_' . strtolower($dow);
-      $hours = variable_get($var_name);     
-      if (!$hours) {
-        return t("Sorry, the facility is not open on this day. ");
-      }
-
-      $hours_array = explode('-', $hours);
+      $hours = variable_get($var_name);
+      $hours_array = explode('-', $hours);    
     }
-    
-    // resource chart expects values as integers
-    // if not on the hour, go to the next full hour to allow for an integer
-    $time = array_shift($hours_array);    
+
+    $time = array_shift($hours_array);   
     $time_array = explode(':', $time);
     $header_start_hour = $time_array[0];
+   
     $header_start_minute = ($time_array[1] >= 0 && $time_array[1] < 30) 
       ? 0 : 30;
 
