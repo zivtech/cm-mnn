@@ -1,7 +1,0 @@
-name = Reservations Report
-package = Reservations
-description = "Helper functions for reservation reports"
-
-core = 7.x
-
-dependencies[] = reservations
