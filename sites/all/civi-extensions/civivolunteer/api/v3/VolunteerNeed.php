@@ -56,7 +56,6 @@ function civicrm_api3_volunteer_need_create($params) {
  * @param array $params array or parameters determined by getfields
  */
 function _civicrm_api3_volunteer_need_create_spec(&$params) {
-  $params['project_id']['api.required'] = 1;
   $params['is_flexible']['api.default'] = 0;
   $params['is_active']['api.default'] = 1;
   $params['visibility_id']['api.default'] = CRM_Core_OptionGroup::getValue('visibility', 'public', 'name');
@@ -78,25 +77,97 @@ function civicrm_api3_volunteer_need_get($params) {
   if (!empty($result['values'])) {
     foreach ($result['values'] as &$need) {
       if (!empty($need['start_time'])) {
-        $need['display_time'] = CRM_Volunteer_BAO_Need::getTimes($need['start_time'], CRM_Utils_Array::value('duration', $need));
+        $need['display_time'] = CRM_Volunteer_BAO_Need::getTimes($need['start_time'],
+          CRM_Utils_Array::value('duration', $need),
+          CRM_Utils_Array::value('end_time', $need));
       }
       else {
-        $need['display_time'] = ts('Flexible', array('domain' => 'org.civicrm.volunteer'));
+        $need['display_time'] = CRM_Volunteer_BAO_Need::getFlexibleDisplayTime();
       }
       if (isset($need['role_id'])) {
-        $need['role_label'] = CRM_Core_OptionGroup::getLabel(
-          CRM_Volunteer_BAO_Assignment::ROLE_OPTION_GROUP,
-          $need['role_id']
+        $role = CRM_Core_OptionGroup::getRowValues(
+          CRM_Volunteer_BAO_Assignment::ROLE_OPTION_GROUP, $need['role_id'],
+          'value'
         );
+        $need['role_label'] = $role['label'];
+        $need['role_description'] = $role['description'];
       } elseif (CRM_Utils_Array::value('is_flexible', $need)) {
         $need['role_label'] = CRM_Volunteer_BAO_Need::getFlexibleRoleLabel();
+        $need['role_description'] = NULL;
       }
     }
   }
   return $result;
 }
+
+/**
+ * Adjust Metadata for Get action
+ *
+ * The metadata is used for setting defaults, documentation, validation, aliases, etc.
+ *
+ * @param array $params
+ */
 function _civicrm_api3_volunteer_need_get_spec(&$params) {
+  // VOL-196: these aliases facilitate API chaining as well as provide backwards
+  // compatibility for code referencing the fields' removed uniqueNames
+  $params['id']['api.aliases'] = array('volunteer_need_id');
+  $params['project_id']['api.aliases'] = array('volunteer_project_id', 'volunteer_need_project_id');
 }
+
+function _civicrm_api3_volunteer_need_getsearchresult_spec(&$params) {
+  $params['beneficiary'] = array(
+    'title' => 'Project Beneficiary',
+    'description' => 'Contacts which benefit from a Volunteer Project. (An
+      int-like string, a comma-separated list thereof, or an array representing
+      one or more contact IDs who benefit from the Needs/Opportunities.)',
+    'type' => CRM_Utils_Type::T_INT,
+  );
+  $params['project'] = array(
+    'title' => 'Volunteer Project',
+    'description' => 'Volunteer Project ID',
+    'type' => CRM_Utils_Type::T_INT,
+  );
+  $params['proximity'] = array(
+    'title' => 'Proximity',
+    'description' => 'Array of parameters (lat, lon, radius, unit) by which to
+      geographically limit results. See CRM_Volunteer_BAO_Project::retrieve().
+      This parameter is used for filtering only; project contacts are not returned.',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $params['role_id'] = array(
+    'title' => 'Role',
+    'description' => 'The role the volunteer will perform in the project. (An
+      int-like string, a comma-separated list thereof, or an array representing
+      one or more role IDs.)',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $params['date_start'] = array(
+    'title' => 'Start Date',
+    'description' => 'Used to filter Needs/Opportunities. Needs/Opportunities before this date won\'t be returned.',
+    'type' => CRM_Utils_Type::T_DATE,
+  );
+  $params['date_end'] = array(
+    'title' => 'End Date',
+    'description' => 'Used to filter Needs/Opportunities. Needs/Opportunities after this date won\'t be returned.',
+    'type' => CRM_Utils_Type::T_DATE,
+  );
+}
+
+/**
+ * Returns the results of a search.
+ *
+ * This API is used with the volunteer opportunities search UI.
+ *
+ * @param array $params
+ *   See CRM_Volunteer_BAO_NeedSearch::doSearch().
+ *
+ * @return array
+ */
+function civicrm_api3_volunteer_need_getsearchresult($params) {
+  $result = CRM_Volunteer_BAO_NeedSearch::doSearch($params);
+  return civicrm_api3_create_success($result, $params, 'VolunteerNeed', 'getsearchresult');
+}
+
 /**
  * delete an existing need
  *
