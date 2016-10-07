@@ -284,8 +284,9 @@ function civicrm_multiday_event_form_alter(&$form, &$form_state, $form_id) {
 
     // Use API call in versions > 4.2
     // http://issues.civicrm.org/jira/browse/CRM-10540
-    $version = CRM_Utils_VersionCheck::singleton()->localVersion;
-
+   // $version = CRM_Utils_VersionCheck::singleton()->localVersion;
+  
+   $version = "4.7.12";
     if ($version < "4.4") {
       $result = db_query('SELECT id, template_title FROM {civicrm_event} WHERE is_template = 1 ORDER BY template_title');
 
