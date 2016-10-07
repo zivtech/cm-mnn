@@ -222,6 +222,7 @@ function entityreference_field_validate($entity_type, $entity, $field, $instance
 
     ///////////////////////////////////////////////////////////////////////////
     //OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN 4/23/2016
+    //Mantis issue: http://mantis.mnn.org/view.php?id=4256
     global $hacked_valid_ids;
     $hacked_valid_ids = $valid_ids;
     //END OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN

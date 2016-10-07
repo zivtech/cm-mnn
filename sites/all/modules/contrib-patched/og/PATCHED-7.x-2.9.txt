@@ -1,0 +1,20 @@
+diff --git a/sites/all/modules/contrib-patched/og/plugins/entityreference/behavior/OgBehaviorHandler.class.php b/sites/all/modules/contrib-patched/og/plugins/entityreference/behavior/OgBehaviorHandler.class.php
+index 4165043..939feef 100644
+--- a/sites/all/modules/contrib-patched/og/plugins/entityreference/behavior/OgBehaviorHandler.class.php
++++ b/sites/all/modules/contrib-patched/og/plugins/entityreference/behavior/OgBehaviorHandler.class.php
+@@ -290,6 +290,15 @@ class OgBehaviorHandler extends EntityReference_BehaviorHandler_Abstract {
+       $instance['field_mode'] = $field_mode;
+       $valid_ids = entityreference_get_selection_handler($field, $instance, $entity_type, $entity)->validateReferencableEntities($ids);
+ 
++      ////////////////////////////////////////////////////////////////////////
++      //OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN 4/23/2016 
++      //to 2.8 still needed for 2.9
++      // see issues: http://mantis.mnn.org/view.php?id=4256 and 
++      // http://mantis.mnn.org/view.php?id=4323 in Mantis
++      //
++      global $hacked_valid_ids;
++      $valid_ids = $hacked_valid_ids;
++      //END OPENFLOWS HACK FOR MNN BY MARK LIBKUMAN
+       if ($invalid_entities = array_diff($ids, $valid_ids)) {
+         foreach ($invalid_entities as $id) {
+           $new_errors[$field_mode][] = array(
