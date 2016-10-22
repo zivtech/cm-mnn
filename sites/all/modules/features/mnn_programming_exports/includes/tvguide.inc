@@ -96,7 +96,7 @@ function mnn_programming_exports_tvguide_download() {
   require_once "Spreadsheet/Excel/Writer.php";
 
   // Create an instance
-  $workbook =& new Spreadsheet_Excel_Writer();
+  $workbook = new Spreadsheet_Excel_Writer();
 
   // Send HTTP headers to tell the browser what's coming
   $workbook->send("MNN_schedule.xls");
