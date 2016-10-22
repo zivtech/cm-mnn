@@ -19,6 +19,8 @@ function cm_crew_connect_node_postsave(&$node) {
       cm_crew_connect_get_single_field_value($node, 
 					     'field_app_crew_connect_node',
 					     'target_id');
+ 
+
     $request = node_load($request_nid);
     if ($request) {
       node_save($request);
@@ -47,6 +49,19 @@ function cm_crew_connect_node_update($node) {
  *  
  */
 function cm_crew_connect_node_insert($node) {
+  cm_crew_connect_node_postsave($node);
+}
+
+/**
+ * Implements hook_node_inser().
+ *
+ * This is the hook after an existing node is inserteed into the db. 
+ * It will call the cm_crew_connect_post_save function.
+ * function
+ *  
+ */
+function cm_crew_connect_node_delete($node) {
+  $_SESSION['cm_crew_connect_deleting_application'] = TRUE;
   cm_crew_connect_node_postsave($node);
 }
 

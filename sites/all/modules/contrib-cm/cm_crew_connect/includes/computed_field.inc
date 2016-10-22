@@ -20,22 +20,27 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
   
   $link = '';
   if ($event_id) {
-    
-    //find applicant node 
-    $view = views_get_view('crew_connect_application_for_request');
-    $view->set_arguments(array($entity->nid));
-    $view->execute();
-    $results = $view->result;;
+    $deleting_application =  $_SESSION['cm_crew_connect_deleting_application'];
 
-    if ($results) {
-      $result = array_pop($results);
-      $nid = $result->nid;
-      $applicant = node_load($nid);
-      if ($applicant) {
-	$participant_id = 
-	  cm_crew_connect_get_single_field_value($applicant,
-						 'field_app_participant_id');
-						 
+    $_SESSION['cm_crew_connect_deleting_application'] = FALSE;
+    if (!$deleting_application) {
+      
+      //find applicant node 
+      $view = views_get_view('crew_connect_application_for_request');
+      $view->set_arguments(array($entity->nid));
+      $view->execute();
+      $results = $view->result;;
+      
+      if ($results) {
+	$result = array_pop($results);
+	$nid = $result->nid;
+	$applicant = node_load($nid);
+	if ($applicant) {
+	  $participant_id = 
+	    cm_crew_connect_get_single_field_value($applicant,
+						   'field_app_participant_id');
+	  
+	}
       }
     }
 
