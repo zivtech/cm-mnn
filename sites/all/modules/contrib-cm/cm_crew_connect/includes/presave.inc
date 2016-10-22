@@ -20,7 +20,7 @@ function cm_crew_connect_node_presave($node) {
       cm_crew_connect_get_single_field_value($node,
 					     'field_tmp_crew_location',
 					     'value');
-    
+ //   dsm("starting");
 
     ////////////////////////////////////////////////////////////////////
     //LOCATION
@@ -134,7 +134,7 @@ function cm_crew_connect_node_presave($node) {
       $minute_length = ($parts[1] == 0) ?  0 : 30*60;
       
       $end = date('Y-m-d H:i:s', $start_ts + $hour_length + $minute_length);
-      
+   //   dsm("before event created");
       $result2 = civicrm_api3('Event', 'create', 
 			      array(
 				    'sequential' => 1,
@@ -152,14 +152,15 @@ function cm_crew_connect_node_presave($node) {
 				    'is_public' => "1",
 				    ));
       $event_id = $result2['id'];
-
+//dsm("event created");
       //set the event to be volunteer enabled.   
       $result3 = civicrm_api3('VolunteerProject', 'create', 
 			      array(
 				    'sequential' => 1,
 				    'entity_table' => "civicrm_event",
 				    'entity_id' => $result2['id'],
-				    ));
+                                     'title' => $node->title,
+                                     ));
 				    
            $author_cid = CRM_Core_BAO_UFMatch::getContactID($node->uid);
       //set the creator to be a participant 
