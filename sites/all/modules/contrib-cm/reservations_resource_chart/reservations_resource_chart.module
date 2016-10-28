@@ -125,6 +125,11 @@ function reservations_resource_chart_settings_form($form, $form_state) {
 		    array('size'=>3,
 			  'title'=>t('Staff End'),
 			  'help'=>t('The end time of the chart for staff.')),
+		    'project_field_name' => 
+		    array('size'=>50,
+			  'title'=>t("Project Field"),
+			  'help'=>
+			  t("Name of project field on reservation")),
 		    'custom_chart_item_ids' => 
 		    array('size'=>50,
 			  'title'=>t("Custom Chart nid's"),
@@ -1127,6 +1132,14 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	      if (!$is_admin_mode) {
 		//do nothing
 	      }
+
+	      else if ($item_reservation->livefeed) {
+		$display_class = 'reservations_live';
+	      }
+	      else if ($item_reservation->status ==
+		       RESERVATIONS_STATUS_UNCONFIRMED) {
+                $display_class = 'reservations_unconfirmed';
+	      }     
               else if ($item_reservation->check_in_time) {
                 $display_class = 'reservations_checked_in';
               }
@@ -1134,7 +1147,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
                 $display_class = 'reservations_checked_out';
               }
               else {
-                $display_class = 'reservations_ready';
+                $display_class = 'reservations_confirmed';
               }
 
 	      $title = date('g:ia',$block_start_timestamp).
@@ -1225,8 +1238,27 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 			     'rows'=>$rows,
 			     'attributes'=>$attributes, 'sticky' => TRUE));
 
+  $rows = array(array(array('data' => 'Uncomfirmed',
+		      'align' => 'center',
+		      'class' => 'reservations_unconfirmed'),
+		array('data' => 'Comfirmed',
+		      'align' => 'center',
+		      'class' => 'reservations_confirmed'),
+		array('data' => 'Checked Out',
+		      'align' => 'center',
+		      'class' => 'reservations_checked_out'),
+		array('data' => 'Checked In',
+		      'align' => 'center',
+		      'class' => 'reservations_checked_in'),
+		array('data' => 'Live',
+		      'align' => 'center',
+		      'class' => 'reservations_live')));
 
-  return $table;
+  $legend = "<h2>Legend</h2>".
+    theme_table(array('header'=>array(),
+		      'rows'=>$rows,
+		      'attributes'=>$attributes));
+  return $table.$legend;
 }
 
 function reservations_resource_chart_get_add_link($label, $item_nid, 
@@ -1325,7 +1357,6 @@ function reservations_resource_chart_get_item_reservations($day,
 
   //iterate over results, store in array
   foreach($results[$day] as $k=>$result) {
-
     $data = $result->_field_data['nid']['entity'];
     $status = $data->reservations_reservation_status;      
     //THESE SHOULD BE FILTERED OUT BY THE VIEW, BUT KEEPING HERE JUST IN CASE
@@ -1341,6 +1372,25 @@ function reservations_resource_chart_get_item_reservations($day,
     if ($should_ignore_unconfirmed && 
 	$status == RESERVATIONS_STATUS_UNCONFIRMED) {
       continue;
+    }
+
+    $res_node = node_load($result->nid);
+    $field_name =
+      variable_get('reservations_resource_chart_project_field_name');
+
+    $pid =
+      reservations_resource_chart_get_single_field_value($res_node,
+							 $field_name,
+							 'target_id');
+    $project = $pid ? node_load($pid) : NULL;
+    if ($project) {
+      $livefeed =
+	reservations_resource_chart_get_single_field_value($project,
+							   'field_device',
+							   'tid');
+    }
+    else {
+      $livefeed = NULL;
     }
 
     $reserve_start_time = $result->start_time;
@@ -1375,7 +1425,9 @@ function reservations_resource_chart_get_item_reservations($day,
       $item_reservation->reservation_id = $data->nid;
       $item_reservation->reserve_start_time = $reserve_start_time;
       $item_reservation->reserve_end_time = $reserve_end_time;
-
+      $item_reservation->status = $status;
+      $item_reservation->livefeed = $livefeed;
+      
       $type = $item_result['type'];
       $bucket_res[$day][$type] = $bucket_res[$day][$type] ? 
 	$bucket_res[$day][$type] : array();
