@@ -12,9 +12,31 @@
 
 function cm_airing_grid_extract_grid_data(&$airings_grid_array, $column_time, 
   $start_hour, $start_time, $channel, $grid_mode) {
+
   global $base_url;
   $airing_id = filter_input(INPUT_GET, 'airing_id');
   $channel_number = preg_replace("/Channel /", "", $channel);
+
+
+  global $cm_airing_grid_used_times;
+  $cm_airing_grid_used_times = isset($cm_airing_grid_used_times) ?
+    $cm_airing_grid_used_times : array();
+
+  foreach($airings_grid_array as $k=>$v) {
+    if ($k < $column_time && !in_array($k, $cm_airing_grid_used_times)) {
+      $cm_airing_grid_used_times[] = $k;
+      $cm_airing_grid_used_times[] = $column_time;
+      $airings_grid_array[$k][0]->event_start = 
+	date('Y-m-d H:i:s', $column_time);
+      $airings_grid_array[$column_time] = $airings_grid_array[$k];
+      unset($airings_grid_array[$k]);
+      break;
+    }
+    else if ($k == $column_time) {
+      $cm_airing_grid_used_times[] = $k;
+      break;
+    }
+  }
   $data = isset($airings_grid_array[$column_time]) ? 
     $airings_grid_array[$column_time] : NULL;
 
