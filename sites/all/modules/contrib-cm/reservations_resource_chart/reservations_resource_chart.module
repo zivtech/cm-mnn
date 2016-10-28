@@ -245,6 +245,8 @@ function reservations_resource_chart_settings_form($form, $form_state) {
  */
 function reservations_resource_chart_form($form, $form_state, 
 					  $arg_string = FALSE) {
+  
+  $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
 
   $args = reservations_resource_chart_special_args($form_state, $arg_string);
   drupal_set_title($args['title']);
@@ -385,7 +387,9 @@ function reservations_resource_chart_form($form, $form_state,
 	
 	$items = reservations_resource_chart_get_items_for_type
 	  ($reservation_items, $bucket_content_type, $args, $grouping_tid, 
-	   $item_options, $type_options, $category_options, $content_types);
+	   $item_options, $type_options, $category_options, $content_types,
+	   $is_admin_mode);
+	
 	if (count($items)) {
 	  $has_items_to_display = TRUE;
 	}
@@ -1416,8 +1420,8 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
 							&$item_options, 
 							&$type_options, 
 							&$category_options,
-							$content_types) {
-
+							$content_types,
+							$is_admin_mode) {
   $cache_var_name = 'reservation_resource_chart_item_cache_'.
     $bucket_content_type;
   $cache_options_var_name = 'reservation_resource_chart_item_option_cache_'.
@@ -1489,6 +1493,18 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
 	continue;
       }
 
+      //if not in admin mode, filter out if user does not have permission
+      if (!$is_admin_mode) {
+      	$permission = 'edit own '.$result->type.' content';
+	$can_reserve_item = user_access($permission);
+
+	if (!$can_reserve_item) {
+	  continue;
+	}
+
+      }
+
+      
       //fill the arrays to be used on teh dropdown filters
       if (reservations_type_setting($result->type) != 'bucket') {
 	$item_options[$item->nid] = $item->title;
