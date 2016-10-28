@@ -119,9 +119,19 @@ function cm_airing_grid_format_status_row
     $cells[] = array('data' => $data[0],
                      'class' => array($data_classes[0]),
                     );
-    $cells[] = array('data' => $data[1],
-                     'class' => array($data_classes[1]),
-                    );
+
+    if (is_array($data[1])) {
+      $cells[] = array('data' => $data[1][0],
+		       'colspan' => $data[1][1],
+		       'class' => array($data_classes[1]),		       
+		       );
+    }
+    else {
+      $cells[] = array('data' => $data[1],
+		       'class' => array($data_classes[1]),		       
+		       );
+    }
+
     $rows[] = array('data' => $cells, 'class' => array($row_class));
   }
   else if (count($data) > 2) {
