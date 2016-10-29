@@ -1909,7 +1909,7 @@ function reservations_resource_chart_special_args($form_state,
     $title = t("@inventory Resource Chart", 
 	       array('@inventory' => $term->name));
 
-    $ret['title'] = $title;
+    $ret['title'] = htmlspecialchars_decode($title);
     $ret['inventories'][] = $arg_string;
     $ret['mode'] = 'default';
   }
