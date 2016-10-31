@@ -33,6 +33,28 @@ table.resource-daily-chart tr.even td {
   padding: 0.4em 0.6em;
   background-color: #FFFFAA;
 }
+.reservations_confirmed {
+  text-align: center;
+  border-width: 2;
+  border-color: black
+  padding: 0.4em 0.6em;
+  background-color: none ;
+}
+.reservations_unconfirmed {
+  text-align: center;
+  border-width: 2;
+  border-color: black
+  padding: 0.4em 0.6em;
+  background-color: #F96410 ;
+}
+.reservations_live {
+  text-align: center;
+  border-width: 2;
+  border-color: black
+  padding: 0.4em 0.6em;
+  background-color: #10DDF9 ;
+}
+
 table.reservations_internal_grid {
   width: 100%;
   height: 100%;

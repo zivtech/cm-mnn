@@ -125,6 +125,11 @@ function reservations_resource_chart_settings_form($form, $form_state) {
 		    array('size'=>3,
 			  'title'=>t('Staff End'),
 			  'help'=>t('The end time of the chart for staff.')),
+		    'project_field_name' => 
+		    array('size'=>50,
+			  'title'=>t("Project Field"),
+			  'help'=>
+			  t("Name of project field on reservation")),
 		    'custom_chart_item_ids' => 
 		    array('size'=>50,
 			  'title'=>t("Custom Chart nid's"),
@@ -245,6 +250,8 @@ function reservations_resource_chart_settings_form($form, $form_state) {
  */
 function reservations_resource_chart_form($form, $form_state, 
 					  $arg_string = FALSE) {
+  
+  $is_admin_mode = (arg(0) == 'admin') ? TRUE : FALSE;
 
   $args = reservations_resource_chart_special_args($form_state, $arg_string);
   drupal_set_title($args['title']);
@@ -385,7 +392,9 @@ function reservations_resource_chart_form($form, $form_state,
 	
 	$items = reservations_resource_chart_get_items_for_type
 	  ($reservation_items, $bucket_content_type, $args, $grouping_tid, 
-	   $item_options, $type_options, $category_options, $content_types);
+	   $item_options, $type_options, $category_options, $content_types,
+	   $is_admin_mode);
+	
 	if (count($items)) {
 	  $has_items_to_display = TRUE;
 	}
@@ -1123,6 +1132,14 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	      if (!$is_admin_mode) {
 		//do nothing
 	      }
+
+	      else if ($item_reservation->livefeed) {
+		$display_class = 'reservations_live';
+	      }
+	      else if ($item_reservation->status ==
+		       RESERVATIONS_STATUS_UNCONFIRMED) {
+                $display_class = 'reservations_unconfirmed';
+	      }     
               else if ($item_reservation->check_in_time) {
                 $display_class = 'reservations_checked_in';
               }
@@ -1130,7 +1147,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
                 $display_class = 'reservations_checked_out';
               }
               else {
-                $display_class = 'reservations_ready';
+                $display_class = 'reservations_confirmed';
               }
 
 	      $title = date('g:ia',$block_start_timestamp).
@@ -1221,8 +1238,27 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 			     'rows'=>$rows,
 			     'attributes'=>$attributes, 'sticky' => TRUE));
 
+  $rows = array(array(array('data' => 'Uncomfirmed',
+		      'align' => 'center',
+		      'class' => 'reservations_unconfirmed'),
+		array('data' => 'Comfirmed',
+		      'align' => 'center',
+		      'class' => 'reservations_confirmed'),
+		array('data' => 'Checked Out',
+		      'align' => 'center',
+		      'class' => 'reservations_checked_out'),
+		array('data' => 'Checked In',
+		      'align' => 'center',
+		      'class' => 'reservations_checked_in'),
+		array('data' => 'Live',
+		      'align' => 'center',
+		      'class' => 'reservations_live')));
 
-  return $table;
+  $legend = "<h2>Legend</h2>".
+    theme_table(array('header'=>array(),
+		      'rows'=>$rows,
+		      'attributes'=>$attributes));
+  return $table.$legend;
 }
 
 function reservations_resource_chart_get_add_link($label, $item_nid, 
@@ -1321,7 +1357,6 @@ function reservations_resource_chart_get_item_reservations($day,
 
   //iterate over results, store in array
   foreach($results[$day] as $k=>$result) {
-
     $data = $result->_field_data['nid']['entity'];
     $status = $data->reservations_reservation_status;      
     //THESE SHOULD BE FILTERED OUT BY THE VIEW, BUT KEEPING HERE JUST IN CASE
@@ -1337,6 +1372,25 @@ function reservations_resource_chart_get_item_reservations($day,
     if ($should_ignore_unconfirmed && 
 	$status == RESERVATIONS_STATUS_UNCONFIRMED) {
       continue;
+    }
+
+    $res_node = node_load($result->nid);
+    $field_name =
+      variable_get('reservations_resource_chart_project_field_name');
+
+    $pid =
+      reservations_resource_chart_get_single_field_value($res_node,
+							 $field_name,
+							 'target_id');
+    $project = $pid ? node_load($pid) : NULL;
+    if ($project) {
+      $livefeed =
+	reservations_resource_chart_get_single_field_value($project,
+							   'field_device',
+							   'tid');
+    }
+    else {
+      $livefeed = NULL;
     }
 
     $reserve_start_time = $result->start_time;
@@ -1371,7 +1425,9 @@ function reservations_resource_chart_get_item_reservations($day,
       $item_reservation->reservation_id = $data->nid;
       $item_reservation->reserve_start_time = $reserve_start_time;
       $item_reservation->reserve_end_time = $reserve_end_time;
-
+      $item_reservation->status = $status;
+      $item_reservation->livefeed = $livefeed;
+      
       $type = $item_result['type'];
       $bucket_res[$day][$type] = $bucket_res[$day][$type] ? 
 	$bucket_res[$day][$type] : array();
@@ -1416,8 +1472,8 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
 							&$item_options, 
 							&$type_options, 
 							&$category_options,
-							$content_types) {
-
+							$content_types,
+							$is_admin_mode) {
   $cache_var_name = 'reservation_resource_chart_item_cache_'.
     $bucket_content_type;
   $cache_options_var_name = 'reservation_resource_chart_item_option_cache_'.
@@ -1489,6 +1545,18 @@ function reservations_resource_chart_get_items_for_type(&$reservation_items,
 	continue;
       }
 
+      //if not in admin mode, filter out if user does not have permission
+      if (!$is_admin_mode) {
+      	$permission = 'edit own '.$result->type.' content';
+	$can_reserve_item = user_access($permission);
+
+	if (!$can_reserve_item) {
+	  continue;
+	}
+
+      }
+
+      
       //fill the arrays to be used on teh dropdown filters
       if (reservations_type_setting($result->type) != 'bucket') {
 	$item_options[$item->nid] = $item->title;
@@ -1841,7 +1909,7 @@ function reservations_resource_chart_special_args($form_state,
     $title = t("@inventory Resource Chart", 
 	       array('@inventory' => $term->name));
 
-    $ret['title'] = $title;
+    $ret['title'] = htmlspecialchars_decode($title);
     $ret['inventories'][] = $arg_string;
     $ret['mode'] = 'default';
   }
