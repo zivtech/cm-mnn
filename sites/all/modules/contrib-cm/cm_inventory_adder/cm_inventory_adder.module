@@ -113,7 +113,7 @@ function cm_inventory_adder_get_duplicate_inventory_items($inventory_number,
     "SELECT nid, title 
      FROM {node} n
      INNER JOIN {field_data_field_inventory_number} i
-     ON i.revision_id = n.vid
+     ON i.entity_id = n.nid
      WHERE i.field_inventory_number_value = :inventory_number";
 
   $params = array(':inventory_number'=>$inventory_number);
@@ -130,7 +130,7 @@ function cm_inventory_adder_get_duplicate_inventory_items($inventory_number,
       $first = FALSE;
     }
     else {
-      $sql .= ", ";
+      $duplicate_items .= ", ";
     }
     $duplicate_items .= l($item->title, "node/".$item->nid); 
   }

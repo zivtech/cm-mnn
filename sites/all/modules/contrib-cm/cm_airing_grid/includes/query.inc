@@ -85,8 +85,10 @@ function cm_airing_grid_get_grid_airings
     $mysql_day_of_week)
     AND EXTRACT(HOUR FROM fdfad.field_airing_date_value) <=" .
     date('H', $end_time)."
-    AND EXTRACT(HOUR FROM fdfad.field_airing_date_value2) >=" .
-    		date('H', $start_time)."
+    AND ((EXTRACT(HOUR FROM fdfad.field_airing_date_value2) >=".
+      date('H', $start_time).") OR 
+    ( DAYOFWEEK(fdfad.field_airing_date_value2) !=  
+      DAYOFWEEK(fdfad.field_airing_date_value) ))
 
     		UNION
     		
@@ -116,10 +118,10 @@ function cm_airing_grid_get_grid_airings
     $mysql_day_of_week)
     AND EXTRACT(HOUR FROM fdfad.field_airing_date_value) <=" .
     date('H', $end_time)."
-    AND EXTRACT(HOUR FROM fdfad.field_airing_date_value2) >=" .
-    		date('H', $start_time)."
-        ";
-    			 	
+    AND ((EXTRACT(HOUR FROM fdfad.field_airing_date_value2) >=".
+      date('H', $start_time).") OR 
+    ( DAYOFWEEK(fdfad.field_airing_date_value2) !=  
+      DAYOFWEEK(fdfad.field_airing_date_value) ))";
      
   $query = "SELECT * from ($query) as air_join";
   if ($sort) {
