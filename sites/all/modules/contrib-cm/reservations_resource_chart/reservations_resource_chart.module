@@ -440,6 +440,31 @@ function reservations_resource_chart_form($form, $form_state,
     $markup .= "</tr></table>";
   }
 
+  $rows = array(array(array('data' => 'Uncomfirmed',
+			    'align' => 'center',
+			    'class' => 'reservations_unconfirmed'),
+		      array('data' => 'Comfirmed',
+			    'align' => 'center',
+			    'class' => 'reservations_confirmed'),
+		      array('data' => 'Checked Out',
+			    'align' => 'center',
+			    'class' => 'reservations_checked_out'),
+		      array('data' => 'Checked In',
+			    'align' => 'center',
+			    'class' => 'reservations_checked_in'),
+		      array('data' => 'Live',
+			    'align' => 'center',
+			    'class' => 'reservations_live')));
+
+  if ($is_admin_mode) {
+    $legend = "<h2>Legend</h2>".
+      theme_table(array('header'=>array(),
+			'rows'=>$rows,
+			'attributes'=>array()));
+    $markup .= $legend;
+  }
+
+    
   $form = array();
   $form['#tree'] = TRUE;
   $form['#attributes']['enctype'] = 'multipart/form-data';
@@ -1238,27 +1263,7 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 			     'rows'=>$rows,
 			     'attributes'=>$attributes, 'sticky' => TRUE));
 
-  $rows = array(array(array('data' => 'Uncomfirmed',
-		      'align' => 'center',
-		      'class' => 'reservations_unconfirmed'),
-		array('data' => 'Comfirmed',
-		      'align' => 'center',
-		      'class' => 'reservations_confirmed'),
-		array('data' => 'Checked Out',
-		      'align' => 'center',
-		      'class' => 'reservations_checked_out'),
-		array('data' => 'Checked In',
-		      'align' => 'center',
-		      'class' => 'reservations_checked_in'),
-		array('data' => 'Live',
-		      'align' => 'center',
-		      'class' => 'reservations_live')));
-
-  $legend = "<h2>Legend</h2>".
-    theme_table(array('header'=>array(),
-		      'rows'=>$rows,
-		      'attributes'=>$attributes));
-  return $table.$legend;
+  return $table;
 }
 
 function reservations_resource_chart_get_add_link($label, $item_nid, 
