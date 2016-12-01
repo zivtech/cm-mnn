@@ -28,6 +28,11 @@ function cm_airing_grid_extract_grid_data(&$airings_grid_array, $column_time,
       $cm_airing_grid_used_times[] = $column_time;
       $airings_grid_array[$k][0]->event_start = 
 	date('Y-m-d H:i:s', $column_time);
+
+      $diff_minutes = ($column_time - $k) / 60;
+      $airings_grid_array[$k][0]->count =
+	$airings_grid_array[$k][0]->count - (int)($diff_minutes/30);
+
       $airings_grid_array[$column_time] = $airings_grid_array[$k];
       unset($airings_grid_array[$k]);
       break;
