@@ -17,24 +17,32 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
   $event_id = 
     cm_crew_connect_get_single_field_value($entity,
 					   'field_crew_civievent_id');
-  
   $link = '';
   if ($event_id) {
     $deleting_application =  $_SESSION['cm_crew_connect_deleting_application'];
 
     $_SESSION['cm_crew_connect_deleting_application'] = FALSE;
     if (!$deleting_application) {
-      
+
       //find applicant node 
       $view = views_get_view('crew_connect_application_for_request');
       $view->set_arguments(array($entity->nid));
       $view->execute();
+      
       $results = $view->result;;
       
       if ($results) {
 	$result = array_pop($results);
 	$nid = $result->nid;
+      }
+      else {
+	$nid = $_SESSION['cm_crew_connect_request_nid'];
+      }
+      $_SESSION['cm_crew_connect_request_nid'] = NULL;
+
+      if ($nid) {
 	$applicant = node_load($nid);
+
 	if ($applicant) {
 	  $participant_id = 
 	    cm_crew_connect_get_single_field_value($applicant,
@@ -64,7 +72,6 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
 
       $link = l(t("Manage CiviCRM Event"),
 		  'civicrm/contact/view/participant',array('query'=>$query));
-
       }
 
 		  
@@ -83,7 +90,6 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
   
 
   }
-
   $entity_field[0]['value'] = $link;
   return $link;
 }
