@@ -84,10 +84,11 @@ function cm_crew_connect_delete_request_field($row, $view) {
 }
 
 function cm_crew_connect_cancel_request_field($row) {
-dpm($row, 'row');
-  
-  if ($row->nid_1) {
-    return "N/A";
+  if ($row->nid) {
+    $application = cm_crew_connect_get_application_for_request($row->nid);
+    if ($application) {
+      return "N/A";
+    }
   }
   $request = node_load($row->nid);
   $project_nid = 
@@ -105,9 +106,13 @@ dpm($row, 'row');
 }
 
 function cm_crew_connect_edit_request_field($row) {
-  if ($row->nid_1) {
-    return "N/A";
+   if ($row->nid) {
+    $application = cm_crew_connect_get_application_for_request($row->nid);
+    if ($application) {
+      return "N/A";
+    }
   }
+
   $request = node_load($row->nid);
   $project_nid = 
     cm_crew_connect_get_single_field_value($request, 
@@ -123,17 +128,18 @@ function cm_crew_connect_edit_request_field($row) {
 }
 
 function cm_crew_connect_applicant_name($row) {
-  if ($row->uid_1) {
-    $name = cm_crew_connect_get_display_name($row->uid_1);
-  }
- 
-  if (!$name && $row->uid_1) {
-    $user = user_load($row->uid_1);
-    $name = $user->name;
+  if ($row->nid) {
+    $application = cm_crew_connect_get_application_for_request($row->nid);
+
+    if ($application) {
+      $applicant_name = cm_crew_connect_get_display_name($application->uid);
+      return $applicant_name;
+    }
   }
 
-  return $name;
+  return '';
 }
+
 
 function cm_crew_connect_search_page_header() {
   $ret = "";

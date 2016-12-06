@@ -202,3 +202,16 @@ function cm_crew_connect_override_messages() {
     }
   }
 }
+
+function cm_crew_connect_get_application_for_request($nid) {
+  $sql =
+    "SELECT entity_id FROM field_data_field_app_crew_connect_node             
+     WHERE field_app_crew_connect_node_target_id = :nid";
+  $results = db_query($sql, array(':nid' => $nid));
+  $result = $results->fetchObject();
+  if ($result->entity_id) {
+    $application = node_load($result->entity_id);
+    return $application;
+  }
+  return NULL;
+}
