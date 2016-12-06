@@ -37,6 +37,8 @@ function cm_crew_connect_node_postsave(&$node) {
  *  
  */
 function cm_crew_connect_node_update($node) {
+  $_SESSION['cm_crew_connect_deleting_application'] = FALSE;
+  $_SESSION['cm_crew_connect_request_nid'] = $node->nid;
   cm_crew_connect_node_postsave($node);
 }
 
@@ -49,6 +51,8 @@ function cm_crew_connect_node_update($node) {
  *  
  */
 function cm_crew_connect_node_insert($node) {
+  $_SESSION['cm_crew_connect_deleting_application'] = FALSE;
+  $_SESSION['cm_crew_connect_request_nid'] = $node->nid;
   cm_crew_connect_node_postsave($node);
 }
 
@@ -62,6 +66,7 @@ function cm_crew_connect_node_insert($node) {
  */
 function cm_crew_connect_node_delete($node) {
   $_SESSION['cm_crew_connect_deleting_application'] = TRUE;
+  $_SESSION['cm_crew_connect_request_nid'] = $node->nid;
   cm_crew_connect_node_postsave($node);
 }
 
