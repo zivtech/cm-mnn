@@ -56,7 +56,7 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
     if ($participant_id) {
       $result = civicrm_api3('Participant', 'get', array(
 							 'sequential' => 1,
-							 'id' => 44639,
+							 'id' => $participant_id,
 							 ));
       if ($result && isset($result['values']) && $result['values'] &&
 	  isset($result['values'][0]) && $result['values'][0]) {
