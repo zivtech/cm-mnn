@@ -43,9 +43,19 @@
             });
           },
           relationship_data: function(crmApi, $route) {
-            return crmApi('VolunteerProjectContact', 'get', {
+            var params = {
               "sequential": 1,
               "project_id": $route.current.params.projectId
+            };
+            return crmApi('VolunteerProjectContact', 'get', params).then(function(result) {
+              var relationships = {};
+              $(result.values).each(function (index, vpc) {
+                if (!relationships.hasOwnProperty(vpc.relationship_type_id)) {
+                  relationships[vpc.relationship_type_id] = [];
+                }
+                relationships[vpc.relationship_type_id].push(vpc.contact_id);
+              });
+              return relationships;
             });
           },
           location_blocks: function(crmApi) {
@@ -83,53 +93,35 @@
     var ts = $scope.ts = CRM.ts('org.civicrm.volunteer');
     var hs = $scope.hs = crmUiHelp({file: 'CRM/Volunteer/Form/Volunteer'}); // See: templates/CRM/volunteer/Project.hlp
 
-    var volRelData = {};
     var relationships = {};
-    var showRelationshipType = {};
-    if(project.id == 0) {
-      //Cloning these two objects so that their original values aren't subject to data-binding
-      project = _.extend(_.clone(supporting_data.values.defaults), project);
-      volRelData = _.clone(supporting_data.values.defaults.relationships);
 
-      if (CRM.vars['org.civicrm.volunteer'].entityTable) {
-        project.entity_table = CRM.vars['org.civicrm.volunteer'].entityTable;
-        project.entity_id = CRM.vars['org.civicrm.volunteer'].entityId;
-      }
-      //For an associated Entity, make the title of the project default to
-      //The title of the entity
-      if (CRM.vars['org.civicrm.volunteer'].entityTitle) {
-        project.title = CRM.vars['org.civicrm.volunteer'].entityTitle;
-      }
-    } else {
-      $(relationship_data.values).each(function (index, relationship) {
-        if (!volRelData.hasOwnProperty(relationship.relationship_type_id)) {
-          volRelData[relationship.relationship_type_id] = [];
+    setFormDefaults = function() {
+      if(project.id == 0) {
+        // Cloning is used so that the defaults aren't subject to data-binding (i.e., by user action in the form)
+        project = _.extend(_.clone(supporting_data.values.defaults), project);
+        relationships = _.clone(supporting_data.values.defaults.relationships);
+
+        if (CRM.vars['org.civicrm.volunteer'].entityTable) {
+          project.entity_table = CRM.vars['org.civicrm.volunteer'].entityTable;
+          project.entity_id = CRM.vars['org.civicrm.volunteer'].entityId;
         }
-        volRelData[relationship.relationship_type_id].push({
-          contact_id: relationship.contact_id,
-          can_be_read_by_current_user: relationship.can_be_read_by_current_user
-        });
-      });
-    }
+        // For an associated Entity, make the title of the project default to
+        // the title of the entity
+        if (CRM.vars['org.civicrm.volunteer'].entityTitle) {
+          project.title = CRM.vars['org.civicrm.volunteer'].entityTitle;
+        }
+      } else {
+        relationships = relationship_data;
+      }
+    };
 
-    // flatten the data a bit to make it easier to work with in the template
-    _.each(volRelData, function (contacts, relTypeId) {
-      relationships[relTypeId] = [];
-      showRelationshipType[relTypeId] = true;
-      _.each(contacts, function (contact) {
-        relationships[relTypeId].push(contact.contact_id);
-        //This reduces all contact permissions down to a single bool for the overall type
-        //We are doing a logical AND here so that if the user does not posses the permission
-        //to view one of the associated contacts, we do not show them the widget.
-        //This is because if we show the widget it will remove any contact they do not
-        //have permission to view. This would lead to a user editing a project, being able
-        //to see one of two beneficiaries, saving the project, and the beneficiary they
-        //could not see is removed silently from the project.
-        showRelationshipType[relTypeId] = showRelationshipType[relTypeId] && contact.can_be_read_by_current_user;
-      });
-    });
-    project.project_contacts = relationships;
-    $scope.showRelationshipType = showRelationshipType;
+    setFormDefaults();
+
+    // If the user doesn't have this permission, there is no sense in assigning
+    // relationship data to the model or submitting it to the API.
+    if (CRM.checkPerm('edit volunteer project relationships')) {
+      project.project_contacts = relationships;
+    }
 
     if (CRM.vars['org.civicrm.volunteer'] && CRM.vars['org.civicrm.volunteer'].context) {
       $scope.formContext = CRM.vars['org.civicrm.volunteer'].context;
@@ -166,11 +158,17 @@
     $scope.locationBlocks[0] = "Create a new Location";
     $scope.locBlock = {};
 
-    $.each(project.profiles, function (key, data) {
-      if(data.module_data && typeof(data.module_data) === "string") {
-        data.module_data = JSON.parse(data.module_data);
-      }
-    });
+    // If the user doesn't have this permission, there is no sense in keeping
+    // profile data on the model or submitting it to the API.
+    if (!CRM.checkPerm('edit volunteer registration profiles')) {
+      delete project.profiles;
+    } else {
+      $.each(project.profiles, function (key, data) {
+        if(data.module_data && typeof(data.module_data) === "string") {
+          data.module_data = JSON.parse(data.module_data);
+        }
+      });
+    }
 
     $scope.campaigns = campaigns;
     $scope.relationship_types = supporting_data.values.relationship_types;
@@ -181,8 +179,8 @@
     $scope.project = project;
     $scope.profiles = $scope.project.profiles;
     $scope.relationships = $scope.project.project_contacts;
-    // VOL-223: Used to determine visibility of relationship block
-    $scope.showRelationshipBlock = _.reduce($scope.showRelationshipType, function(a, b) {return (a || b); });
+    $scope.showProfileBlock = CRM.checkPerm('edit volunteer registration profiles');
+    $scope.showRelationshipBlock = CRM.checkPerm('edit volunteer project relationships');
 
     /**
      * Populates locBlock fields based on user selection of location.
@@ -273,6 +271,16 @@
       var hasPrimaryProfileType = false;
       var valid = true;
 
+      // VOL-263: If the profiles aren't displayed, then there's no validation to do.
+      if (!CRM.checkPerm('edit volunteer registration profiles')) {
+        return valid;
+      }
+
+      if ($scope.profiles.length === 0) {
+        CRM.alert(ts("You must select at least one Profile"), "Required");
+        return false;
+      }
+
       $.each($scope.profiles, function (index, data) {
         if(!data.uf_group_id) {
           CRM.alert(ts("Please select at least one profile, and remove empty selections"), "Required", 'error');
@@ -301,17 +309,12 @@
       return valid;
     };
 
-    $scope.validateProject = function() {
+    $scope.validate = function() {
       var valid = true;
       var relationshipsValid = validateRelationships();
 
       if(!$scope.project.title) {
         CRM.alert(ts("Title is a required field"), "Required");
-        valid = false;
-      }
-
-      if ($scope.profiles.length === 0) {
-        CRM.alert(ts("You must select at least one Profile"), "Required");
         valid = false;
       }
 
@@ -330,6 +333,11 @@
     validateRelationships = function() {
       var isValid = true;
 
+      // VOL-263: If the relationships aren't displayed, then there's no validation to do.
+      if (!CRM.checkPerm('edit volunteer project relationships')) {
+        return isValid;
+      }
+
       var requiredRelationshipTypes = ['volunteer_beneficiary', 'volunteer_manager', 'volunteer_owner'];
 
       _.each(requiredRelationshipTypes, function(value) {
@@ -347,42 +355,72 @@
     };
 
     /**
-     * Helper function which actually saves a form submission.
+     * Helper function which serves as a harness for the API calls which
+     * constitute form submission.
+     *
+     * TODO: The value of loc_block_id is a little too magical. "" means the
+     * location is empty. "0" means the location is new, i.e., about to be
+     * created. Any other int-like string represents the ID of an existing
+     * location. This magic could perhaps be encapsulated in a function whose
+     * job it is to return an operation: "create" or "update."
      *
      * @returns {Mixed} Returns project ID on success, boolean FALSE on failure.
      */
-    saveProject = function() {
-      if ($scope.validateProject()) {
-
-        return crmApi('VolunteerProject', 'create', $scope.project).then(function(result) {
-          var projectId = result.values.id;
-
-          // VOL-140: For legacy reasons, a new flexible need should be created
-          // for each project. Pretty sure we want to re-architect this soon.
-          if ($scope.project.id === 0) {
-            crmApi('VolunteerNeed', 'create', {
-              is_flexible: 1,
-              project_id: projectId,
-              visibility_id: 'admin'
-            });
-          }
-
-          //Save the LocBlock
-          if($scope.locBlockIsDirty) {
-            $scope.locBlock.entity_id = projectId;
-            $scope.locBlock.id = result.values.loc_block_id;
-            crmApi('VolunteerProject', 'savelocblock', $scope.locBlock);
-          }
-
-          return projectId;
-        });
+    doSave = function() {
+      if ($scope.validate()) {
+        // When the loc block ID is an empty string, it indicates that the
+        // location is blank. Thus, there is no loc block to create/edit.
+        if ($scope.locBlockIsDirty && $scope.project.loc_block_id !== "") {
+          // pass an ID only if we are updating an existing locblock
+          $scope.locBlock.id = $scope.project.loc_block_id === "0" ? null : $scope.project.loc_block_id;
+          return crmApi('VolunteerProject', 'savelocblock', $scope.locBlock).then(
+            // success
+            function (result) {
+              $scope.project.loc_block_id = result.id;
+              return _saveProject();
+            },
+            // failure
+            function(result) {
+              crmUiAlert({text: ts('Failed to save location details. Project could not be saved.'), title: ts('Error'), type: 'error'});
+              console.log('api.VolunteerProject.savelocblock failed with the following message: ' + result.error_message);
+            }
+          );
+        } else {
+          return _saveProject();
+        }
       } else {
         return $q.reject(false);
       }
     };
 
+    /**
+     * Helper function which saves a volunteer project and creates a flexible
+     * need if appropriate.
+     *
+     * @returns {Mixed} Returns project ID on success.
+     */
+    _saveProject = function() {
+      // Zero is a bit of a magic number the form uses to connote creation of
+      // a new location; this value should never be passed to the API.
+      if ($scope.project.loc_block_id === "0") {
+        delete $scope.project.loc_block_id;
+      }
+
+      return crmApi('VolunteerProject', 'create', $scope.project).then(
+        function(success) {
+          return success.values.id;
+        },
+        function(fail) {
+          var text = ts('Your submission was not saved. Resubmitting the form is unlikely to resolve this problem. Please contact a system administrator.');
+          var title = ts('A technical problem has occurred');
+          crmUiAlert({text: text, title: title, type: 'error'});
+          console.log('api.VolunteerProject.create failed with the following message: ' + fail.error_message);
+        }
+      );
+    };
+
     $scope.saveAndDone = function () {
-      saveProject().then(function (projectId) {
+      doSave().then(function (projectId) {
         if (projectId) {
           crmUiAlert({text: ts('Changes saved successfully'), title: ts('Saved'), type: 'success'});
           $location.path("/volunteer/manage");
@@ -391,7 +429,7 @@
     };
 
     $scope.saveAndNext = function() {
-      saveProject().then(function(projectId) {
+      doSave().then(function(projectId) {
         if (projectId) {
           crmUiAlert({text: ts('Changes saved successfully'), title: ts('Saved'), type: 'success'});
           saveAndNextCallback(projectId);

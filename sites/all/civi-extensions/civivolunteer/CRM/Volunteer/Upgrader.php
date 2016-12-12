@@ -277,7 +277,8 @@ class CRM_Volunteer_Upgrader extends CRM_Volunteer_Upgrader_Base {
     $this->ctx->log->info('Applying update 1400 - creating volunteer contact subtype and related custom fields');
     $this->createVolunteerContactType();
     $volContactTypeCustomGroupID = $this->createVolunteerContactCustomGroup();
-    $this->createVolunteerContactCustomFields($volContactTypeCustomGroupID);
+    $customFieldId = $this->createVolunteerContactCustomFields($volContactTypeCustomGroupID);
+    _volunteer_update_slider_fields(array(CRM_Core_Action::ADD => $customFieldId));
     return TRUE;
   }
 
@@ -376,11 +377,40 @@ class CRM_Volunteer_Upgrader extends CRM_Volunteer_Upgrader_Base {
     return !is_a($query, 'DB_Error');
   }
 
+  /**
+   * Notify administrators of new permissions.
+   */
+  public function upgrade_2200() {
+    $this->ctx->log->info('Applying update 2200 - CiviVolunteer Upgrade Notice');
+
+    $message = ts('This upgrade introduces two new permissions ("Edit Volunteer Project Relationships" and "Edit Volunteer Registration Profiles"). Grant these to allow users more control over the volunteer project create/edit workflow. Revoke them to streamline the process. Volunteer projects created by users lacking these privileges will use the defaults set by the system administrator.', array('domain' => 'org.civicrm.volunteer'));
+    $title = ts('CiviVolunteer Upgrade Notice', array('domain' => 'org.civicrm.volunteer'));
+    CRM_Core_Session::setStatus($message, $title, 'info', array('expires' => 0));
+    return TRUE;
+  }
+
   public function uninstall() {
     civicrm_api3('CustomGroup', 'get', array(
       'name' => array('IN' => array('CiviVolunteer', 'Volunteer_Information', 'volunteer_commendation')),
       'api.CustomGroup.delete' => array(),
     ));
+  }
+
+  /**
+   * Perform post-install tasks.
+   *
+   * See VOL-237. Avoid order of operation problems by assigning a value to the
+   * slider_widget_fields setting after the install, which is responsible for
+   * creating both the setting and the custom field whose ID is used in the
+   * initial value.
+   */
+  public function postInstall() {
+    $customFieldId = civicrm_api3('customField', 'getvalue', array(
+      'custom_group_id' => 'Volunteer_Information',
+      'name' => 'camera_skill_level',
+      'return' => 'id',
+    ));
+    _volunteer_update_slider_fields(array(CRM_Core_Action::ADD => $customFieldId));
   }
 
   /**
@@ -606,6 +636,8 @@ class CRM_Volunteer_Upgrader extends CRM_Volunteer_Upgrader_Base {
 
   /**
    * @param int $customGroupID The group to which the field should be added
+   * @return String
+   *   Int-like string representing the ID of the just created custom field
    * @throws CRM_Core_Exception
    */
   public function createVolunteerContactCustomFields($customGroupID) {
@@ -665,7 +697,7 @@ class CRM_Volunteer_Upgrader extends CRM_Volunteer_Upgrader_Base {
       ));
     }
 
-    _volunteer_update_slider_fields(array(CRM_Core_Action::ADD => $customFieldId));
+    return $customFieldId;
   }
 
   /**

@@ -35,7 +35,8 @@
 class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
 
   protected $_customGroupExtends = array(
-    'Activity'
+    'Activity',
+    'Individual',
   );
 
   function __construct() {
@@ -122,6 +123,23 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
         ),
         'alias' => 'civicrm_contact_assignee',
       ),
+      'civicrm_contact_organization' => array(
+        'dao' => 'CRM_Contact_DAO_Contact',
+        'fields' => array(
+          'organization_id' => array(
+            'name' => 'id',
+            'no_display' => TRUE,
+          ),
+          'organization_name' => array(
+            'title' => ts('Employer', array('domain' => 'org.civicrm.volunteer')),
+          ),
+        ),
+        'order_bys' => array(
+          'organization_name' => array(
+            'title' => ts('Employer', array('domain' => 'org.civicrm.volunteer')),
+          ),
+        ),
+      ),
       'civicrm_email' => array(
         'dao' => 'CRM_Core_DAO_Email',
         'fields' => array(
@@ -139,26 +157,6 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
             'name' => 'email',
             'title' => ts('Target Contact Email', array('domain' => 'org.civicrm.volunteer')),
             'alias' => 'civicrm_email_target',
-          ),
-        ),
-      ),
-      'civicrm_phone' => array(
-        'dao' => 'CRM_Core_DAO_Phone',
-        'fields' => array(
-          'contact_assignee_phone' => array(
-            'name' => 'phone',
-            'title' => ts('Volunteer Phone', array('domain' => 'org.civicrm.volunteer')),
-            'alias' => 'civicrm_phone_assignee',
-          ),
-          'contact_source_phone' => array(
-            'name' => 'phone',
-            'title' => ts('Source Contact Phone', array('domain' => 'org.civicrm.volunteer')),
-            'alias' => 'civicrm_phone_source',
-          ),
-          'contact_target_phone' => array(
-            'name' => 'phone',
-            'title' => ts('Target Contact Phone', array('domain' => 'org.civicrm.volunteer')),
-            'alias' => 'civicrm_phone_target',
           ),
         ),
       ),
@@ -212,6 +210,7 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
           ),
           'status_id' => array(
             'title' => ts('Activity Status', array('domain' => 'org.civicrm.volunteer')),
+            'type' => CRM_Utils_Type::T_STRING,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Core_PseudoConstant::activityStatus(),
           ),
@@ -297,12 +296,55 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
       ),
     );
 
+    // forgive me for this terrible hack
+    $phoneTypes = CRM_Core_BAO_Phone::buildOptions('phone_type_id');
+    $activityRoles = array(
+      'assignee' => array(
+        '_actvityContactCorrelate' => 'civicrm_activity_assignment',
+        'alias' => 'phone_assignee',
+        'label' => ts('Volunteer Phone', array('domain' => 'org.civicrm.volunteer')),
+      ),
+      'source' => array(
+        '_actvityContactCorrelate' => 'civicrm_activity_source',
+        'alias' => 'phone_source',
+        'label' => ts('Source Contact Phone', array('domain' => 'org.civicrm.volunteer')),
+      ),
+      'target' => array(
+        '_actvityContactCorrelate' => 'civicrm_activity_source',
+        'alias' => 'phone_target',
+        'label' => ts('Target Contact Phone', array('domain' => 'org.civicrm.volunteer')),
+      ),
+    );
+
+    foreach ($activityRoles as $roleKey => $role) {
+      $table = "phone_{$roleKey}";
+      $this->_columns[$table] = array(
+        '_actvityContactCorrelate' => $role['_actvityContactCorrelate'],
+        'alias' => $role['alias'],
+        'dao' => 'CRM_Core_DAO_Phone',
+        'fields' => array(),
+      );
+
+      foreach ($phoneTypes as $phoneKey => $label) {
+        $this->_columns[$table]['fields']["{$table}_type{$phoneKey}"] = array(
+          'alias' => "{$table}_civireport_type{$phoneKey}",
+          'name' => 'phone',
+          'title' => "{$role['label']} - {$label}",
+        );
+      }
+    }
+
     $this->_groupFilter = TRUE;
     $this->_tagFilter = TRUE;
     parent::__construct();
   }
 
   function select() {
+    // Require the contact ID if the employer is selected so we can hyperlink to the record.
+    if ($this->isTableSelected('civicrm_contact_organization')) {
+      $this->_columns['civicrm_contact_organization']['fields']['organization_id']['required'] = TRUE;
+    }
+
     $select = array();
     $seperator = CRM_CORE_DAO::VALUE_SEPARATOR;
     $this->_columnHeaders = array();
@@ -398,19 +440,51 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
                    ON {$this->_aliases['civicrm_activity_assignment']}.contact_id = civicrm_email_assignee.contact_id AND
                       civicrm_email_assignee.is_primary = 1 ";
     }
-    if ($this->isTableSelected('civicrm_phone')) {
+
+    $this->addPhoneFromClause();
+    $this->addEmployerClause();
+  }
+
+  function addPhoneFromClause() {
+    $selectedPhoneFields = array();
+    foreach (array_keys($this->getSelectColumns()) as $field) {
+      if (strpos($field, 'phone_') === 0) {
+        $parts = explode('_', $field);
+        $selectedPhoneFields[$field] = array(
+          'activityRole' => $parts[1],
+          'phoneTypeId' => substr($field, -1),
+        );
+      }
+    }
+
+    foreach ($selectedPhoneFields as $selectionData) {
+      $phoneTable = 'phone_' . $selectionData['activityRole'];
+      $phoneAlias = $this->_aliases[$phoneTable] . '_type' . $selectionData['phoneTypeId'];
+      $activityTable = $this->_columns[$phoneTable]['_actvityContactCorrelate'];
       $this->_from .= "
-            LEFT JOIN civicrm_phone civicrm_phone_source
-                   ON {$this->_aliases['civicrm_activity_source']}.contact_id = civicrm_phone_source.contact_id AND
-                      civicrm_phone_source.is_primary = 1
+            LEFT JOIN civicrm_phone $phoneAlias
+                   ON {$this->_aliases[$activityTable]}.contact_id = $phoneAlias.contact_id AND
+                      $phoneAlias.phone_type_id = {$selectionData['phoneTypeId']} ";
+    }
+  }
 
-            LEFT JOIN civicrm_phone civicrm_phone_target
-                   ON {$this->_aliases['civicrm_activity_target']}.contact_id = civicrm_phone_target.contact_id AND
-                      civicrm_phone_target.is_primary = 1
+  function addEmployerClause() {
+    if ($this->isTableSelected('civicrm_contact_organization')) {
+      $relationshipTypeId = civicrm_api3('RelationshipType', 'getvalue', array(
+        'contact_type_b' => 'Organization',
+        'contact_type_a' => 'Individual',
+        'name_a_b' => 'Employee of',
+        'name_b_a' => 'Employer of',
+        'return' => 'id',
+      ));
 
-            LEFT JOIN civicrm_phone civicrm_phone_assignee
-                   ON {$this->_aliases['civicrm_activity_assignment']}.contact_id = civicrm_phone_assignee.contact_id AND
-                      civicrm_phone_assignee.is_primary = 1 ";
+      $this->_from .= "
+            LEFT JOIN civicrm_relationship employer_rel
+                   ON employer_rel.contact_id_a = {$this->_columns['civicrm_activity_assignment']['fields']['contact_id']['dbAlias']}
+                     AND employer_rel.is_active = 1
+                     AND employer_rel.relationship_type_id = $relationshipTypeId
+            LEFT JOIN civicrm_contact {$this->_aliases['civicrm_contact_organization']}
+                   ON {$this->_aliases['civicrm_contact_organization']}.id = employer_rel.contact_id_b ";
     }
   }
 
@@ -541,7 +615,6 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
   }
 
   function postProcess() {
-
     $this->buildACLClause(array('civicrm_contact_source', 'contact_civireport', 'civicrm_contact_assignee'));
     parent::postProcess();
   }
@@ -564,6 +637,17 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
     }
 
     foreach ($rows as $rowNum => $row) {
+      if (array_key_exists('civicrm_contact_organization_organization_name', $row)) {
+        if ($value = $row['civicrm_contact_organization_organization_id']) {
+          if ($viewLinks) {
+            $url = CRM_Utils_System::url("civicrm/contact/view", 'reset=1&cid=' . $value, $this->_absoluteUrl);
+            $rows[$rowNum]['civicrm_contact_organization_organization_name_link'] = $url;
+            $rows[$rowNum]['civicrm_contact_organization_organization_name_hover'] = $onHover;
+          }
+          $entryFound = TRUE;
+        }
+      }
+
       if (array_key_exists('civicrm_contact_contact_source', $row)) {
         if ($value = $row['civicrm_activity_assignment_contact_id']) {
           if ($viewLinks) {
@@ -685,4 +769,3 @@ class CRM_Volunteer_Form_VolunteerReport extends CRM_Report_Form {
     }
   }
 }
-

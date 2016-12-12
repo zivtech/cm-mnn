@@ -169,43 +169,92 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
   }
 
   /**
-   * Gets related contacts of a project nested by relationship type
+   * Strips invalid params, throws exception in case of unusable params.
    *
-   * @param int $projectId
+   * @param array $params
+   *   Params for self::create().
    * @return array
-   *   Multidimensional array of contacts relationship_type_id => [contacts]
+   *   Filtered params.
+   *
+   * @throws Exception
+   *   Via delegate.
    */
-  static function getContactsNestedByRelationship($projectId) {
-    $result = civicrm_api3('VolunteerProjectContact', 'get', array("project_id" => $projectId));
-    $values = array();
-    foreach($result['values'] as $relationship) {
-      $relationshipTypeId = $relationship['relationship_type_id'];
-      if(!array_key_exists($relationshipTypeId, $values)) {
-        $values[$relationshipTypeId] = array();
-      }
-      $values[$relationshipTypeId][] = $relationship['contact_id'];
+  private static function validateCreateParams(array $params) {
+    if (empty($params['id']) && empty($params['title'])) {
+      CRM_Core_Error::fatal('Not enough data to create volunteer project object.');
     }
-    return $values;
+
+    if (!CRM_Volunteer_Permission::check('edit volunteer registration profiles')) {
+      unset($params['profiles']);
+    }
+    if (!CRM_Volunteer_Permission::check('edit volunteer project relationships')) {
+      unset($params['project_contacts']);
+    }
+
+    return $params;
+  }
+
+  /**
+   * Helper method to supply default values to a new project missing properties.
+   *
+   * @param array $params
+   *   Parameters for project create.
+   * @return array
+   */
+  private static function supplyDefaults(array $params) {
+    // Defaults only matter in the case of a create; in the case of an edit we
+    // assume replacement params have been passed or that no change is desired.
+    if (!empty($params['id'])) {
+      return $params;
+    }
+
+    $defaults = self::composeDefaultSettingsArray();
+
+    if (!array_key_exists('campaign_id', $params)) {
+      $params['campaign_id'] = $defaults['campaign_id'];
+    }
+    if (!array_key_exists('is_active', $params)) {
+      $params['is_active'] = $defaults['is_active'];
+    }
+    if (!array_key_exists('loc_block_id', $params)) {
+      $params['loc_block_id'] = $defaults['loc_block_id'];
+    }
+    if (!array_key_exists('profiles', $params)) {
+      $params['profiles'] = $defaults['profiles'];
+    }
+    if (!array_key_exists('project_contacts', $params)) {
+      $params['project_contacts'] = $defaults['relationships'];
+    }
+
+    return $params;
   }
 
   /**
    * Create a Volunteer Project
    *
-   * Takes an associative array and creates a Project object. This function is
-   * invoked from within the web form layer and also from the API layer. Allows
-   * the creation of project contacts, e.g.:
+   * Takes an associative array and creates a Project object. This method is
+   * invoked from the API layer.
    *
-   * $params['project_contacts'] = array(
-   *   $relationship_type_name_or_id => $arr_contact_ids,
-   * );
+   * As a convenience, this method also allows creation of ancillary entities
+   * for relating the Project to Contacts and Profiles. Specifying these
+   * relationships during project edit is a replacement operation; pre-existing
+   * associations will be deleted. For finer-grained control over these
+   * relationships, instead use api.VolunteerProjectContact and api.UFJoin,
+   * respectively.
    *
-   * @param array   $params      an assoc array of name/value pairs
+   * To associate Contacts with a Project:
+   *   $params['project_contacts'] = array(
+   *     $relationship_type_name_or_id => $arr_contact_ids,
+   *   );
+   * To associate Profiles with a Project:
+   *   $params['profiles'] = array($paramsToUFJoinCreate1, $paramsToUFJoinCreate2);
+   *
+   * @param array $params
+   *   an assoc array of name/value pairs
    *
    * @return CRM_Volunteer_BAO_Project object
-   * @access public
-   * @static
    */
-  static function create(array $params) {
+  public static function create(array $params) {
     $projectId = CRM_Utils_Array::value('id', $params);
     $op = empty($projectId) ? CRM_Core_Action::ADD : CRM_Core_Action::UPDATE;
 
@@ -217,26 +266,56 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
       return FALSE;
     }
 
-    // check required params
-    if (!self::dataExists($params)) {
-      CRM_Core_Error::fatal('Not enough data to create volunteer project object.');
-    }
-
-    // default to active unless explicitly turned off
-    $params['is_active'] = CRM_Utils_Array::value('is_active', $params, TRUE);
+    $params = self::validateCreateParams($params);
+    $params = self::supplyDefaults($params);
 
     $project = new CRM_Volunteer_BAO_Project();
     $project->copyValues($params);
-
     $project->save();
 
-    $existingContacts = CRM_Volunteer_BAO_Project::getContactsNestedByRelationship($project->id);
-    $projectContacts = CRM_Utils_Array::value('project_contacts', $params, array());
-    foreach ($projectContacts as $relationshipType => &$contactIds) {
-      $contactIds = CRM_Volunteer_BAO_Project::validateContactFormat($contactIds);
+    // VOL-269: create flexible need during project creation
+    if ($op === CRM_Core_Action::ADD) {
+      CRM_Volunteer_BAO_Need::create(array(
+        // Save an unnecessary lookup for a perms check that will always succeed.
+        'check_permissions' => FALSE,
+        'is_flexible' => TRUE,
+        'project_id' => $project->id,
+        'visibility_id' => 'admin',
+      ));
+    }
 
-      foreach ($contactIds as $id) {
-        if(!array_key_exists($relationshipType, $existingContacts) || !in_array($id, $existingContacts[$relationshipType])) {
+    // If updating, treat profile and project contact relationship params as
+    // replacement data. Start by deleting existing relationships.
+    $updateVPC = ($op === CRM_Core_Action::UPDATE) && array_key_exists('project_contacts', $params);
+    $updateProfiles = ($op === CRM_Core_Action::UPDATE) && array_key_exists('profiles', $params);
+    if ($updateVPC) {
+      civicrm_api3('VolunteerProjectContact', 'get', array(
+        'options' => array('limit' => 0),
+        'project_id' => $project->id,
+        'api.VolunteerProjectContact.delete' => array(),
+      ));
+    }
+    if ($updateProfiles) {
+      civicrm_api3("UFJoin", "get", array(
+        'entity_id' => $project->id,
+        'entity_table' => 'civicrm_volunteer_project',
+        'options' => array('limit' => 0),
+        // CRM-17222: For compatibility with CiviCRM 4.6, we use our custom API.
+        // When support for 4.6 is dropped, we can use core's api.UFJoin.delete.
+        // 'api.UFJoin.delete' => array(),
+        'api.VolunteerProject.removeprofile' => array(
+          // For some reason, the ID param implicit in chained API calls is not
+          // getting passed, so we specify it manually. Since the API is
+          // deprecated, this short-term solution is good enough.
+          'id' => '$value.id',
+        ),
+      ));
+    }
+
+    if ($updateVPC || $op === CRM_Core_Action::ADD) {
+      foreach ($params['project_contacts'] as $relationshipType => $contactIds) {
+      $contactIds = array_unique(self::validateContactFormat($contactIds));
+        foreach ($contactIds as $id) {
           civicrm_api3('VolunteerProjectContact', 'create', array(
             'contact_id' => $id,
             'project_id' => $project->id,
@@ -245,21 +324,21 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
         }
       }
     }
+    if ($updateProfiles || $op === CRM_Core_Action::ADD) {
+      foreach ($params['profiles'] as $profile) {
+        $profile['is_active'] = 1;
+        $profile['module'] = "CiviVolunteer";
+        $profile['entity_table'] = "civicrm_volunteer_project";
+        $profile['entity_id'] = $project->id;
+        if (is_array($profile['module_data'])) {
+          $profile['module_data'] = json_encode($profile['module_data']);
+        }
 
-    $project->contacts = $projectContacts;
+        // Since we delete then recreate the ufjoins, drop the ID from the params
+        // or else CiviCRM tries to update a nonexistent record and fails silently
+        unset($profile['id']);
 
-    $profiles = CRM_Utils_Array::value('profiles', $params, array());
-    foreach ($profiles as $profile) {
-      $profile['is_active'] = 1;
-      $profile['module'] = "CiviVolunteer";
-      $profile['entity_table'] = "civicrm_volunteer_project";
-      $profile['entity_id'] = $project->id;
-      if (is_array($profile['module_data'])) {
-        $profile['module_data'] = json_encode($profile['module_data']);
-      }
-      $result = civicrm_api3('UFJoin', 'create', $profile);
-      if ($result['is_error'] == 0) {
-        $project->profileIds[] = $result['values'][0]['id'];
+        civicrm_api3('UFJoin', 'create', $profile);
       }
     }
 
@@ -526,17 +605,6 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
   }
 
   /**
-   * Check if there is absolute minimum of data to add the object.
-   *
-   * @param array $params
-   *   An associatve array of name/value pairs
-   * @return boolean
-   */
-  public static function dataExists($params) {
-    return (CRM_Utils_Array::value('id', $params) || CRM_Utils_Array::value('title', $params));
-  }
-
-  /**
    * Returns TRUE if value represents an "off" value, FALSE otherwise
    *
    * @param type $value
@@ -703,14 +771,56 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
     }
 
     $defaults['profiles'] = $profiles;
+    $defaults['relationships'] = self::getDefaultProjectContacts();
 
+    return $defaults;
+  }
 
-    //Todo VOL-202: Handle ProjectContacts/Relationship Defaults
-    //We should implement "tokens" such as [employer] and [self] so the
-    //defaults can be relative to the user creating the project.
-    //When this is implemented, the defaults should be such that if
-    //the user takes no action it replicates what is in
-    //VolunteerUtil::getSupportingData()
+  /**
+   * Get default contacts for a new Volunteer Project.
+   *
+   * @return array
+   *   An array of the default contact IDs for a project, keyed by the type of
+   *   volunteer project relationship. The type is represented as an INT, the
+   *   value of the option in the volunteer_project_relationship option group.
+   */
+  public static function getDefaultProjectContacts() {
+    $defaults = array();
+    $optionMap = CRM_Core_OptionGroup::values("volunteer_project_relationship", TRUE, FALSE, FALSE, NULL, 'name');
+    $projectContactsSetting = civicrm_api3('Setting', 'getvalue', array(
+      'name' => 'volunteer_project_default_contacts',
+    ));
+
+    // the array of settings is keyed by the name of the volunteer project relationship
+    foreach ($projectContactsSetting as $optionName => $defaultConfig) {
+      switch (CRM_Utils_Array::value('mode', $defaultConfig)) {
+        case 'contact':
+          $contactIds = explode(',', $defaultConfig['value']);
+          break;
+        case 'relationship':
+          list($relationshipTypeId, $direction) = explode('_', $defaultConfig['value']);
+          $reverseDirection = ($direction === 'a' ? 'b' : 'a');
+          $api = civicrm_api3('Relationship', 'get', array(
+            "contact_id_{$direction}" => 'user_contact_id',
+            'is_active' => 1,
+            'options' => array('limit' => 0),
+            'relationship_type_id' => $relationshipTypeId,
+          ));
+
+          $contactIds = array();
+          foreach ($api['values'] as $r) {
+            $contactIds[] = $r["contact_id_{$reverseDirection}"];
+          }
+
+          break;
+        case 'acting_contact':
+          $contactIds = array(CRM_Core_Session::getLoggedInContactID());
+          break;
+      }
+
+      $optionValue = $optionMap[$optionName];
+      $defaults[$optionValue] = $contactIds;
+    }
 
     return $defaults;
   }

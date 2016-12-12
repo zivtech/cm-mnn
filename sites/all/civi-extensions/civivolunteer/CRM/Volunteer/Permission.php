@@ -41,6 +41,14 @@ class CRM_Volunteer_Permission extends CRM_Core_Permission {
         $prefix . ts('delete all volunteer projects', array('domain' => 'org.civicrm.volunteer')),
         ts('Delete any volunteer project record, regardless of ownership', array('domain' => 'org.civicrm.volunteer')),
       ),
+      'edit volunteer project relationships' => array(
+        $prefix . ts('edit volunteer project relationships', array('domain' => 'org.civicrm.volunteer')),
+        ts('Override system-wide default project relationships for a particular volunteer project', array('domain' => 'org.civicrm.volunteer')),
+      ),
+      'edit volunteer registration profiles' => array(
+        $prefix . ts('edit volunteer registration profiles', array('domain' => 'org.civicrm.volunteer')),
+        ts('Override system-wide default registration profiles for a particular volunteer project', array('domain' => 'org.civicrm.volunteer')),
+      ),
     );
   }
 
@@ -53,12 +61,14 @@ class CRM_Volunteer_Permission extends CRM_Core_Permission {
    */
   public static function check($permissions) {
     $permissions = (array) $permissions;
-    $isModulePermissionSupported = CRM_Core_Config::singleton()->userPermissionClass->isModulePermissionSupported();
 
-    array_walk_recursive($permissions, function(&$v, $k) use ($isModulePermissionSupported) {
+    $permClass = CRM_Core_Config::singleton()->userPermissionClass;
+    $skipCheck = !$permClass->isModulePermissionSupported() && !is_a($permClass, 'CRM_Core_Permission_UnitTests');
+
+    array_walk_recursive($permissions, function(&$v, $k) use ($skipCheck) {
       // For VOL-71, if this is a permissions-challenged Joomla instance, don't
       // enforce CiviVolunteer-defined permissions.
-      if (!$isModulePermissionSupported) {
+      if ($skipCheck) {
         if (array_key_exists($v, CRM_Volunteer_Permission::getVolunteerPermissions())) {
           $v = CRM_Core_Permission::ALWAYS_ALLOW_PERMISSION;
         }
