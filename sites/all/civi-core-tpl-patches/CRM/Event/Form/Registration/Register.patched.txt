@@ -1,0 +1,28 @@
+diff --git a/sites/all/civi-core-tpl-patches/CRM/Event/Form/Registration/Register.tpl b/sites/all/civi-core-tpl-patches/CRM/Event/Form/Registration/Register.tpl
+index 5a7805f..7561dff 100644
+--- a/sites/all/civi-core-tpl-patches/CRM/Event/Form/Registration/Register.tpl
++++ b/sites/all/civi-core-tpl-patches/CRM/Event/Form/Registration/Register.tpl
+@@ -47,17 +47,18 @@
+     {if $contact_id}
+       <div class="messages status no-popup crm-not-you-message" id="crm-event-register-different">
+ 
+-
++{*          // Openflows - patch - 7/7/16 *}
++	{*            // remove link - do not provide option to register another person *}
++		    
+         {ts 1=$display_name}Welcome %1{/ts}.
+         
+-          // Openflows - patch - 7/7/16
+-          // remove link - do not provide option to register another person
+-        
++      
+         
++{*        
+ //         (<a
+ //          href="{crmURL p='civicrm/event/register' q="cid=0&reset=1&id=`$event.id`"}"
+ //          title="{ts}Click here to register a different person for this event.{/ts}">{ts 1=$display_name}Not %1, or want to register a different person{/ts}</a>?)
+-          // end patch
++          // end patch *}
+       </div>
+     {/if}
+     {if $event.intro_text}
