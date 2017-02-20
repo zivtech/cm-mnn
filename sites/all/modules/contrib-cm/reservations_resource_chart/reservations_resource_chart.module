@@ -454,10 +454,7 @@ function reservations_resource_chart_form($form, $form_state,
 			    'class' => 'reservations_checked_in'),
 		      array('data' => 'Live',
 			    'align' => 'center',
-			    'class' => 'reservations_live'),
-		      array('data' => 'Live Checked In',
-			    'align' => 'center',
-			    'class' => 'reservations_live_checked_in')));
+			    'class' => 'reservations_live')));
 
   if ($is_admin_mode) {
     $legend = "<h2>Legend</h2>".
@@ -1160,10 +1157,6 @@ function reservations_resource_chart_get_chart_html($bucket_categories,
 	      if (!$is_admin_mode) {
 		//do nothing
 	      }
-              else if ($item_reservation->livefeed &&
-		       $item_reservation->check_in_time) {
-                $display_class = 'reservations_live_checked_in';
-              }
 
 	      else if ($item_reservation->livefeed) {
 		$display_class = 'reservations_live';

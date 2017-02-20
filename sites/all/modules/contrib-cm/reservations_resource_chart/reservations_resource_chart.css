@@ -52,13 +52,6 @@ table.resource-daily-chart tr.even td {
   border-width: 2;
   border-color: black
   padding: 0.4em 0.6em;
-  background-color: #AFFFB5 ;
-}
-.reservations_live_checked_in {
-  text-align: center;
-  border-width: 2;
-  border-color: black
-  padding: 0.4em 0.6em;
   background-color: #10DDF9 ;
 }
 
