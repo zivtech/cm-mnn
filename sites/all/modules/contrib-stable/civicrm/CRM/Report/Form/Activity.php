@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 class CRM_Report_Form_Activity extends CRM_Report_Form {
   protected $_selectAliasesTotal = array();
@@ -60,7 +60,7 @@ class CRM_Report_Form_Activity extends CRM_Report_Form {
     // Lets hide it for now.
     $this->_exposeContactID = FALSE;
     // if navigated from count link of activity summary reports.
-    $this->_resetDateFilter = CRM_Utils_Request::retrieve('resetDateFilter', 'Boolean', CRM_Core_DAO::$_nullObject);
+    $this->_resetDateFilter = CRM_Utils_Request::retrieve('resetDateFilter', 'Boolean');
 
     $config = CRM_Core_Config::singleton();
     $campaignEnabled = in_array("CiviCampaign", $config->enableComponents);
@@ -74,8 +74,12 @@ class CRM_Report_Form_Activity extends CRM_Report_Form {
 
     $components = CRM_Core_Component::getEnabledComponents();
     foreach ($components as $componentName => $componentInfo) {
-      $permission = sprintf("access %s", $componentName == 'CiviCase' ? "all cases and activities" : $componentName);
-      if (CRM_Core_Permission::check($permission)) {
+      // CRM-19201: Add support for reporting CiviCampaign activities
+      // For CiviCase, "access all cases and activities" is required here
+      // rather than "access my cases and activities" to prevent those with
+      // only the later permission from seeing a list of all cases which might
+      // present a privacy issue.
+      if (CRM_Core_Permission::access($componentName, TRUE, TRUE)) {
         $accessAllowed[] = $componentInfo->componentID;
       }
     }
@@ -251,6 +255,11 @@ class CRM_Report_Form_Activity extends CRM_Report_Form {
           ),
           'details' => array(
             'title' => ts('Activity Details'),
+          ),
+          'priority_id' => array(
+            'title' => ts('Priority'),
+            'default' => TRUE,
+            'type' => CRM_Utils_Type::T_STRING,
           ),
         ),
         'filters' => array(
@@ -787,7 +796,7 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     $this->customDataFrom();
     $this->where('target');
     $insertCols = implode(',', $this->_selectAliases);
-    $tempQuery = "CREATE TEMPORARY TABLE civireport_activity_temp_target CHARACTER SET utf8 COLLATE utf8_unicode_ci AS
+    $tempQuery = "CREATE TEMPORARY TABLE civireport_activity_temp_target {$this->_databaseAttributes} AS
 {$this->_select} {$this->_from} {$this->_where} ";
     CRM_Core_DAO::executeQuery($tempQuery);
 

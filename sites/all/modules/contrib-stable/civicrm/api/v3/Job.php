@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -634,7 +634,7 @@ function civicrm_api3_job_disable_expired_relationships($params) {
 function civicrm_api3_job_group_rebuild($params) {
   $lock = Civi::lockManager()->acquire('worker.core.GroupRebuild');
   if (!$lock->isAcquired()) {
-    throw new API_Exception('Could not acquire lock, another EmailProcessor process is running');
+    throw new API_Exception('Could not acquire lock, another GroupRebuild process is running');
   }
 
   $limit = CRM_Utils_Array::value('limit', $params, 0);

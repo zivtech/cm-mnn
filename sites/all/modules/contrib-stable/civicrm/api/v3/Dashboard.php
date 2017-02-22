@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -85,14 +85,14 @@ function civicrm_api3_dashboard_get($params) {
  *
  * @param array $params
  *   Array holding 'id' of dashlet to be deleted.
- *
  * @return array
+ * @throws API_Exception
  */
 function civicrm_api3_dashboard_delete($params) {
   if (CRM_Core_BAO_Dashboard::deleteDashlet($params['id'])) {
     return civicrm_api3_create_success(1, $params, 'Dashboard', 'delete');
   }
   else {
-    return civicrm_api3_create_error('Could not delete dashlet');
+    throw new API_Exception('Could not delete dashlet');
   }
 }

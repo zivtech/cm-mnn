@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  * $Id$
  *
  */
@@ -160,6 +160,21 @@ return array(
     'default' => NULL,
     'add' => '4.7',
     'title' => 'Prior Financial Period',
+    'is_domain' => 1,
+    'is_contact' => 0,
+    'description' => NULL,
+    'help_text' => NULL,
+  ),
+  'always_post_to_accounts_receivable' => array(
+    'group_name' => 'Contribute Preferences',
+    'group' => 'contribute',
+    'name' => 'always_post_to_accounts_receivable',
+    'type' => 'Integer',
+    'html_type' => 'checkbox',
+    'quick_form_type' => 'Element',
+    'default' => 0,
+    'add' => '4.7',
+    'title' => 'Always post to Accounts Receivable?',
     'is_domain' => 1,
     'is_contact' => 0,
     'description' => NULL,

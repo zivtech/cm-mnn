@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -661,19 +661,6 @@ AND civicrm_case.status_id != $closedId";
             'Case',
             $result->case_id
           );
-          $casesList[$result->case_id]['moreActions'] = CRM_Core_Action::formLink($actions['moreActions'],
-            $mask,
-            array(
-              'id' => $result->case_id,
-              'cid' => $result->contact_id,
-              'cxt' => $context,
-            ),
-            ts('more'),
-            TRUE,
-            'case.actions.more',
-            'Case',
-            $result->case_id
-          );
         }
         elseif ($field == 'case_status') {
           if (in_array($result->$field, $caseStatus)) {
@@ -1091,7 +1078,7 @@ SELECT case_status.label AS case_status, status_id, civicrm_case_type.title AS c
 
       $caseActivity['DT_RowId'] = $caseActivityId;
       //Add classes to the row, via DataTables syntax
-      $caseActivity['DT_RowClass'] = "crm-entity";
+      $caseActivity['DT_RowClass'] = "crm-entity status-id-$dao->status";
 
       if (CRM_Utils_Array::crmInArray($dao->status, $compStatusValues)) {
         $caseActivity['DT_RowClass'] .= " status-completed";
@@ -1126,7 +1113,8 @@ SELECT case_status.label AS case_status, status_id, civicrm_case_type.title AS c
       $caseActivity['subject'] = $dao->subject;
 
       //Activity Type
-      $caseActivity['type'] = $activityTypes[$dao->type]['label'];
+      $caseActivity['type'] = (!empty($activityTypes[$dao->type]['icon']) ? '<span class="crm-i ' . $activityTypes[$dao->type]['icon'] . '"></span> ' : '')
+        . $activityTypes[$dao->type]['label'];
 
       //Activity Target (With)
       $targetContact = '';
@@ -1192,19 +1180,9 @@ SELECT case_status.label AS case_status, status_id, civicrm_case_type.title AS c
       }
       // if there are file attachments we will return how many and, if only one, add a link to it
       if (!empty($dao->attachment_ids)) {
-        $attachmentIDs = explode(',', $dao->attachment_ids);
+        $attachmentIDs = array_unique(explode(',', $dao->attachment_ids));
         $caseActivity['no_attachments'] = count($attachmentIDs);
-        if ($caseActivity['no_attachments'] == 1) {
-          // if there is only one it's easy to do a link - otherwise just flag it
-          $attachmentViewUrl = CRM_Utils_System::url(
-            "civicrm/file",
-            "reset=1&eid=" . $caseActivityId . "&id=" . $dao->attachment_ids,
-            FALSE,
-            NULL,
-            FALSE
-          );
-          $url .= " <a href='$attachmentViewUrl' ><i class='crm-i fa-paperclip'></i></a>";
-        }
+        $url .= implode(' ', CRM_Core_BAO_File::paperIconAttachment('civicrm_activity', $caseActivityId));
       }
 
       $caseActivity['links'] = $url;
@@ -1878,7 +1856,7 @@ SELECT civicrm_contact.id as casemanager_id,
  FROM civicrm_contact
  LEFT JOIN civicrm_relationship ON (civicrm_relationship.contact_id_b = civicrm_contact.id AND civicrm_relationship.relationship_type_id = %1)
  LEFT JOIN civicrm_case ON civicrm_case.id = civicrm_relationship.case_id
- WHERE civicrm_case.id = %2";
+ WHERE civicrm_case.id = %2 AND is_active = 1";
 
       $managerRoleParams = array(
         1 => array($managerRoleId, 'Integer'),
@@ -3001,8 +2979,12 @@ WHERE id IN (' . implode(',', $copiedActivityIds) . ')';
  AS SELECT ca.case_id, a.id, a.activity_date_time, a.status_id, a.activity_type_id
  FROM civicrm_case_activity ca
  INNER JOIN civicrm_activity a ON ca.activity_id=a.id
- WHERE a.activity_date_time <= DATE_ADD( NOW(), INTERVAL 14 DAY )
- AND a.is_current_revision = 1 AND a.is_deleted=0 AND a.status_id = $scheduled_id";
+ WHERE a.activity_date_time = 
+(SELECT b.activity_date_time FROM civicrm_case_activity bca
+ INNER JOIN civicrm_activity b ON bca.activity_id=b.id
+ WHERE b.activity_date_time <= DATE_ADD( NOW(), INTERVAL 14 DAY )
+ AND b.is_current_revision = 1 AND b.is_deleted=0 AND b.status_id = $scheduled_id
+ AND bca.case_id = ca.case_id ORDER BY b.activity_date_time ASC LIMIT 1)";
         break;
 
       case 'recent':
@@ -3010,9 +2992,12 @@ WHERE id IN (' . implode(',', $copiedActivityIds) . ')';
  AS SELECT ca.case_id, a.id, a.activity_date_time, a.status_id, a.activity_type_id
  FROM civicrm_case_activity ca
  INNER JOIN civicrm_activity a ON ca.activity_id=a.id
- WHERE a.activity_date_time <= NOW()
- AND a.activity_date_time >= DATE_SUB( NOW(), INTERVAL 14 DAY )
- AND a.is_current_revision = 1 AND a.is_deleted=0 AND a.status_id <> $scheduled_id";
+ WHERE a.activity_date_time = 
+(SELECT b.activity_date_time FROM civicrm_case_activity bca
+ INNER JOIN civicrm_activity b ON bca.activity_id=b.id
+ WHERE b.activity_date_time >= DATE_SUB( NOW(), INTERVAL 14 DAY )
+ AND b.is_current_revision = 1 AND b.is_deleted=0 AND b.status_id <> $scheduled_id
+ AND bca.case_id = ca.case_id ORDER BY b.activity_date_time DESC LIMIT 1)";
         break;
     }
     return $sql;

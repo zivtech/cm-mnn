@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -234,6 +234,10 @@ class CRM_Price_Form_Field extends CRM_Core_Form {
     $this->add('text', 'price', ts('Price'));
     $this->registerRule('price', 'callback', 'money', 'CRM_Utils_Rule');
     $this->addRule('price', ts('must be a monetary value'), 'money');
+
+    $this->add('text', 'non_deductible_amount', ts('Non-deductible Amount'), NULL);
+    $this->registerRule('non_deductible_amount', 'callback', 'money', 'CRM_Utils_Rule');
+    $this->addRule('non_deductible_amount', ts('Please enter a monetary value for this field.'), 'money');
 
     if ($this->_action == CRM_Core_Action::UPDATE) {
       $this->freeze('html_type');

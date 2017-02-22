@@ -261,15 +261,62 @@ function cm_airing_grid_get_grid_array(&$airings,
 				       $start_time, $end_time, $grid_mode) {
   $data = array();
   $ids = array();
+  $last_end_time = 0;
+
+  //sort results, sort in query doesn't work correctly
+  $sorted_airings = array();
   foreach ($airings as $airing) {
     if (!in_array($airing->airing_id, $ids)) {
-      $start = strtotime($airing->event_start);
-      $end = strtotime($airing->event_end);
-      $airing->count = ceil(($end - $start) / 60 / 30);
-      $data[$start][] = $airing; 
-      $ids[] = $airing->airing_id;
+      $sorted_airings[strtotime($airing->event_start)] = $airing;
     }
-  } 
+    $ids[] = $airing->airing_id;
+    
+  }
+  ksort($sorted_airings);
+  
+  foreach ($sorted_airings as $airing) {
+    //if we have an end time from the previous airing, figure out the
+    //number of seconds past the hour or half hour
+    if ($last_end_time) {
+      $start_seconds = date('i', strtotime($airing->event_start)) * 60 +
+	date('s', strtotime($airing->event_start));
+      $end_seconds = date('i', strtotime($airing->event_end)) * 60 +
+	date('s', strtotime($airing->event_end));
+    }
+    //if we have an end time from the previous airing and this airing
+    //starts before the nenxt block, add this airing to the previous airings
+    //cell
+    if ($last_end_time &&
+	(($start_seconds > 0 && $start_seconds < (30 * 60)) ||
+	 ($start_seconds > (30* 60) && $start_seconds < (60 * 60)))) {
+      $data[strtotime($last_start_time)][] = $airing; 
+      continue;
+    }
+    
+    $start = strtotime($airing->event_start);
+    $end = strtotime($airing->event_end);
+    $airing->count = ceil(($end - $start) / 60 / 30);
+    $data[$start][] = $airing; 
+    
+    $last_start_time = $airing->event_start;      
+    $last_end_time = $airing->event_end;
+ 
+  }
+
+  //loop through the airings, if there is more than one in a timeslot check
+  //to see if we have to expand count
+  foreach ($data as $k => $airings) {
+    if (count($airings) > 1) {
+      $first = array_shift($airings);
+      $last = array_pop($airings);
+      $start = strtotime($first->event_start);
+      $end = strtotime($last->event_end);
+      foreach($data[$k] as $i => $airing) {	
+	$data[$k][$i]->count = ceil(($end - $start) / 60 / 30);
+      }
+    }
+  }
+
   return $data;    
 
 }

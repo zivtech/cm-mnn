@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 class CRM_Contact_Page_DedupeMerge extends CRM_Core_Page {
 
@@ -58,7 +58,7 @@ class CRM_Contact_Page_DedupeMerge extends CRM_Core_Page {
     $rgid = CRM_Utils_Request::retrieve('rgid', 'Positive');
     $gid  = CRM_Utils_Request::retrieve('gid', 'Positive');
     $limit  = CRM_Utils_Request::retrieve('limit', 'Positive');
-    $action = CRM_Utils_Request::retrieve('action', 'String', CRM_Core_DAO::$_nullObject);
+    $action = CRM_Utils_Request::retrieve('action', 'String');
     $mode   = CRM_Utils_Request::retrieve('mode', 'String', CRM_Core_DAO::$_nullObject, FALSE, 'safe');
 
     $cacheKeyString = CRM_Dedupe_Merger::getMergeCacheKeyString($rgid, $gid);
