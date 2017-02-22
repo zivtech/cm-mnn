@@ -49,7 +49,7 @@ function cm_airing_grid_get_all_non_live_episode_nids_for_project($proj_nid) {
 
 
 function cm_airing_grid_get_grid_airings
-    ($channel, $start_time, $end_time, $mysql_day_of_week, $sort = 'asc') {
+    ($channel, $start_time, $end_time, $mysql_day_of_week) {
     $device_vid = cm_airing_grid_get_vid_for_name('Device');
     $format_vid = cm_airing_grid_get_vid_for_name('Format');
 
@@ -98,7 +98,7 @@ function cm_airing_grid_get_grid_airings
     , fdfad.field_airing_date_value2 as event_end
     , proj_node.nid as project_nid
     , proj_node.title
-    , NULL
+    , NULL as episode_nid
     FROM
     {cm_airing} airing
     INNER JOIN {field_data_field_airing_date} fdfad
@@ -123,10 +123,9 @@ function cm_airing_grid_get_grid_airings
     ( DAYOFWEEK(fdfad.field_airing_date_value2) !=  
       DAYOFWEEK(fdfad.field_airing_date_value) ))";
      
-  $query = "SELECT * from ($query) as air_join";
-  if ($sort) {
-    $query .= " order by air_join.event_start $sort";
-  }
+  $query = "SELECT * from ($query) as air_join 
+            ORDER BY episode_nid desc";
+    
 //file_put_contents('/tmp/mvc-query-log', $query."\n");
   $db_result = db_query($query); 
 

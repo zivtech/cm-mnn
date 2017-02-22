@@ -266,42 +266,41 @@ function cm_airing_grid_get_grid_array(&$airings,
   //sort results, sort in query doesn't work correctly
   $sorted_airings = array();
   foreach ($airings as $airing) {
-    $sorted_airings[strtotime($airing->event_start)] = $airing;
+    if (!in_array($airing->airing_id, $ids)) {
+      $sorted_airings[strtotime($airing->event_start)] = $airing;
+    }
+    $ids[] = $airing->airing_id;
+    
   }
   ksort($sorted_airings);
   
   foreach ($sorted_airings as $airing) {
-    if (!in_array($airing->airing_id, $ids)) {
-
-      //if we have an end time from the previous airing, figure out the
-      //number of seconds past the hour or half hour
-      if ($last_end_time) {
-	$start_seconds = date('i', strtotime($airing->event_start)) * 60 +
-	  date('s', strtotime($airing->event_start));
-	$end_seconds = date('i', strtotime($airing->event_end)) * 60 +
-	  date('s', strtotime($airing->event_end));
-      }
-      //if we have an end time from the previous airing and this airing
-      //starts before the nenxt block, add this airing to the previous airings
-      //cell
-      if ($last_end_time &&
-	  (($start_seconds > 0 && $start_seconds < (30 * 60)) ||
-	   ($start_seconds > (30* 60) && $start_seconds < (60 * 60)))) {
-	$data[strtotime($last_start_time)][] = $airing; 
-	$ids[] = $airing->airing_id;
-	continue;
-      }
-
-      $start = strtotime($airing->event_start);
-      $end = strtotime($airing->event_end);
-      $airing->count = ceil(($end - $start) / 60 / 30);
-      $data[$start][] = $airing; 
-      $ids[] = $airing->airing_id;
-
-      $last_start_time = $airing->event_start;      
-      $last_end_time = $airing->event_end;
-      
+    //if we have an end time from the previous airing, figure out the
+    //number of seconds past the hour or half hour
+    if ($last_end_time) {
+      $start_seconds = date('i', strtotime($airing->event_start)) * 60 +
+	date('s', strtotime($airing->event_start));
+      $end_seconds = date('i', strtotime($airing->event_end)) * 60 +
+	date('s', strtotime($airing->event_end));
     }
+    //if we have an end time from the previous airing and this airing
+    //starts before the nenxt block, add this airing to the previous airings
+    //cell
+    if ($last_end_time &&
+	(($start_seconds > 0 && $start_seconds < (30 * 60)) ||
+	 ($start_seconds > (30* 60) && $start_seconds < (60 * 60)))) {
+      $data[strtotime($last_start_time)][] = $airing; 
+      continue;
+    }
+    
+    $start = strtotime($airing->event_start);
+    $end = strtotime($airing->event_end);
+    $airing->count = ceil(($end - $start) / 60 / 30);
+    $data[$start][] = $airing; 
+    
+    $last_start_time = $airing->event_start;      
+    $last_end_time = $airing->event_end;
+ 
   }
 
   //loop through the airings, if there is more than one in a timeslot check
