@@ -1,0 +1,50 @@
+diff --git a/sites/all/modules/contrib-cm/cm_airing_grid/includes/misc.inc b/sites/all/modules/contrib-cm/cm_airing_grid/includes/misc.inc
+index fbb1a98..d90cab9 100644
+--- a/sites/all/modules/contrib-cm/cm_airing_grid/includes/misc.inc
++++ b/sites/all/modules/contrib-cm/cm_airing_grid/includes/misc.inc
+@@ -82,27 +82,26 @@ function cm_airing_grid_extract_grid_data(&$airings_grid_array, $column_time,
+     foreach($data as $airing) {
+       $airing_class = ($airing_id==$airing->airing_id) ? 
+ 	'cm_airing_grid_selected_airing' : '';
+-
+-      if ($airing->event_start == date("Y-m-d H:i:s", $orig_column_time)) { 
+-        $display_class = cm_airing_grid_grid_display_class_dictionary($airing);
++      
++      $display_class = cm_airing_grid_grid_display_class_dictionary($airing);
+         
+-	$link = '<input type="button" id="'.$airing->airing_id.
+-	  '" class="cmag  form-submit '.$airing_class.'" value="'.
+-	  $airing->project_nid.'">';
+- 
+-	  
+-        if ($grid_mode == 'show_all') {
+-          $link .= "<br/>".
+-	    l("(remove)", "airing/".$airing->airing_id."/delete",
+-	      array('query'=>drupal_get_destination()));
+-        }
+-        $text .= "<tr><td class='$display_class'>".$link.
+-            "</td></tr>";
+-        $display_class = 'cm_airing_grid_blank';
+-        if ($airing->count > $count) {
+-          $count = $airing->count;
+-        }
++      $link = '<input type="button" id="'.$airing->airing_id.
++	'" class="cmag  form-submit '.$airing_class.'" value="'.
++	$airing->project_nid.'">';
++      
++      if ($grid_mode == 'show_all') {
++	$link .= "<br/>".
++	  l("(remove)", "airing/".$airing->airing_id."/delete",
++	    array('query'=>drupal_get_destination()));
+       }
++      $text .= "<tr><td class='$display_class'>".$link.
++	"</td></tr>";
++      $display_class = 'cm_airing_grid_blank';
++
++      if ($airing->count > $count) {
++	$count = $airing->count;
++      }
++      
+     }
+     if ($grid_mode == 'show_all') {
+       $column_time = strtotime($airing->event_end)+1;
