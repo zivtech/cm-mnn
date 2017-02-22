@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  * $Id$
  *
  */
@@ -108,8 +108,8 @@ class CRM_Report_Form_Event_Income extends CRM_Report_Form_Event {
       "civicrm_option_value.label as event_type",
       "civicrm_participant.fee_currency as currency",
     );
-    $groupBy = CRM_Contact_BAO_Query::getGroupByFromSelectColumns($select);
 
+    $groupBy = CRM_Contact_BAO_Query::getGroupByFromSelectColumns($select, 'civicrm_event.id');
     $sql = "
             SELECT  " . implode(', ', $select) . ",
                     SUM(civicrm_participant.fee_amount) as total,

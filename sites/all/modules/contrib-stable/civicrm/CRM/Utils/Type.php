@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 class CRM_Utils_Type {
   const
@@ -144,7 +144,7 @@ class CRM_Utils_Type {
   }
 
   /**
-   * Helper function to call escape on arrays
+   * Helper function to call escape on arrays.
    *
    * @see escape
    */
@@ -454,6 +454,24 @@ class CRM_Utils_Type {
     }
 
     return $output;
+  }
+
+  /**
+   * Get list of avaliable Data Tupes for Option Groups
+   *
+   * @return array
+   */
+  public static function dataTypes() {
+    $types = array(
+      'Integer',
+      'String',
+      'Date',
+      'Time',
+      'Timestamp',
+      'Money',
+      'Email',
+    );
+    return array_combine($types, $types);
   }
 
 }

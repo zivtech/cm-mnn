@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -304,12 +304,8 @@ class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
     // run the import
     $importJob->runImport($this);
 
-    // update cache after we done with runImport
-    if (!CRM_Core_Permission::check('view all contacts')) {
-      CRM_ACL_BAO_Cache::updateEntry($userID);
-    }
-
-    // clear all caches
+    // Clear all caches, forcing any searches to recheck the ACLs or group membership as the import
+    // may have changed it.
     CRM_Contact_BAO_Contact_Utils::clearContactCaches();
 
     // add all the necessary variables to the form

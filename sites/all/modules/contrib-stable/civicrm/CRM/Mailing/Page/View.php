@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -97,7 +97,7 @@ class CRM_Mailing_Page_View extends CRM_Core_Page {
       $this->_contactID = $contactID;
     }
     else {
-      $this->_contactID = CRM_Core_Session::singleton()->getLoggedInContactID();
+      $this->_contactID = CRM_Core_Session::getLoggedInContactID();
     }
 
     // mailing key check

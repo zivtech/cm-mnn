@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -298,6 +298,18 @@ class CRM_Utils_System {
     }
 
     return $url;
+  }
+
+  /**
+   * Path of the current page e.g. 'civicrm/contact/view'
+   *
+   * @return string|null
+   */
+  public static function getUrlPath() {
+    if (isset($_GET[CRM_Core_Config::singleton()->userFrameworkURLVar])) {
+      return $_GET[CRM_Core_Config::singleton()->userFrameworkURLVar];
+    }
+    return NULL;
   }
 
   /**
@@ -1257,7 +1269,7 @@ class CRM_Utils_System {
    */
   public static function getDocBaseURL() {
     // FIXME: move this to configuration at some stage
-    return 'http://book.civicrm.org/';
+    return 'https://docs.civicrm.org/';
   }
 
   /**
@@ -1303,6 +1315,7 @@ class CRM_Utils_System {
       }
       else {
         $docBaseURL = self::getDocBaseURL();
+        $page = self::formatDocUrl($page);
       }
       return $docBaseURL . str_replace(' ', '+', $page);
     }
@@ -1341,6 +1354,7 @@ class CRM_Utils_System {
     }
     else {
       $docBaseURL = self::getDocBaseURL();
+      $params['page'] = self::formatDocUrl($params['page']);
     }
 
     if (!isset($params['title']) or $params['title'] === NULL) {
@@ -1366,6 +1380,18 @@ class CRM_Utils_System {
     else {
       return "<a href=\"{$link}\" $style target=\"_blank\" class=\"crm-doc-link no-popup\" title=\"{$params['title']}\">{$params['text']}</a>";
     }
+  }
+
+  /**
+   * Add language and version parameters to the doc url.
+   *
+   * Note that this function may run before CiviCRM is initialized and so should not call ts() or perform any db lookups.
+   *
+   * @param $url
+   * @return mixed
+   */
+  public static function formatDocUrl($url) {
+    return preg_replace('#^user/((\w\w/)?stable/)?#', 'user/en/stable/', $url);
   }
 
   /**
@@ -1402,7 +1428,7 @@ class CRM_Utils_System {
     CRM_Contact_BAO_Contact::$_importableFields = CRM_Contact_BAO_Contact::$_exportableFields
       = CRM_Contribute_BAO_Contribution::$_importableFields
         = CRM_Contribute_BAO_Contribution::$_exportableFields
-          = CRM_Pledge_BAO_Pledge::$_exportableFields = CRM_Contribute_BAO_Query::$_contributionFields
+          = CRM_Pledge_BAO_Pledge::$_exportableFields
             = CRM_Core_BAO_CustomField::$_importFields
               = CRM_Core_BAO_Cache::$_cache = CRM_Core_DAO::$_dbColumnValueCache = NULL;
 

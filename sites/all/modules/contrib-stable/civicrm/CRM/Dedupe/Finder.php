@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  * $Id$
  *
  */
@@ -379,7 +379,7 @@ class CRM_Dedupe_Finder {
       $displayNames[$dao->id] = $dao->display_name;
     }
 
-    $userId = CRM_Core_Session::singleton()->getLoggedInContactID();
+    $userId = CRM_Core_Session::getLoggedInContactID();
     foreach ($foundDupes as $dupes) {
       $srcID = $dupes[1];
       $dstID = $dupes[0];

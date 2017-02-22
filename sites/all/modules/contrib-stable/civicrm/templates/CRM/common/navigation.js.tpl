@@ -2,7 +2,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -60,10 +60,10 @@
 {if $config->userFramework neq 'Joomla'}{literal}
   $('body').append(menuMarkup);
 
+  $('#civicrm-menu').css({position: "fixed", top: "0px"});
+
   //Track Scrolling
   $(window).scroll(function () {
-    var scroll = document.documentElement.scrollTop || document.body.scrollTop;
-    $('#civicrm-menu').css({top: "scroll", position: "fixed", top: "0px"});
     $('div.sticky-header').css({top: "23px", position: "fixed"});
   });
 
