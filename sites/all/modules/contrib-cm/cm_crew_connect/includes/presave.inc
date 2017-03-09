@@ -157,8 +157,8 @@ function cm_crew_connect_node_presave($node) {
       $result3 = civicrm_api3('VolunteerProject', 'create', 
 			      array(
 				    'sequential' => 1,
-				    'entity_table' => "civicrm_event",
-				    'entity_id' => $result2['id'],
+				  //  'entity_table' => "civicrm_event",
+				    'id' => $result2['id'],
                                      'title' => $node->title,
                                      ));
 				    
