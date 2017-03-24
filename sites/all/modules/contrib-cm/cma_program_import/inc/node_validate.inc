@@ -25,6 +25,11 @@ function cma_program_import_node_validate($node, $form, &$form_state){
     $project_errors = array();
     foreach($data_array as $key => $values) {
       $title = $values['Program EPG Title'];
+
+      if ($title == 'The Thom Hartmann Program' ||
+	  $title == 'The Stephanie Miller Show') {
+	$data_array[$key]['project_show_merge'] = 'true';
+      }
       if ($import_type == 'fstv') {
 	$title .= ' [FSTV]';
       }

@@ -21,9 +21,13 @@ function cma_program_import_node_presave($node) {
       for ($i = 0; $i < count($data_array); $i ++) {
 	$values = $data_array[$i];
 
+	if ($values['project_show_merge']) {
 
+	  //for ($j = $i; $i < count($data_array); $j ++) {
 
-	
+	  //}
+	}
+
 	//see if a show exists
 	//TBD THIS IS NOT IMMPLEMENTED YET AS NOT YET PART OF WORKFLOW
 	$show = cma_program_import_show_lookup($import_type,

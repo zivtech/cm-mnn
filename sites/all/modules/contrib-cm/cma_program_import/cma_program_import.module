@@ -5,6 +5,7 @@
  */
 function cma_program_import_init() {
   module_load_include('inc', 'cma_program_import', 'inc/airing_create');
+  module_load_include('inc', 'cma_program_import', 'inc/misc');
   module_load_include('inc', 'cma_program_import', 'inc/node_validate');
   module_load_include('inc', 'cma_program_import', 'inc/node_presave');
   module_load_include('inc', 'cma_program_import', 'inc/project_lookup');
