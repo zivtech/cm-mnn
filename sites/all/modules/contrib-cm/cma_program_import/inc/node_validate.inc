@@ -6,6 +6,11 @@
 function cma_program_import_node_validate($node, $form, &$form_state){
 
   if ($node->type == 'program_import') {
+    if (cma_program_import_is_import_complete($node)) {
+      //do nothing
+      return;
+    }
+
     //there will be different import types based on FSTV vs Next vs ????
     $import_type = $node->field_uploader_type[LANGUAGE_NONE][0]['value'];
 

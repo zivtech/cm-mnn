@@ -16,5 +16,10 @@ function cma_program_import_get_single_field_value($entity,
   return NULL;
 }
 
-
-
+  
+    
+function cma_program_import_is_import_complete($node) {
+  //FIXME ADD AN IF HERE TO SEE IF THERE ARE ALREADY AIRINGS SCHEDULED
+  //IF THERE ARE AIRINGS RETURN FALSE
+  return FALSE;
+}
