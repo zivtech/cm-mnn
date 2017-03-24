@@ -21,5 +21,14 @@ function cma_program_import_get_single_field_value($entity,
 function cma_program_import_is_import_complete($node) {
   //FIXME ADD AN IF HERE TO SEE IF THERE ARE ALREADY AIRINGS SCHEDULED
   //IF THERE ARE AIRINGS RETURN FALSE
+
+  $airing_id =
+    cma_program_import_get_single_field_value($node,
+					      'field_uploader_airingref',
+					      'target_id');
+  if ($airing_id) {
+    return TRUE;
+  }
+
   return FALSE;
 }
