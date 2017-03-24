@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * Implements hook_init().
+ */
+function cma_program_import_init() {
+  module_load_include('inc', 'cma_program_import', 'inc/airing_create');
+  module_load_include('inc', 'cma_program_import', 'inc/node_validate');
+  module_load_include('inc', 'cma_program_import', 'inc/node_submit');
+  module_load_include('inc', 'cma_program_import', 'inc/project_lookup');
+  module_load_include('inc', 'cma_program_import', 'inc/project_validate');
+  module_load_include('inc', 'cma_program_import', 'inc/process_csv');
+  module_load_include('inc', 'cma_program_import', 'inc/show_create');
+  module_load_include('inc', 'cma_program_import', 'inc/show_lookup');
+
+}
+
+function cma_program_import_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'cma_program_import').'/inc'
+	       );
+}

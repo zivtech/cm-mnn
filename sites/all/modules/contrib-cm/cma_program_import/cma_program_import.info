@@ -1,0 +1,11 @@
+name = CMA Program Import
+description = "Will import airings and shows from a CSV"
+package = Community Media Advanced
+core = 7.x
+
+
+
+
+
+
+
