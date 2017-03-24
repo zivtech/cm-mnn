@@ -1,10 +1,8 @@
 <?php
-
-
 /**
- * submit hookd of cma_program_import_form
+ * presave hook that will 
  */
-function cma_program_import_node_submit($node,$form,$form_state) {
+function cma_program_import_node_presave($node) {
   
   if ($node->type == 'program_import') {
     //there will be different import types based on FSTV vs Next vs ????
@@ -17,7 +15,7 @@ function cma_program_import_node_submit($node,$form,$form_state) {
 
     $daily_premieres = array();
     if ($data_array) {
-      dsm($data_array, 'my data array in inc/node_submit.inc');
+      dsm($data_array, 'my data array in inc/node_presave.inc');
     
       //loop through all the results from the data array
       for ($i = 0; $i < count($data_array); $i ++) {
