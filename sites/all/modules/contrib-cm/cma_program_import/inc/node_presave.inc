@@ -19,6 +19,7 @@ function cma_program_import_node_presave($node) {
 
     $daily_premieres = array();
     $post_import_array = array();
+    $skipped_rows_array = array();
     if ($data_array) {
       dsm($data_array, 'my data array in inc/node_presave.inc');
     
@@ -28,10 +29,21 @@ function cma_program_import_node_presave($node) {
 	$row_index = $i;
 	if ($row['project_show_merge']) {
 	  
-	  //for ($j = $i; $j < count($data_array); $j ++) {
+	  for ($j = $i; $j < count($data_array); $j ++) {
 	    //look at next row
-	    
-	  //}
+	    $next_row = $data_array[$j];
+	    if ($next_row['project_nid'] == $row['project_nid'] &&
+		$row['project_show_merge'] == 'true') {
+	      $skipped_rows_array[] = $next_row;
+	      $i ++;
+
+	      //update endtime of airing and runtime of show
+	      //update the episode id????
+	    }
+	    else {
+	      break;
+	    }
+	  }
 	}
 
 	//see if a show exists
@@ -62,6 +74,7 @@ function cma_program_import_node_presave($node) {
 
       dsm($daily_premieres, 'daily premieres');
       dsm($post_import_array, 'modified data array');
+      dsm($skipped_rows_array, 'skipped rows');
     }
 
   }
