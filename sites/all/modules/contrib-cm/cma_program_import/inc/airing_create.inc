@@ -62,19 +62,66 @@ field_airing_project_ref (Array, 1 element)
             tid (String, 3 characters ) 970
             taxonomy_term (Object) stdClass 
 
+
+Creating new entities is as easy as:
+
+  $entity_type = 'contact';
+  $entity = entity_create($entity_type, array('type' => 'contact_simple'));
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+Once the entity is created the properties can be changed:
+
+$wrapper->uid = 9;
+
+And any attached field:
+
+$wrapper->field_full_name->set("John doe");
+
+Alternatively, field values can be set directly as the EntityMetadataWrapper class (provided by EntityAPI) implements PHP's magic __set() method. For example:
+
+$wrapper->field_full_name = "John doe";
+
+Just remember to save it when all changes are made:
+
+$wrapper->save();
+
+That's it!
+
+
+
 */
 
   global $user;
 
-  $node = new stdClass();
-  $node->type = "cm_show";
-  node_object_prepare($node);
+  $entity_type = 'airing';
+  $airing = entity_create('airing', array('type' => 'airing'));
+  $wrapper = entity_metadata_wrapper($entity_type, $airing);
+//print_r($wrapper);
+//  $wrapper->uid->set($user->uid);
+//  $wrapper->uid = "6";
+//  $wrapper->field_airing_date->set("2017-02-23 18:31:01");
+
+$start_timestamp = strtotime("2017-02-23 18:31:01");
+$end_timestamp = strtotime("2017-02-23 18:31:01");
+
+//  $wrapper->field_airing_date->set(array(
+    // Should be in unix timestamp format.
+//    'value' => $start_timestamp,
+//    'value2' => $end_timestamp,
+//  ));
+ 
+  $wrapper->field_airing_title->set("test title");
+  $wrapper->field_airing_channel->set("965");
+  $wrapper->field_airing_show_ref->set("888276");
+  $wrapper->field_airing_project_ref->set("676700");
+  $wrapper->field_airing_type->set("970");
+  $thing = $wrapper->save();
+
+$fp = fopen('/var/www/cm-stage.mnn.org/sites/all/modules/lidn.txt', 'w');
+fwrite($fp, print_r($thing, TRUE));
+fclose($fp);
   
-  $node->title    = "";
-  $node->uid = $user->uid;
-  $node->language = LANGUAGE_NONE;
-
-
+  //return $thing;
 
   //FIXME ONLY HERE FOR TESTING
   $airing = new stdClass();
