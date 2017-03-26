@@ -27,6 +27,14 @@ function cma_program_import_views_default_views() {
   $handler->display->display_options['relationships']['reverse_field_uploader_airingref_node']['table'] = 'cm_airing';
   $handler->display->display_options['relationships']['reverse_field_uploader_airingref_node']['field'] = 'reverse_field_uploader_airingref_node';
   $handler->display->display_options['relationships']['reverse_field_uploader_airingref_node']['required'] = TRUE;
+  /* Relationship: Entity Reference: Referencing entity */
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_overlap_airingconflict']['id'] = 'reverse_field_conflict_airing_overlap_airingconflict';
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_overlap_airingconflict']['table'] = 'cm_airing';
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_overlap_airingconflict']['field'] = 'reverse_field_conflict_airing_overlap_airingconflict';
+  /* Relationship: Entity Reference: Referencing entity */
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_original_airingconflict']['id'] = 'reverse_field_conflict_airing_original_airingconflict';
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_original_airingconflict']['table'] = 'cm_airing';
+  $handler->display->display_options['relationships']['reverse_field_conflict_airing_original_airingconflict']['field'] = 'reverse_field_conflict_airing_original_airingconflict';
   /* Field: Bulk operations: Airing */
   $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
   $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'cm_airing';
@@ -57,19 +65,37 @@ function cma_program_import_views_default_views() {
   $handler->display->display_options['fields']['field_airing_title']['field'] = 'field_airing_title';
   $handler->display->display_options['fields']['field_airing_title']['alter']['make_link'] = TRUE;
   $handler->display->display_options['fields']['field_airing_title']['alter']['path'] = 'airing/[airing_id]';
-  /* Field: Airing: Start */
-  $handler->display->display_options['fields']['field_airing_date']['id'] = 'field_airing_date';
-  $handler->display->display_options['fields']['field_airing_date']['table'] = 'field_data_field_airing_date';
-  $handler->display->display_options['fields']['field_airing_date']['field'] = 'field_airing_date';
-  $handler->display->display_options['fields']['field_airing_date']['settings'] = array(
-											'format_type' => 'time_only',
-											'fromto' => 'both',
-											'multiple_number' => '',
-											'multiple_from' => '',
-											'multiple_to' => '',
-											'show_remaining_days' => 0,
-											'show_repeat_rule' => 'show',
-											);
+  /* Field: Global: PHP */
+  $handler->display->display_options['fields']['php']['id'] = 'php';
+  $handler->display->display_options['fields']['php']['table'] = 'views';
+  $handler->display->display_options['fields']['php']['field'] = 'php';
+  $handler->display->display_options['fields']['php']['label'] = 'Time';
+  $handler->display->display_options['fields']['php']['use_php_setup'] = 0;
+  $handler->display->display_options['fields']['php']['php_output'] = '<?php
+  print cma_program_import_date_view_field($row);
+?>';
+  $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
+  $handler->display->display_options['fields']['php']['php_click_sortable'] = '';
+  /* Field: Airing Conflict: Original Airing */
+  $handler->display->display_options['fields']['field_conflict_airing_original']['id'] = 'field_conflict_airing_original';
+  $handler->display->display_options['fields']['field_conflict_airing_original']['table'] = 'field_data_field_conflict_airing_original';
+  $handler->display->display_options['fields']['field_conflict_airing_original']['field'] = 'field_conflict_airing_original';
+  $handler->display->display_options['fields']['field_conflict_airing_original']['relationship'] = 'reverse_field_conflict_airing_overlap_airingconflict';
+  $handler->display->display_options['fields']['field_conflict_airing_original']['label'] = 'Overlap';
+  $handler->display->display_options['fields']['field_conflict_airing_original']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['field_conflict_airing_original']['settings'] = array(
+												     'link' => 1,
+												     );
+  /* Field: Airing Conflict: Overlap Airing */
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['id'] = 'field_conflict_airing_overlap';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['table'] = 'field_data_field_conflict_airing_overlap';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['field'] = 'field_conflict_airing_overlap';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['relationship'] = 'reverse_field_conflict_airing_original_airingconflict';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['label'] = 'Overlap';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['empty'] = '[field_conflict_airing_original]';
+  $handler->display->display_options['fields']['field_conflict_airing_overlap']['settings'] = array(
+												    'link' => 1,
+												    );
   /* Contextual filter: Content: Nid */
   $handler->display->display_options['arguments']['nid']['id'] = 'nid';
   $handler->display->display_options['arguments']['nid']['table'] = 'node';
@@ -84,7 +110,6 @@ function cma_program_import_views_default_views() {
   /* Display: Page */
   $handler = $view->new_display('page', 'Page', 'page');
   $handler->display->display_options['path'] = 'admin/programming/program_import/rollback_airings';
-  
   
   // Add view to list of views to provide.
   $views[$view->name] = $view;
