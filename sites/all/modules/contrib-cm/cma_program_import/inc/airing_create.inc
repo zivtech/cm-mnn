@@ -1,6 +1,32 @@
 <?php
 
-function cma_program_import_airing_create($data) {
+function cma_program_import_airing_create($row) {
+  $airing = entity_create('airing', array());
+
+  $start_time =
+    strtotime($row['Schedule Item Log Date'] . ' ' . $row['Schedule Item Log Time']);
+
+  $end_time = $start_time +
+    strtotime("1970-01-01 " . $row['Schedule Item Duration']." UTC");
+    
+  $airing->field_airing_date[LANGUAGE_NONE][0]['value'] =
+    date('Y-m-d H:i:s', $start_time);
+
+  $airing->field_airing_date[LANGUAGE_NONE][0]['value2'] =
+    date('Y-m-d H:i:s', $end_time);
+
+  $airing->field_airing_project_ref[LANGUAGE_NONE][0]['target_id']=$row['project_nid'];
+  $airing->field_airing_show_ref[LANGUAGE_NONE][0]['target_id'] = $row['show_nid'];
+  $airing->field_airing_channel[LANGUAGE_NONE][0]['tid']  = 1686;
+  $airing->field_airing_type[LANGUAGE_NONE][0]['tid'] = 969;
+  $airing->cm_use_auto_title = TRUE;
+  entity_save('airing', $airing);
+  $airing->airing_id = entity_id('airing', $airing);
+  return $airing;
+}
+
+////////////////////////////////////////////////
+//ERIC'S OLD CODE
 
 /**
 structure of airing nodes 
@@ -90,7 +116,7 @@ That's it!
 
 
 */
-
+/**
   global $user;
 
   $entity_type = 'airing';
@@ -120,11 +146,4 @@ $end_timestamp = strtotime("2017-02-23 18:31:01");
 $fp = fopen('/var/www/cm-stage.mnn.org/sites/all/modules/lidn.txt', 'w');
 fwrite($fp, print_r($thing, TRUE));
 fclose($fp);
-  
-  //return $thing;
-
-  //FIXME ONLY HERE FOR TESTING
-  $airing = new stdClass();
-  $airing->airing_id = 16945;
-  return $airing;
-}
+*/

@@ -1,6 +1,7 @@
 <?php
 
 function cma_program_import_views_default_views() {
+
   $view = new view();
   $view->name = 'program_import_rollback_airings';
   $view->description = '';
@@ -76,6 +77,11 @@ function cma_program_import_views_default_views() {
 ?>';
   $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
   $handler->display->display_options['fields']['php']['php_click_sortable'] = '';
+  /* Field: Airing: Airing Grid Link */
+  $handler->display->display_options['fields']['field_airing_grid_link']['id'] = 'field_airing_grid_link';
+  $handler->display->display_options['fields']['field_airing_grid_link']['table'] = 'field_data_field_airing_grid_link';
+  $handler->display->display_options['fields']['field_airing_grid_link']['field'] = 'field_airing_grid_link';
+  $handler->display->display_options['fields']['field_airing_grid_link']['type'] = 'computed_field_unsanitized';
   /* Field: Airing Conflict: Original Airing */
   $handler->display->display_options['fields']['field_conflict_airing_original']['id'] = 'field_conflict_airing_original';
   $handler->display->display_options['fields']['field_conflict_airing_original']['table'] = 'field_data_field_conflict_airing_original';
