@@ -35,3 +35,29 @@ function cma_program_import_is_import_complete($node) {
 
   return FALSE;
 }
+
+
+/**
+ * PHP field for this view admin/structure/views/view/airing_detail_for_grid
+ */
+function cma_program_import_date_view_field($row) {
+  $airing_id = $row->airing_id;
+ 
+  $airings = entity_load('airing', array($airing_id));
+
+  if ($airings) {
+    $airing = array_shift($airings);
+    if ($airing) {
+      $start = $airing->field_airing_date[LANGUAGE_NONE][0]['value'];
+      $start = strtotime($start);
+      $start = date('h:i:sa', $start);
+      
+      $end = $airing->field_airing_date[LANGUAGE_NONE][0]['value2'];
+      $end = strtotime($end);
+      $end = date('h:i:sa', $end);
+
+      return $start . " - " . $end;
+    }
+  }
+  return '';
+}
