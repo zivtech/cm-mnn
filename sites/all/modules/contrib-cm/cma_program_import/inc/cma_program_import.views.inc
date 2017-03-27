@@ -1,7 +1,10 @@
 <?php
 
 function cma_program_import_views_default_views() {
+  //FOR EACH VIEW, COPY EXPORT CODE THEN ADD IT TO THIS ARRAY
+  $views = array();
 
+  //ROLLBACK AIRINGS VIEW
   $view = new view();
   $view->name = 'program_import_rollback_airings';
   $view->description = '';
@@ -16,7 +19,11 @@ function cma_program_import_views_default_views() {
   $handler = $view->new_display('default', 'Master', 'default');
   $handler->display->display_options['title'] = 'Program Import Rollback Airings';
   $handler->display->display_options['use_more_always'] = FALSE;
-  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['access']['type'] = 'role';
+  $handler->display->display_options['access']['role'] = array(
+							       3 => '3',
+							       10 => '10',
+							       );
   $handler->display->display_options['cache']['type'] = 'none';
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['exposed_form']['type'] = 'basic';
@@ -120,6 +127,7 @@ function cma_program_import_views_default_views() {
   // Add view to list of views to provide.
   $views[$view->name] = $view;
 
+  //ROLLBACK SHOWS VIEW
   $view = new view();
   $view->name = 'program_import_rollback_shows';
   $view->description = '';
@@ -134,7 +142,11 @@ function cma_program_import_views_default_views() {
   $handler = $view->new_display('default', 'Master', 'default');
   $handler->display->display_options['title'] = 'Program Import Rollback Shows';
   $handler->display->display_options['use_more_always'] = FALSE;
-  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['type'] = 'role';
+  $handler->display->display_options['access']['role'] = array(
+							       3 => '3',
+							       10 => '10',
+							       );
   $handler->display->display_options['cache']['type'] = 'none';
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['exposed_form']['type'] = 'basic';
@@ -210,7 +222,7 @@ function cma_program_import_views_default_views() {
   
   // Add view to list of views to provide.
   $views[$view->name] = $view;
-
+  
   // ...Repeat all of the above for each view the module should provide.
 
   // At the end, return array of default views.
