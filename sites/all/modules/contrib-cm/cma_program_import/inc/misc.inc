@@ -61,3 +61,54 @@ function cma_program_import_date_view_field($row) {
   }
   return '';
 }
+
+/**
+ * View field used in the program_import_search view
+ */
+function cma_program_import_airing_range_view_field($row) {
+  $import = node_load($row->nid);
+  if (!$import) {
+    return;
+  }
+
+  if ($import->field_uploader_airingref &&
+      $import->field_uploader_airingref[LANGUAGE_NONE]) {
+
+    $airings = $import->field_uploader_airingref[LANGUAGE_NONE];
+
+    $first_id = $last_id = NULL;
+    foreach($airings as $airing) {
+      if (!$first_id) {
+	$first_id = $airing['target_id'];
+      }
+      $last_id = $airing['target_id'];
+    }
+
+    $airings = entity_load('airing', array($first_id));
+
+    if ($airings) {
+      $first_airing = array_shift($airings);
+    }
+
+    $airings = entity_load('airing', array($last_id));
+
+    if ($airings) {
+      $last_airing = array_shift($airings);
+    }
+  }
+
+  if ($first_airing) {
+    $start = cma_program_import_get_single_field_value($first_airing,
+						       'field_airing_date',
+						       'value');
+    $start = date('F d, Y h:ia', strtotime($start));
+    $end = cma_program_import_get_single_field_value($last_airing,
+						     'field_airing_date',
+						     'value2');
+    $end = date('F d, Y h:ia', strtotime($end));
+	
+    return $start . ' - ' . $end;
+  }
+  return "Rolled Back";
+    
+}

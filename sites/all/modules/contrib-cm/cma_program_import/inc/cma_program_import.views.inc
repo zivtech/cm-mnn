@@ -222,6 +222,171 @@ function cma_program_import_views_default_views() {
   
   // Add view to list of views to provide.
   $views[$view->name] = $view;
+
+  $view = new view();
+  $view->name = 'program_import_search';
+  $view->description = '';
+  $view->tag = 'default';
+  $view->base_table = 'node';
+  $view->human_name = 'Program Import Search';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'Program Import Search';
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'full';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '100';
+  $handler->display->display_options['style_plugin'] = 'table';
+  /* Field: Content: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'node';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = 'Import';
+  $handler->display->display_options['fields']['title']['alter']['word_boundary'] = FALSE;
+  $handler->display->display_options['fields']['title']['alter']['ellipsis'] = FALSE;
+  /* Field: Global: PHP */
+  $handler->display->display_options['fields']['php']['id'] = 'php';
+  $handler->display->display_options['fields']['php']['table'] = 'views';
+  $handler->display->display_options['fields']['php']['field'] = 'php';
+  $handler->display->display_options['fields']['php']['label'] = 'Import Date Range';
+  $handler->display->display_options['fields']['php']['use_php_setup'] = 0;
+  $handler->display->display_options['fields']['php']['php_output'] = '<?php
+  print cma_program_import_airing_range_view_field($row);
+?>';
+  $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
+  $handler->display->display_options['fields']['php']['php_click_sortable'] = '';
+  /* Field: Content: Nid */
+  $handler->display->display_options['fields']['nid']['id'] = 'nid';
+  $handler->display->display_options['fields']['nid']['table'] = 'node';
+  $handler->display->display_options['fields']['nid']['field'] = 'nid';
+  $handler->display->display_options['fields']['nid']['label'] = '';
+  $handler->display->display_options['fields']['nid']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['nid']['element_label_colon'] = FALSE;
+  /* Sort criterion: Content: Post date */
+  $handler->display->display_options['sorts']['created']['id'] = 'created';
+  $handler->display->display_options['sorts']['created']['table'] = 'node';
+  $handler->display->display_options['sorts']['created']['field'] = 'created';
+  $handler->display->display_options['sorts']['created']['order'] = 'DESC';
+  /* Filter criterion: Content: Published */
+  $handler->display->display_options['filters']['status']['id'] = 'status';
+  $handler->display->display_options['filters']['status']['table'] = 'node';
+  $handler->display->display_options['filters']['status']['field'] = 'status';
+  $handler->display->display_options['filters']['status']['value'] = 1;
+  $handler->display->display_options['filters']['status']['group'] = 1;
+  $handler->display->display_options['filters']['status']['expose']['operator'] = FALSE;
+  /* Filter criterion: Content: Type */
+  $handler->display->display_options['filters']['type']['id'] = 'type';
+  $handler->display->display_options['filters']['type']['table'] = 'node';
+  $handler->display->display_options['filters']['type']['field'] = 'type';
+  $handler->display->display_options['filters']['type']['value'] = array(
+									 'program_import' => 'program_import',
+									 );
+  /* Filter criterion: Content: Post date */
+  $handler->display->display_options['filters']['created']['id'] = 'created';
+  $handler->display->display_options['filters']['created']['table'] = 'node';
+  $handler->display->display_options['filters']['created']['field'] = 'created';
+  $handler->display->display_options['filters']['created']['operator'] = '>=';
+  $handler->display->display_options['filters']['created']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['created']['expose']['operator_id'] = 'created_op';
+  $handler->display->display_options['filters']['created']['expose']['label'] = 'Min Run Date';
+  $handler->display->display_options['filters']['created']['expose']['operator'] = 'created_op';
+  $handler->display->display_options['filters']['created']['expose']['identifier'] = 'created';
+  $handler->display->display_options['filters']['created']['expose']['remember_roles'] = array(
+											       2 => '2',
+											       3 => 0,
+											       1 => 0,
+											       44 => 0,
+											       8 => 0,
+											       14 => 0,
+											       10 => 0,
+											       6 => 0,
+											       11 => 0,
+											       4 => 0,
+											       51 => 0,
+											       16 => 0,
+											       49 => 0,
+											       17 => 0,
+											       20 => 0,
+											       22 => 0,
+											       23 => 0,
+											       50 => 0,
+											       25 => 0,
+											       48 => 0,
+											       39 => 0,
+											       28 => 0,
+											       29 => 0,
+											       45 => 0,
+											       26 => 0,
+											       37 => 0,
+											       33 => 0,
+											       34 => 0,
+											       35 => 0,
+											       46 => 0,
+											       36 => 0,
+											       43 => 0,
+											       47 => 0,
+											       32 => 0,
+											       );
+  /* Filter criterion: Content: Post date */
+  $handler->display->display_options['filters']['created_1']['id'] = 'created_1';
+  $handler->display->display_options['filters']['created_1']['table'] = 'node';
+  $handler->display->display_options['filters']['created_1']['field'] = 'created';
+  $handler->display->display_options['filters']['created_1']['operator'] = '<=';
+  $handler->display->display_options['filters']['created_1']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['created_1']['expose']['operator_id'] = 'created_1_op';
+  $handler->display->display_options['filters']['created_1']['expose']['label'] = 'Max Run Date';
+  $handler->display->display_options['filters']['created_1']['expose']['operator'] = 'created_1_op';
+  $handler->display->display_options['filters']['created_1']['expose']['identifier'] = 'created_1';
+  $handler->display->display_options['filters']['created_1']['expose']['remember_roles'] = array(
+												 2 => '2',
+												 3 => 0,
+												 1 => 0,
+												 44 => 0,
+												 8 => 0,
+												 14 => 0,
+												 10 => 0,
+												 6 => 0,
+												 11 => 0,
+												 4 => 0,
+												 51 => 0,
+												 16 => 0,
+												 49 => 0,
+												 17 => 0,
+												 20 => 0,
+												 22 => 0,
+												 23 => 0,
+												 50 => 0,
+												 25 => 0,
+												 48 => 0,
+												 39 => 0,
+												 28 => 0,
+												 29 => 0,
+												 45 => 0,
+												 26 => 0,
+												 37 => 0,
+												 33 => 0,
+												 34 => 0,
+												 35 => 0,
+												 46 => 0,
+												 36 => 0,
+												 43 => 0,
+												 47 => 0,
+												 32 => 0,
+												 );
+
+  /* Display: Page */
+  $handler = $view->new_display('page', 'Page', 'page');
+  $handler->display->display_options['path'] = 'admin/programming/program-import-search';
+  
+  // Add view to list of views to provide.
+  $views[$view->name] = $view;
   
   // ...Repeat all of the above for each view the module should provide.
 
