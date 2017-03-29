@@ -98,6 +98,16 @@ function mnn_menu_menu() {
 		'path'=>'admin/shows/tvguide'),
     );
 
+    $imports_block = 
+    array(
+	  array('title'=>t('Add Program Import'),
+		'menu_alias'=>'add-program-import',
+		'path'=>'node/add/program-import'),
+	  array('title'=>t('Search Program Imports'),
+		'menu_alias'=>'required-log',
+		'path'=>'admin/programming/program-import-search'),
+    );
+
   //permissions arrays for the menu items, need one for each menu page
   $permissions = array('Programming' => array('view airing grid'));
 		       
@@ -111,6 +121,7 @@ function mnn_menu_menu() {
 		t('Scheduling') => $scheduling_menu_block,
 		t('Shows/Tapes') => $show_menu_block,
 		t('Exports') => $exports_block,
+		t('Imports') => $imports_block,
 		t('Reservations') => $reservations_block,
 		t('Producers') => $producers_menu_block,
 		t('Projects') => $projects_menu_block,
