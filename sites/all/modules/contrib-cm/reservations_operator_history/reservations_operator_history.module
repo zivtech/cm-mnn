@@ -1,0 +1,236 @@
+<?php
+/**
+ * This hook will allow views to be loaded from the inc directory
+ */ 
+function reservations_operator_history_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'reservations_operator_history').'/inc'
+	       );
+}
+
+function reservations_operator_history_node_update($node) {
+  reservations_operator_history_node_post_save($node);
+}
+
+function reservations_operator_history_node_insert($node) {
+  reservations_operator_history_node_post_save($node);
+}
+
+function reservations_operator_history_node_delete($node) {
+  reservations_operator_history_node_post_save($node, TRUE);
+}
+
+function reservations_operator_history_node_post_save($reservation,
+						      $deleting = FALSE) {
+
+  if ($reservation->type != 'reservations_reservation') {
+    return;
+  }
+
+  //fetch new status
+  if ($deleting) {
+    $new_status = 0;
+  }
+  else {
+    $new_status = $reservation->reservations_reservation_status ?
+      $reservation->reservations_reservation_status : 0;
+  }
+
+  //fetch old status
+  $old_reservation = node_load($reservation->nid);
+  $old_status = $reservation->is_new ? 0 :
+    $old_reservation->reservations_reservation_status;
+
+  $old_status = $old_status ? $old_status : 0;
+
+  global $user;
+
+  $logged_in_user = $user;
+
+  //call alter hook 
+  drupal_alter('reservations_operator_history_user', $logged_in_user, 
+  	       $reservation);
+
+  $sql = 
+    "INSERT INTO reservations_operator_history
+     (uid, reservation_id, beginning_status, end_status, timestamp)
+     VALUES
+     (:uid, :reservation_id, :beginning_status, :end_status, :timestamp)";
+
+  $args = array(':uid' => $logged_in_user->uid,
+		':reservation_id' => $reservation->nid,
+		':beginning_status' => $old_status,
+		':end_status' => $new_status, 
+		':timestamp' => strtotime('now')); 
+  db_query($sql, $args);
+}
+
+function reservations_operator_history_views_data() {
+
+  // The 'group' index will be used as a prefix in the UI for any of this
+  // table's fields, sort criteria, etc. so it's easy to tell where they came
+  // from.
+  $data['reservations_operator_history']['table']['group'] = 
+    t('Reservations Operator History');
+
+  // Define this as a base table – a table that can be described in itself by
+  // views (and not just being brought in as a relationship). In reality this
+  // is not very useful for this table, as it isn't really a distinct object of
+  // its own, but it makes a good example.
+  $data['reservations_operator_history']['table']['base'] =
+    array(
+	  'field' => 'slot_id', // This is the identifier field for the view.
+	  'title' => t('Reservations Operator History'),
+	  'help' => t('Reservations Operator History keeps the history of '.
+		      'status changes to reservations by operators.'),
+	  'weight' => -10,
+	  );
+
+  // This table references the {node} table. The declaration below creates an
+  // 'implicit' relationship to the node table, so that when 'node' is the base
+  // table, the fields are automatically available.
+  $data['reservations_operator_history']['table']['join'] = 
+    array(
+	  // Index this array by the table name to which this table refers.
+	  // 'left_field' is the primary key in the referenced table.
+	  // 'field' is the foreign key in this table.
+	  'node' => array(
+			  'left_field' => 'nid',
+			  'field' => 'reservations_id',
+			  ),
+	  );
+
+  // Next, describe each of the individual fields in this table to Views. 
+  // Node ID table field.
+  $data['reservations_operator_history']['id'] = 
+    array(
+	  'title' => t('ID'),
+	  'help' => t('The primary key of the table'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_numeric',
+			   'click sortable' => TRUE,
+			   ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_numeric',
+			    ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort',
+			  ),
+	
+	  );  
+  $data['reservations_operator_history']['uid'] = 
+    array(
+	  'title' => t('UID'),
+	  'help' => t('The UID of the operator editing the reservation.'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_numeric',
+			   'click sortable' => TRUE,
+			   ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_numeric',
+			    ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort',
+			  ),
+	
+	  );  
+  $data['reservations_operator_history']['reservation_id'] = 
+    array(
+	  'title' => t('Reservation nid'),
+	  'help' => t('The Reservation NID.'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_node',
+			   'click sortable' => TRUE,
+			   ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_numeric',
+			    ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort',
+			  ),
+	  'relationship' => 
+	  array(
+		'base' => 'node', // The name of the table to join with.
+		'base field' => 'nid', //name of the field on the joined table.
+		'handler' => 'views_handler_relationship',
+		'label' => t('Operatory History Reservation Relationship'),
+		'title' => t('Operatory History Reservation Relationship'),
+		'description' => t('The reservation operator history.'),
+		),
+
+	  );
+  $data['reservations_operator_history']['beginning_status'] = 
+    array(
+	  'title' => t('Beginning Reservation Status'),
+	  'help' => t('Beginning Reservation Status'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_numeric',
+			   'click sortable' => TRUE,
+			   ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_numeric',
+			    ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort',
+			  ),
+	  );
+  $data['reservations_operator_history']['end_status'] = 
+    array(
+	  'title' => t('End Reservation Status'),
+	  'help' => t('End Reservation Status'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_numeric',
+			   'click sortable' => TRUE,
+			   ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_numeric',
+			    ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort',
+			  ),
+	  );
+  // Example timestamp field.
+  $data['reservations_operator_history']['timestamp'] = 
+    array(
+	  'title' => t('Timestamp'),
+	  'help' => t('Timestamp'),
+	  'field' => array(
+			   'handler' => 'views_handler_field_date',
+			   'click sortable' => TRUE,
+			   ),
+	  'sort' => array(
+			  'handler' => 'views_handler_sort_date',
+			  ),
+	  'filter' => array(
+			    'handler' => 'views_handler_filter_date',
+			    ),
+	  );
+	  
+  return $data;
+}
+
+function reservations_operator_history_reservation_field($row) {
+  $link = l("View", "node/" . $row->reservation_id);
+
+  return $link;
+}
+
+function reservations_operator_history_operator_field($row) {
+  $user = user_load($row->uid);
+  $link = l($user->realname, 'user/'.$row->uid);
+  return $link;
+}
+
+
+function reservations_operator_history_status_field($row, $type) {
+  if ($type == 'beginning') {
+    $status = $row->beginning_status;
+  }
+  else if ($type == 'ending') {
+    $status = $row->end_status;
+  }
+  return reservations_record_status($status);
+}

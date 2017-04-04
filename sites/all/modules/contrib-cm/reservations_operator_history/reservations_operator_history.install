@@ -1,0 +1,135 @@
+<?php
+
+/**                                                                             
+ * Implements hook_install().                                                   
+ */
+function reservations_operator_history_install() {
+
+
+  // Create the 'pbcore_pbcore_genres' field if it doesn't already exist.
+  if (!field_info_field('field_operator_history_view')) {
+    $field = array(
+		   'active' => 1,
+		   'cardinality' => 1,
+		   'deleted' => 0,
+		   'entity_types' => array(),
+		   'field_name' => 'field_operator_history_view',
+		   'field_permissions' => array(
+						'type' => 2,
+						),
+		   'foreign keys' => array(),
+		   'indexes' => array(),
+		   'locked' => 0,
+		   'module' => 'viewfield',
+		   'settings' => array(
+				       'profile2_private' => FALSE,
+				       ),
+		   'translatable' => 0,
+		   'type' => 'viewfield',
+
+		   );
+    field_create_field($field);
+   
+    // Create the instance on the bundle.
+    $instance = array(
+		      'bundle' => 'reservations_reservation',
+		      'default_value' => array(
+					       0 => array(
+							  'vname' => 'reservation_operator_actions|block_1',
+							  'vargs' => '[node:nid]',
+							  ),
+					       ),
+		      'deleted' => 0,
+		      'description' => '',
+		      'display' => array(
+					 'default' => array(
+							    'label' => 'above',
+							    'module' => 'viewfield',
+							    'settings' => array(),
+							    'type' => 'viewfield_default',
+							    'weight' => 1,
+							    ),
+					 'teaser' => array(
+							   'label' => 'above',
+							   'settings' => array(),
+							   'type' => 'hidden',
+							   'weight' => 0,
+							   ),
+					 ),
+		      'entity_type' => 'node',
+		      'field_name' => 'field_operator_history_view',
+		      'label' => 'Operator History',
+		      'required' => 0,
+		      'settings' => 
+		      array(
+			    'allowed_views' => 
+			    array(
+				  'reservation_operator_actions' => 
+				  'reservation_operator_actions',
+				  ),
+			    'force_default' => 1,
+			    'user_register_form' => FALSE,
+			    ),
+		      'widget' => array(
+					'active' => 0,
+					'module' => 'viewfield',
+					'settings' => array(),
+					'type' => 'viewfield_select',
+					'weight' => 31,
+					),
+		      );
+    
+    field_create_instance($instance);
+  }
+}
+/**
+ * Implementation of hook_schema().
+ */
+function reservations_operator_history_schema() {
+  $schema['reservations_operator_history'] = 
+    array(
+	  'description' => t('Stores operator actions on reservations'),
+	  'fields' => 
+	  array(
+		'id' => 
+		array(
+		      'description' => 'Primary Key.',
+		      'type' => 'serial',
+		      'unsigned' => TRUE,
+		      'not null' => TRUE),
+		'uid' => 
+		array(
+		      'description' => 
+		      'Operator UID.',
+		      'type' => 'int',
+		      'not null' => TRUE),
+		'reservation_id'    => 
+		array(
+		      'description' => 'The Reservation ID.',
+		      'type' => 'int',
+		      ),
+		'beginning_status' => 
+		array(
+		      'description' =>  'Beginning Status',
+		      'type' => 'int',
+		      'not null' => TRUE),
+		'end_status' => 
+		array(
+		      'description' =>  'Ending Status',
+		      'type' => 'int',
+		      'not null' => TRUE),
+		'timestamp'    => 
+		array(
+		      'description'=>'The Start Timestamp of The Series Slot.',
+		      'type' => 'int',
+		      'not null' => TRUE),	    
+		),
+	  'indexes' => array(
+			     'reservation_id' => 
+			     array('reservation_id'), 
+			     'uid' => array('uid')),
+	  'primary key' => array('id'),
+	  );
+  
+  return $schema;
+}
