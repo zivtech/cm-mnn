@@ -66,5 +66,18 @@ function mnn_reservations_form_alter(&$form, &$form_state, $form_id) {
 						      "node/".$nid."/edit")));
       }
     }
+
+    ///make sure the project get set correctly on the reservations
+    if ($form['og_node1'][LANGUAGE_NONE][0]['admin'] &&
+	!$form['og_node1'][LANGUAGE_NONE][0]['admin'][0]
+	['target_id']['#default_value'] && $form['#node']) {
+
+      $project_nid = $form['#node']->og_node1[LANGUAGE_NONE][0]['target_id'];
+      $project = $project_nid ? node_load($project_nid) : NULL;
+      if ($project) {
+	$form['og_node1'][LANGUAGE_NONE][0]['admin'][0]['target_id']
+	  ['#default_value'] = $project->title . ' (' . $project_nid . ')';
+      }
+    }
   }
 }
