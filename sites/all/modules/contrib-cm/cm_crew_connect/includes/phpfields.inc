@@ -21,7 +21,7 @@ function cm_crew_connect_project_alert_content($row) {
 function cm_crew_connect_sign_up_to_crew_link($row, $label) {
   global $user;
 
-  $label = $label ? $label : "Sign Up to Crew";
+  $label = $label ? $label : t("More Info");
   //FIXME ADD AS A REAL FORM VARIABLE
   $dashboard = 'user/'.$user->uid.'/cm_crew_connect';
 
