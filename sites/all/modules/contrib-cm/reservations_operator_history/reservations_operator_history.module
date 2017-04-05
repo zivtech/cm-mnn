@@ -220,7 +220,8 @@ function reservations_operator_history_reservation_field($row) {
 
 function reservations_operator_history_operator_field($row) {
   $user = user_load($row->uid);
-  $link = l($user->realname, 'user/'.$row->uid);
+  $name = (isset($user->realname) && $user->realname) ? $user->realname : $user->name;
+  $link = l($name, 'user/'.$row->uid);
   return $link;
 }
 
