@@ -609,9 +609,7 @@ function _civicrm_core_data(&$data, $enabled) {
       'pseudo method' => 'subTypePairs',
     ),
     'filter' => array(
-      'handler' => 'civicrm_handler_filter_pseudo_constant',
-      'pseudo class' => 'CRM_Contact_BAO_ContactType',
-      'pseudo method' => 'subTypePairs',
+      'handler' => 'civicrm_handler_filter_custom_option',
     ),
     'sort' => array(
       'handler' => 'views_handler_sort',
@@ -2931,19 +2929,13 @@ function _civicrm_core_data(&$data, $enabled) {
     ),
   );
 
-
   // Pull in all the Custom fields
   $query = "select id, extends, extends_entity_column_value, style from civicrm_custom_group where is_active = 1";
 
   $dao = CRM_Core_DAO::executeQuery($query);
 
-
   while ($dao->fetch()) {
-    // call getTree using $dao->id as groupID, $dao->extends as entityType, with possible subtypes in $dao->extends_entity_column_value
-    $extendsContactSubtype = (('Contact' === $dao->extends) && !empty($dao->extends_entity_column_value));
-    $contactSubtypes = !$extendsContactSubtype ? NULL : array_filter(explode(CRM_Core_DAO::VALUE_SEPARATOR, $dao->extends_entity_column_value));
-    $contactSubtypes = empty($contactSubtypes) ? NULL : $contactSubtypes;
-    $data = civicrm_views_custom_data_cache($data, $dao->extends, $dao->id, $contactSubtypes);
+    // Call getTree using $dao->id as groupID, $dao->extends as entityType, with possible subtypes in $dao->extends_entity_column_value
+    $data = civicrm_views_custom_data_cache($data, $dao->extends, $dao->id, $dao->extends_entity_column_value);
   }
 }
-
