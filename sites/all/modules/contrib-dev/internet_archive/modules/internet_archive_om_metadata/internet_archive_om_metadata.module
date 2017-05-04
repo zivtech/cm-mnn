@@ -1,0 +1,203 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function internet_archive_om_metadata_menu() {
+  $items['admin/config/internet_archive/om-metadata'] = array(
+    'title' => 'Open Media Metadata Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('internet_archive_om_metadata_admin_form'),
+    'access arguments' => array('administer internet_archive'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 17,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive om metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function internet_archive_om_metadata_admin_form($form, &$form_state) {
+  $form['internet_archive']['internet_archive_stationid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Station ID'),
+    '#default_value' => variable_get('internet_archive_stationid', ""),
+    '#description' => t('This id is currently used to prefix project ids on Internet Archive Items, but may have other purposes in the future. Since it is just an ID, please use something short and without any non-alphanumeric characters eg. DOM for Denver Open Media'),
+  );
+  $form['internet_archive']['internet_archive_include_omcollections'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Include uploaded files in the standard community collections?'),
+    '#default_value' => variable_get('internet_archive_include_omcollections', FALSE),
+    '#description' => t("The standard collections for media centers using this module are: openmediaproject, community_media and newsandpublicaffairs. It is recommended that you leave this checked to allow for increased distribution and promotion of your content via archive.org. <strong>NOTE that the additional collections will not be added until you change the primary collection setting at ") . l('main settings page', 'admin/config/internet_archive') . t(" to something other than test_collection.</strong>"),
+  );
+  $form['internet_archive']['internet_archive_rename_mpegs'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Rename any file ending in .mpeg to .mpg before transfer?'),
+    '#default_value' => variable_get('internet_archive_rename_mpegs', FALSE),
+    '#description' => t("Media centers looking to have a broadcast quality MPEG file derived by archive.org should check this box if you will be uploading MPEG files ending in the .mpeg extension. Archive.org does not generate broadcast MPEG2 derivations for files ending in .mpeg."),
+  );
+
+  return system_settings_form($form);
+}
+
+function internet_archive_om_rename_mpeg($filename) {
+  $newname = str_replace(".mpeg", ".mpg", $filename);
+  rename($filename, $newname);
+}
+
+/**
+ * Implements hook_internet_archive_metadata().
+ * TODO: add warning in documentation about most HTML being stripped
+ * TODO: add settings page for om_metadata, requiring a station ID
+ */
+function internet_archive_om_metadata_internet_archive_metadata($node = NULL, $filepath) {
+  $metadata = array();
+
+  //TODO: at this point, the mp2 issue may be DOM specific
+  $pathinfo = pathinfo($filepath);
+  if ($pathinfo['extension'] == 'mp2') {
+    $metadata['mediatype'] = 'movies';
+  }
+
+  if ($node) {
+    $metadata['title'] = $node->title;
+
+    if ($node->body) {
+      $metadata['description'] = $node->body;
+    }
+
+    //add a link back to source at the bottom of the description
+    global $base_url;
+    $source_url = $base_url . '/node/' . $node->nid;
+    if (variable_get('site_name', NULL)) {
+      $source_name = variable_get('site_name', NULL);
+    }
+    else {
+      $source_name = $source_url;
+    }
+    $metadata['description'] .= '<br /><br />More information about this show available at: ' . l($source_name, $source_url);
+
+  }
+
+  $metadata['date'] = date("Y-m-d", $node->created);
+
+  //grab all the om_show specific metadata fields
+  if ($node->type == 'om_show') {
+
+    if ($node->field_om_creator[0]['value']) {
+      $metadata['creator'] = $node->field_om_creator[0]['value'];
+    }
+
+    if ($node->field_om_genre[0]['value']) {
+      //here we set the pbcore_genre custom field, as well as the subject
+      //pbcore_genre gives us more consistant control over pulling content by genre
+      //subject enables people to browse by genre on archive.org
+      $metadata['pbcore-genre'] = $node->field_om_genre[0]['value'];
+      $metadata['subject'] = $node->field_om_genre[0]['value'];
+    }
+
+    if ($node->field_om_rating[0]['value']) {
+      $metadata['tv-parental-guidelines'] = $node->field_om_rating[0]['value'];
+    }
+
+    if ($node->field_om_locally_produced[0]['value']) {
+      $metadata['omp-locally-produced'] = $node->field_om_locally_produced[0]['value'];
+    }
+
+    if ($node->field_om_show_duration[0]['value']) {
+      $metadata['runtime'] = internet_archive_seconds_hhmmss($node->field_om_show_duration[0]['value']);
+      $metadata['duration'] = $node->field_om_show_duration[0]['value'];
+    }
+
+    //not geocoding since archive has no good way to deal with that yet
+    //storing this information anyways if available for future use.
+    if ($node->location['postal_code']) {
+      $metadata['zip'] = $node->location['postal_code'];
+    }
+    if ($node->location['latitude']) {
+      $metadata['latitude'] = $node->location['latitude'];
+    }
+    if ($node->location['longitude']) {
+      $metadata['longitude'] = $node->location['longitude'];
+    }
+
+    //store group/project information in case someone wants to pull all shows in a project.
+    if ($node->og_groups) {
+      foreach ($node->og_groups as $gid => $info) {
+        $group_id = $gid;
+      }
+
+      if ($prefix = variable_get('internet_archive_stationid', "")) {
+        $prefix = $prefix . '-';
+      }
+
+      $metadata['omp-project'] = $prefix . $group_id;
+    }
+  }
+
+  //include community collections in addition to the collection defined on the main page.
+  if (variable_get('internet_archive_include_omcollections', FALSE) && variable_get('internet_archive_collection', "test_collection") != "test_collection") {
+    $metadata['collection'] = explode(',', $default_collection);
+    $metadata['collection'][] = 'openmediaproject';
+    $metadata['collection'][] = 'community_media';
+    $metadata['collection'][] = 'newsandpublicaffairs';
+  }
+
+  $data = array($metadata);
+  return $data;
+}
+
+/**
+ * Implements hook_internet_archive().
+ */
+function internet_archive_om_metadata_internet_archive(&$archive_data, $op) {
+  if ($op == 'harvested' && variable_get('internet_archive_rename_mpegs', FALSE)) {
+    $pathinfo = pathinfo($archive_data['in_path']);
+    if ($pathinfo['extension'] == 'mpeg') {
+      if ($new_path = internet_archive_om_metadata_rename_mpeg($archive_data['in_path'])) {
+        $archive_data['in_path'] = $new_path;
+      }
+    }
+  }
+}
+
+/**
+ * Given a filepath, changes the file extension from .mpeg to .mpg
+ *
+ * This is only necessary for media centers looking to get consistent broadcast
+ * mpeg2 derivations of mpeg files uploaded. Archive.org will not produce an MPEG2
+ * derivative for a file ending in .mpeg
+ *
+ * @param $filepath
+ *   filepath
+ */
+function internet_archive_om_metadata_rename_mpeg($filepath) {
+  $field_info = internet_archive_filepath_field_info($filepath);
+
+  $new_filepath = str_replace('.mpeg', '.mpg', $filepath);
+  $new_filename = basename($new_filepath);
+
+  if ($field_info) {
+    switch ($field_info['table_info']['type']) {
+      case 'filefield':
+        rename($filepath, $new_filepath);
+        // TODO Please review the conversion of this statement to the D7 database API syntax.
+        /* db_query("UPDATE {files} SET filepath='%s', filename='%s' WHERE filepath='%s'", $new_filepath, $new_filename, $filepath) */
+        db_update('files')
+  ->fields(array(
+          'filepath' => $new_filepath,
+          'filename' => $new_filename,
+        ))
+  ->condition('filepath', $filepath)
+  ->execute();
+        return $new_filepath;
+        break;
+    }
+  }
+
+  return FALSE;
+}

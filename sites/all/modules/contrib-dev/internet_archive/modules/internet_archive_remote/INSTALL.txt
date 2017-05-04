@@ -1,0 +1,37 @@
+This SOAP service includes both a client, and server. The Drupal module serves as the client, 
+while the server is defined by everything in the "server" folder.
+
+BASIC INSTALLATION STEPS:
+1. Copy the entire server folder to your remote server, somewhere publically accessible
+2. In order for logging to work, make sure the permissions on the server directory allow the
+   apache user write access.
+3. Test that internet_archive_server.php is accessible by visiting it in your web browser, for 
+   instance if you placed it at the root of your server you would visit:
+   http://www.myserver.com/server/internet_archive_server.php
+4. You should get a blank screen when you visit that page -- if you receive an error about
+   your PHP version or CURL, you will need to lookup instructions for your distribution to
+   get them resolved before moving forward.
+5. Open up internet_archive_server.wsdl on your remote server, and edit the 4th to last line that
+   looks like: <soap:address location='http://www.yourserver.com/server/internet_archive_server.php'/>
+   Change the address to reflect your remote server's address, for example:
+   <soap:address location='http://www.pegstationx.com/server/internet_archive_server.php'/>
+6. Open up internet_archive_server.php on your remote server, and edit the Token line to
+   something unique. For instance in define("TOKEN", "your-token-here");, replace
+   "your-token-here" with a random string of characters and numbers like(but not): k34289ufjs8923
+   Note this token for later, as you will need to enter it in the module config shortly.
+7. Back in your Drupal installation, enable the Internet Archive Remote server module
+8. Visit admin/settings/internet_archive/remote and fill out the required fields
+9. If everything is correct, you should get a "Connection Test: Passed" message at the top
+
+OTHER IMPORTANT NOTES:
+The SoapService depends on PHP timeout settings. On both the client and server, you should set all
+of the following to infinite or fairly high values:
+max_execution_time
+max_input_time
+default_socket_timeout
+
+The requirements for the amount of time will depend on your internet connection and the size of files
+you are moving between your server/Archive.org. An example from one station transferring broadcast mpegs (2-8gb):
+max_execution_time 3000
+max_input_time 3000
+default_socket_timeout 1200

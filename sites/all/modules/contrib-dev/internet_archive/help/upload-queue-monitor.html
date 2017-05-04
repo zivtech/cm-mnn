@@ -1,0 +1,10 @@
+<div id="ia-help">
+Automated file uploads are handled through the use of an upload queue. This queue contains a list of files that have been harvested via the view you chose on the <a href="/admin/settings/internet_archive/queue">queue settings page</a>. Depending on your configuration, the queue may be populated whenever your <a href="http://drupal.org/cron">Drupal cron</a> is run, or if you have setup <a href="http://drupal.org/project/drush">Drush</a> it could be whenever "drush ia-transfer" is executed. These same processes control when items in the queue will start uploading.  If there are currently files queued for upload, a table will appear on this page with a row for each queued file. This will include:
+<ul>
+  <li><strong>Filename: </strong> the relative path to the file being transferred</li>
+  <li><strong>Filesize: </strong> filesize in bytes </li>
+  <li><strong>Node: </strong> The node id linked to the source node</li>
+  <li><strong>Queue Item ID: </strong> The internal queue id, only useful for debugging</li>
+  <li><strong>Claimed/Expiration: </strong> The status of the queue item, unclaimed means the transfer has not been started. Once the transfer is started the status will change to Claimed along with an expiration date indicating when the system will give up on the file transfer.</li>
+  <li><strong>Created: </strong> Date and time that the file was added to the queue.</li>
+</div>

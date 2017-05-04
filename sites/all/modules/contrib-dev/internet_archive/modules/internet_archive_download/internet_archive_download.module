@@ -1,0 +1,694 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function internet_archive_download_menu() {
+  $items['admin/config/internet_archive/download'] = array(
+    'title' => 'Download Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('internet_archive_download_form'),
+    'access arguments' => array('administer internet_archive'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 15,
+  );
+  $items['admin/structure/internet_archive/download-queue-monitor'] = array(
+    'title' => 'Download Queue Monitor',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('internet_archive_download_queue_add_remove_form'),
+    'access callback' => TRUE,
+    'access arguments' => array('administer internet_archive'),
+    'file' => 'includes/internet_archive_download_queue.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 16,
+  );
+  $items['admin/reports/internet_archive/downloads'] = array(
+    'title' => 'Downloads',
+    'page callback' => 'internet_archive_downloads_reports_downloads',
+    'access arguments' => array('administer internet_archive'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 50,
+  );
+
+  $items['ia/queue-download'] = array(
+    'title' => 'Internet Archive Queue Download',
+    'page callback' => internet_archive_download_node_queue_download,
+    'page arguments' => array(2),
+    'access arguments' => array('administer internet_archive'),
+    'type' => MENU_CALLBACK,
+    'weight' => 11,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive om metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function internet_archive_download_form($form, &$form_state) {
+  $form['internet_archive_download']['internet_archive_download_active'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Download and store derivatives locally from archive.org?'),
+    '#default_value' => variable_get('internet_archive_download_active', FALSE),
+    '#description' => t("Once this box is checked and the settings below are complete this module will initiate file transfers for the specified derivative for every derived file!"),
+  );
+
+  $form['internet_archive_download']['internet_archive_download_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Store file in the following field:'),
+    '#default_value' => variable_get('internet_archive_download_field', FALSE),
+    '#options' => internet_archive_field_select_options(),
+    '#multiple' => FALSE,
+  );
+
+  $extensions = internet_archive_derivative_extensions();
+  if (count($extensions) > 0) {
+    foreach ($extensions as $key => $info) {
+      $extension_options .= $key . ' ';
+    }
+  }
+  else {
+    $extension_options = 'Not Available';
+  }
+  $form['internet_archive_download']['internet_archive_download_extension'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Which derivative extension should be stored in the above field?'),
+    '#default_value' => variable_get('internet_archive_download_extension', ''),
+    '#description' => t("Depending on what type of file you are uploading, Archive.org generates a series of derivatives that you can choose from. Some examples could be: gif, mpeg, ogv, mp4, mp3, etc. Extensions found by looking at files you have already transfered include: ") . $extension_options,
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Instantiates a remote file object
+ * @see ../../includes/archive.php
+ */
+function internet_archive_download_new_remote_file() {
+  require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'internet_archive') . '/includes/archive.php';
+
+  $remoteFile = new remoteFile($url);
+
+  return $remoteFile;
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function internet_archive_download_cron_queue_info() {
+  if (!internet_archive_hour_check() || !internet_archive_day_check()) {
+    //setting the time range to negative causes the queue to skip execution
+    $time = -60;
+  }
+  else {
+    $time = variable_get('internet_archive_transfer_file', 7200);
+  }
+
+  $queues['internet_archive_download_file'] = array(
+    'worker callback' => 'internet_archive_download_file_worker',
+    'time' => $time,
+  );
+  return $queues;
+}
+
+/**
+ * Queue worker function to download files
+ *
+ * @param $filepath
+ *   A string containing a relative filepath
+ */
+function internet_archive_download_file_worker($url) {
+  $archive_info = internet_archive_download_archive_info($url);
+
+  $urlinfo = pathinfo($url);
+  $remoteFile = internet_archive_download_new_remote_file();
+  $remoteFile->url = $url;
+  $remoteFile->transfer_id = $archive_info['tid'];
+  $remoteFile->destinationPath = file_directory_temp() . '/' . $urlinfo['basename'];
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("UPDATE {internet_archive_download} SET status = '%s', start_date = %d WHERE url='%s'", 'downloading', REQUEST_TIME, $remoteFile->url) */
+  db_update('internet_archive_download')
+  ->fields(array(
+    'status' => 'downloading',
+    'start_date' => REQUEST_TIME,
+  ))
+  ->condition('url', $remoteFile->url)
+  ->execute();
+  internet_archive_invoke_internet_archive($archive_info, 'downloading');
+  $remoteFile->download();
+
+  if ($remoteFile->localPath && internet_archive_filesize($remoteFile->localPath) == internet_archive_download_remote_filesize($remoteFile->url)) {
+    $filesize = internet_archive_filesize($remoteFile->localPath);
+    // TODO Please review the conversion of this statement to the D7 database API syntax.
+    /* db_query("UPDATE {internet_archive_download} SET filesize = %d, local_path = '%s', status = '%s', end_date = %d WHERE url='%s'", $filesize, $remoteFile->localPath, 'downloaded', REQUEST_TIME, $remoteFile->url) */
+    db_update('internet_archive_download')
+  ->fields(array(
+      'filesize' => $filesize,
+      'local_path' => $remoteFile->localPath,
+      'status' => 'downloaded',
+      'end_date' => REQUEST_TIME,
+    ))
+  ->condition('url', $remoteFile->url)
+  ->execute();
+    $download = internet_archive_download_load_download($remoteFile->url);
+    internet_archive_download_save($download);
+    internet_archive_invoke_internet_archive($archive_info, 'downloaded');
+  }
+  else {
+    // TODO Please review the conversion of this statement to the D7 database API syntax.
+    /* db_query("UPDATE {internet_archive_download} SET status = '%s', end_date = %d, WHERE url='%s'", 'failed', REQUEST_TIME, $remoteFile->url) */
+    db_update('internet_archive_download')
+  ->fields(array(
+      'status' => 'failed',
+      'end_date' =>
+      REQUEST_TIME
+    '' =>
+    ))
+  ->condition('url', $remoteFile->url)
+  ->execute();
+    watchdog("ia_download", 'Download failed: <pre>' . print_r($remoteFile->response, TRUE) . '</pre>', $variables = array(), WATCHDOG_ERROR);
+    $archive_info['error'] = $remoteFile->response;
+    internet_archive_invoke_internet_archive($archive_info, 'download-failed');
+    return;
+  }
+}
+
+/**
+ * Test function, provide it with a url to a video and a node id to
+ * save it to.
+ *
+ * @param $url
+ *   A string containing a url to a remote file
+ * @param $nid
+ *   Node id of a node type configured for IA downloads
+ */
+function internet_archive_download_test($url, $nid) {
+  $urlinfo = pathinfo($url);
+
+  $remoteFile = internet_archive_download_new_remote_file();
+  $remoteFile->url = $url;
+  $remoteFile->destinationPath = file_directory_temp() . '/' . $urlinfo['basename'];
+  $remoteFile->download();
+
+  $download = array(
+    'nid' => $nid,
+    'local_path' => $remoteFile->destinationPath,
+  );
+
+  internet_archive_download_save($download);
+}
+
+
+/**
+ * Gets filesize using Archive.org S3 API for an item derivative
+ *
+ * Takes the full url to an internet archive item, looks it up in the internet_archive_download
+ * table to get the tid, then snags the bucket information for that item and returns filesize
+ * for the derivitive specified in the internet_archive_download settings page.
+ *
+ * @param $url
+ *   Full url to an archive.org file
+ */
+function internet_archive_download_remote_filesize($url) {
+  $download = internet_archive_download_load_download($url);
+  $item = internet_archive_load_data_tid($download['tid']);
+  $derivative = internet_archive_get_derivatives($item['item'], $extension = variable_get('internet_archive_download_extension', 'noextension'));
+  return $derivative['size'];
+}
+
+/**
+ * Loads a download object using a file url.
+ *
+ * @param $url
+ *   Full url to an archive.org file
+ */
+function internet_archive_download_load_download($url) {
+  $download = db_fetch_array(db_query("SELECT * FROM {internet_archive_download} WHERE url = :url", array(':url' => $url)));
+  if ($download) {
+    return $download;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Implements hook_internet_archive().
+ */
+function internet_archive_download_internet_archive(&$archive_data, $op) {
+  switch ($op) {
+    case 'derived':
+      if (variable_get('internet_archive_download_active', FALSE)) {
+        internet_archive_download_add_to_queue($archive_data);
+      }
+      break;
+
+    case 'download-queued':
+      $log_data = array(
+        'tid' => $archive_data['tid'],
+        'message' => t('Remote file queued for download from Archive.org to local'),
+        'message_data' => $archive_data,
+        'type' => ARCHIVE_LOG_NOTICE,
+      );
+      internet_archive_log($log_data);
+      break;
+
+    case 'downloading':
+      $log_data = array(
+        'tid' => $archive_data['tid'],
+        'message' => t('Remote file now downloading from Archive.org to local'),
+        'message_data' => $archive_data,
+        'type' => ARCHIVE_LOG_NOTICE,
+      );
+      internet_archive_log($log_data);
+      break;
+
+    case 'downloaded':
+      $log_data = array(
+        'tid' => $archive_data['tid'],
+        'message' => t('Remote file successfully downloaded from Archive.org to local'),
+        'message_data' => $archive_data,
+        'type' => ARCHIVE_LOG_NOTICE,
+      );
+      internet_archive_log($log_data);
+      break;
+
+    case 'download-failed':
+      $log_data = array(
+        'tid' => $archive_data['tid'],
+        'message' => t('Remote file download failed'),
+        'message_data' => $archive_data,
+        'type' => ARCHIVE_LOG_ERROR,
+      );
+      internet_archive_log($log_data);
+      break;
+
+  }
+}
+
+/**
+ * Adds a file to the internet archive download queue
+ *
+ * Takes an internet archive object or tid, figures out the file url based on
+ * internet archive download settings, and adds it to the queue for download
+ *
+ * @param $archive_data
+ *   An internet_archive array
+ */
+function internet_archive_download_add_to_queue($archive_data) {
+  if (module_exists('drupal_queue')) {
+    // Make sure drupal_queue is included
+    drupal_queue_include();
+
+    $download_queue = DrupalQueue::get('internet_archive_download_file');
+
+    $url = internet_archive_download_url($archive_data);
+
+    $download_queue->createItem($url);
+    // TODO Please convert this statement to the D7 database API syntax.
+    /* db_query("INSERT into {internet_archive_download} (tid, nid, url, status) VALUES (%d, %d, '%s', '%s')", $archive_data['tid'], $archive_data['nid'], $url, 'queued') */
+    NULL;
+    internet_archive_invoke_internet_archive($archive_data, 'download-queued');
+  }
+}
+
+/**
+ * Gets a file download url from an internet archive object
+ *
+ * Uses the settings defined in the admin/settings/internet_archive/download
+ *
+ * @param $item
+ *   An internet archive array
+ */
+function internet_archive_download_url($item) {
+  $extension = variable_get('internet_archive_download_extension', '');
+  $derivatives = unserialize($item['derivatives']);
+
+  foreach ($derivatives as $key => $info) {
+    $pathinfo = pathinfo($key);
+    if ($pathinfo['extension'] == $extension) {
+      $filename = $key;
+    }
+    //HACK FOR DOM: BRIAN... maybe temporary
+    elseif ($pathinfo['extension'] == 'mp2') {
+      $filename = $key;
+    }
+  }
+
+  if ($filename) {
+    $base_url = 'http://www.archive.org/download/';
+    $final_path = $base_url . $item['item'] . '/' . $filename;
+    return $final_path;
+  }
+
+  return FALSE;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function internet_archive_download_theme() {
+  return array(
+    'download_queue_items' => array(
+      'variables' => array('items' => NULL),
+    ),
+  );
+}
+
+/**
+ * Themes the archive.org download queue status display based on the queue example
+ * provided by rfay in the D7 examples module.
+ *
+ * @param $variables
+ *  An array containing queue items.
+ *
+ * @return $output
+ *   Themed table output if available, empty status if not.
+ */
+function theme_download_queue_items() {
+  // TODO Number of parameters in this theme funcion does not match number of parameters found in hook_theme.
+  $items = $variables['items'];
+  $rows = array();
+  foreach ($items as &$item) {
+    //grab file information
+    $url = unserialize($item['data']);
+    $node = internet_archive_download_get_node_from_url($url);
+
+    array_unshift($item, $url, l($node->nid, 'node/' . $node->nid));
+
+    if ($item['expire'] > 0) {
+      $item['expire'] = t("Claimed: expires %expire", array('%expire' => date('r', $item['expire'])));
+    }
+    else {
+      $item['expire'] = t('Unclaimed');
+    }
+    $item['created'] = date('r', $item['created']);
+    unset($item['data']);
+    $rows[] = $item;
+  }
+  if (!empty($rows)) {
+    $header = array(t('Url'), t('Node'), t('Queue Item ID'), t('Claimed/Expiration'), t('Created'));
+    $output = theme('table', array('header' => $header, 'rows' => $rows));
+    return $output;
+  }
+  else {
+    return t('There are no items currently in the queue.');
+  }
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_download_get_node_from_url($url) {
+  $nid = db_query("SELECT nid FROM {internet_archive_download} WHERE url = :url", array(':url' => $url))->fetchField();
+  if ($nid) {
+    return node_load($nid);
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Loads field chosen on the download settings page
+ *
+ * @return $fields
+ *   An array of field objects.
+ */
+function internet_archive_download_field() {
+  $fields = array();
+  if (($field_name = variable_get('internet_archive_download_field', FALSE))) {
+    $field = content_fields($field_name);
+  }
+  else {
+    return FALSE;
+  }
+
+  return $field;
+}
+
+/**
+ * Takes a download object and saves it to the field defined in settings
+ *
+ * @param $download
+ *   An internet_archive_download array
+ */
+function internet_archive_download_save($download) {
+  $field = internet_archive_download_field();
+
+  switch ($field['type']) {
+    case 'filefield':
+      internet_archive_download_save_filefield($download, $field);
+      break;
+
+    case 'emfield':
+      break;
+
+    case 'text':
+      break;
+  }
+}
+
+/**
+ * Saves a file to a filefield
+ *
+ * @param $download
+ *   An internet_archive_download array
+ * @param $field
+ *   A content field array
+ */
+function internet_archive_download_save_filefield($download, $field) {
+  $file = new stdClass();
+  $file->filename = basename($download['local_path']);
+  $file->filepath = $download['local_path'];
+  $file->filemime = file_get_mimetype($file->filename);
+  $file->filesize = internet_archive_filesize($file->filepath);
+
+  $file->uid = 1;
+  $file->status = FILE_STATUS_PERMANENT;
+  $file->timestamp = REQUEST_TIME;
+  drupal_write_record('files', $file);
+
+  $node = node_load($download['nid']);
+  $node->{$field['field_name']} = array(
+    array(
+      'fid' => $file->fid,
+      'title' => basename($file->filename),
+      'filename' => $file->filename,
+      'filepath' => $file->filepath,
+      'filesize' => $file->filesize,
+      'mimetype' => $file->filemime,
+      'data' => array(
+        'description' => basename($file->filename),
+      ),
+      'list' => 0,
+    ),
+  );
+
+  node_save($node);
+}
+
+/**
+ * Kicks off worker / download for internet_archive_queue
+ */
+function internet_archive_download_queue() {
+  require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'internet_archive_download') . '/includes/internet_archive_download_queue.inc';
+
+  //transfer files available in the queue
+  internet_archive_download_queue_drupal_queue_cron_run();
+}
+
+/**
+ * Generates an array of statistical data for statistics page
+ */
+function internet_archive_download_statistics() {
+  $statistics = array();
+  $count = db_query("SELECT COUNT(*) FROM {internet_archive_download}")->fetchField();
+
+  if ($count < 1) {
+    return FALSE;
+  }
+
+  $statistics['count'] = $count;
+  $statistics['total_mb'] = round(db_query("SELECT sum(filesize) FROM {internet_archive_download} WHERE status = :status", array(':status' => 'downloaded'))->fetchField() / 1024 / 1024);
+  $statistics['avg_transfer_rate'] = internet_archive_download_rate($limit = 0);
+  $statistics['avg_transfer_time'] = internet_archive_download_rate($limit = 0, 'time');
+  $statistics['transfer_rate_15'] = internet_archive_download_rate($limit = 15);
+  $statistics['transfer_time_15'] = internet_archive_download_rate($limit = 15, 'time');
+  $statistics['transfer_rate_50'] = internet_archive_download_rate($limit = 50);
+  $statistics['transfer_time_50'] = internet_archive_download_rate($limit = 50, 'time');
+
+  return $statistics;
+}
+
+/**
+ * Generates a list of download rows for recent transfers on statistics page
+ */
+function internet_archive_download_downloads_table($limit = 10) {
+  $result = pager_query("SELECT * FROM {internet_archive_download} ORDER BY start_date DESC", $limit);
+  $header = array('ID', 'Node', 'Filename', 'Filesize (MB)', 'Start', 'Finish', 'Time(min)<br />Rate(Mb/sec)', 'Status', 'Log');
+  $rows = array();
+
+  while ($download_data = db_fetch_array($result)) {
+    if ($download_data['end_date'] > 0 && $download_data['start_date'] > 0) {
+      $transfer_time = round((($download_data['end_date'] - $download_data['start_date']) / 60), 2);
+    }
+    else {
+      $transfer_time = 'N/A';
+    }
+
+    if ($download_data['filesize'] > 0) {
+      $filesize = round(($download_data['filesize'] / 1024 / 1024), 2);
+    }
+    else {
+      $filesize = 'N/A';
+    }
+
+    if ($download_data['filesize'] > 0 && $download_data['end_date'] > 0 && $download_data['start_date'] > 0) {
+      $transfer_rate = $download_data['filesize'] * 8 / 1000 / 1000;
+      $transfer_rate = $transfer_rate / ($download_data['end_date'] - $download_data['start_date']);
+      $transfer_rate = round($transfer_rate, 4);
+    }
+    else {
+      $transfer_rate = 'N/A';
+    }
+
+    if (strlen(basename($download_data['local_path'])) > 40) {
+      $filename = substr(basename($download_data['local_path']), 0, 40) . '...';
+    }
+    else {
+      $filename = basename($download_data['local_path']);
+    }
+
+    $rows[] = array(l($download_data['tid'], 'http://www.archive.org/details/' . $download_data['item']), l($download_data['nid'], 'node/' . $download_data['nid']), $filename, $filesize, $download_data['start_date'], $download_data['end_date'], $transfer_time . '<br />' . $transfer_rate, $download_data['status'], l('View', 'ia/log/' . $download_data['tid']));
+  }
+
+  $rows = internet_archive_format_dates($rows, $limit);
+  $table = theme('table', array('header' => $header, 'rows' => $rows));
+  // TODO Please change this theme call to use an associative array for the $variables parameter.
+  $table .= theme('pager');
+
+  return $table;
+}
+
+/**
+ * Generates the table for the downloads section of statistics page
+ *
+ * @param $statistics
+ *   An array of statistical information generated by internet_archive_download_statistics
+ */
+function internet_archive_download_table($statistics) {
+  $header = array('Stat', 'Value');
+  $rows = array();
+  $rows[] = array('Total Data Downloaded', $statistics['total_mb'] . ' MB');
+  $rows[] = array('Transfer Rate Average (overall)', $statistics['avg_transfer_rate'] . ' Mb/sec | ' . $statistics['avg_transfer_time'] . ' min/file');
+  $rows[] = array('Transfer Rate Average (last 15 transfers)', $statistics['transfer_rate_15'] . ' Mb/sec | ' . $statistics['transfer_time_15'] . ' min/file');
+  $rows[] = array('Transfer Rate Average (last 50 transfers)', $statistics['transfer_rate_50'] . ' Mb/sec | ' . $statistics['transfer_time_50'] . ' min/file');
+
+  $table = theme('table', array('header' => $header, 'rows' => $rows));
+  return $table;
+}
+
+/**
+ * Returns transfer rates for recent downloads
+ *
+ * @param $limit
+ *   integer, number of downloads to analyze
+ * @param $format
+ *   string, rate or time
+ */
+function internet_archive_download_rate($limit = 0, $format = 'rate') {
+  $total_seconds = 0;
+  $total_bytes = 0;
+  $counter = 0;
+
+  $result = db_query("SELECT * FROM {internet_archive_download} WHERE status = :status ORDER BY tid DESC", array(':status' => 'downloaded'));
+  while ($archive_data = db_fetch_array($result)) {
+    if ($archive_data['start_date'] != 0 && $archive_data['end_date'] != 0 && $archive_data['filesize'] != 0) {
+      $total_bytes = $total_bytes + $archive_data['filesize'];
+      $total_seconds = $total_seconds + ($archive_data['end_date'] - $archive_data['start_date']);
+      $counter++;
+    }
+
+    if ($limit != 0 && $counter >= $limit) {
+      break;
+    }
+  }
+
+  switch ($format) {
+    case 'rate':
+      if ($total_bytes && $total_seconds > 0) {
+        $bits = $total_bytes * 8;
+        $mbits = $bits / 1000 / 1000;
+        $mbits_sec = $mbits / $total_seconds;
+        return round($mbits_sec, 4);
+      }
+      else {
+        return 'N/A';
+      }
+      break;
+
+    case 'time':
+      if ($total_seconds > 0) {
+        $minutes = $total_seconds / $counter / 60;
+        return round($minutes, 2);
+      }
+      else {
+        return 'N/A';
+      }
+      break;
+  }
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_download_archive_info($url) {
+
+  $archive_info = db_fetch_array(db_query("SELECT * FROM {internet_archive} JOIN {internet_archive_download} ON internet_archive_download.tid=internet_archive.tid WHERE internet_archive_download.url = :internet_archive_download.url", array(':internet_archive_download.url' => $url)));
+
+  if ($archive_info) {
+    return $archive_info;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+function internet_archive_downloads_reports_downloads() {
+  $table = internet_archive_download_downloads_table();
+  return $table;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_download_node_queue_download($tid) {
+  if ($archive_data = internet_archive_load_data_tid($tid)) {
+
+    //Remove any previous download information so we can start over clean
+    $url = internet_archive_download_url($archive_data);
+    if ($url) {
+      // TODO Please review the conversion of this statement to the D7 database API syntax.
+      /* db_query("DELETE FROM {internet_archive_download} WHERE url='%s'", $url) */
+      db_delete('internet_archive_download')
+  ->condition('url', $url)
+  ->execute();
+    }
+
+    internet_archive_download_add_to_queue($archive_data);
+    drupal_set_message('File queued for download.');
+    drupal_goto('node/' . $archive_data['nid'] . '/ia');
+  }
+  else {
+    drupal_set_message('No files found for this source, please contact an administrator!');
+    drupal_goto('node/' . $archive_data['nid'] . '/ia');
+  }
+}

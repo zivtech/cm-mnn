@@ -1,0 +1,140 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function internet_archive_remote_menu() {
+  $items['admin/config/internet_archive/remote'] = array(
+    'title' => 'Remote Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('internet_archive_remote_admin_form'),
+    'access arguments' => array('administer internet_archive'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 15,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive om metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function internet_archive_remote_admin_form($form, &$form_state) {
+  $message = internet_archive_remote_test_connection();
+  if ($message == 'archive-server-authenticated') {
+    $status = '<div style="background-color:PaleGreen; padding:5px;"><strong>Connection Test: Passed :)</strong></div>';
+  }
+  else {
+    $status = '<div style="background-color:Khaki; padding:5px;"><strong>Connection Test: Failed :(</strong><br /> Reason: ' . $message . '</div>';
+  }
+
+  $form['internet_archive']['internet_archive_remote_test'] = array(
+    '#type' => 'markup',
+    '#value' => $status,
+  );
+
+  $form['internet_archive']['internet_archive_remote'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use remote server as file repository?'),
+    '#default_value' => variable_get('internet_archive_remote', FALSE),
+    '#description' => t("If enabled, all transfer commands will be passed off to a remote server following the settings below."),
+  );
+  $form['internet_archive']['internet_archive_server_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('URL to internet_archive_server.wsdl'),
+    '#default_value' => variable_get('internet_archive_server_url', FALSE),
+    '#description' => t("Enter the URL to the internet_archive_server.wsdl file, ex: http://www.yoursite.com/internet_archive/internet_archive_server.wsdl"),
+    '#required' => TRUE,
+  );
+  $form['internet_archive']['internet_archive_remote_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Access key set in internet_archive_server.php'),
+    '#default_value' => variable_get('internet_archive_remote_key', FALSE),
+    '#description' => t("This key is used to authenticate with the remote server."),
+    '#required' => TRUE,
+  );
+  $form['internet_archive']['internet_archive_remote_prefix'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Prepend text to the beginning of stored paths'),
+    '#default_value' => variable_get('internet_archive_remote_prefix', FALSE),
+    '#description' => t("Prepend text to the beginning of stored paths"),
+  );
+  $form['internet_archive']['internet_archive_remote_append'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Append text to the end of stored paths'),
+    '#default_value' => variable_get('internet_archive_remote_append', FALSE),
+    '#description' => t("Append text to the end of stored paths"),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_remote_new_client() {
+  //TODO: remove when done testing
+  ini_set("soap.wsdl_cache_enabled", "0"); // disabling WSDL cache
+
+  //Get the location of the external wsdl file
+  $soap_url = variable_get('internet_archive_server_url', NULL);
+
+  //Initialize our SOAP client
+  try {
+    $client = new SoapClient($soap_url);
+  }
+  catch (Exception $e) {
+    return $e->getMessage();
+  }
+
+  //Build header, including MD5 hash of token
+  $key = md5(variable_get('internet_archive_remote_key', FALSE));
+  $header = new SoapHeader('http://www.drupal.org/project/internet_archive', 'token-' . $key);
+  $client->__setSoapHeaders($header);
+
+  return $client;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_remote_test_connection() {
+  $client = internet_archive_remote_new_client();
+  if (!is_object($client)) {
+    //return the error message
+    return $client;
+  }
+
+  $response = $client->testConnection();
+  return $response;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_remote_put_object($filepath, $bucket, $uri, $headers, $mimetype) {
+
+  $prefix = variable_get('internet_archive_remote_prefix', FALSE);
+  $append = variable_get('internet_archive_remote_append', FALSE);
+  $remote_filepath = $prefix . $filepath . $append;
+
+  $settings = array(
+    'filepath' => $remote_filepath,
+    'bucket' => $bucket,
+    'uri' => $uri,
+    'headers' => $headers,
+    'mimetype' => $mimetype,
+    'skey' => variable_get('internet_archive_skey', NULL),
+    'key' => variable_get('internet_archive_key', NULL),
+  );
+
+  $client = internet_archive_remote_new_client();
+
+  $response = $client->putObject(serialize($settings));
+  $response = unserialize($response);
+}

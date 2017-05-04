@@ -1,0 +1,308 @@
+<?php
+
+/**
+ * @file
+ * Install file for Internet Archive Module.
+ */
+
+/**
+ * Check that the curl extension exists for PHP.
+ */
+function internet_archive_requirements($phase) {
+  $requirements = array();
+  // Ensure translations don't break at install time
+  $t = get_t();
+
+  if ($phase == 'runtime') {
+    // Check for CURL
+    $curl = extension_loaded('curl');
+    $requirements['internet_archive'] = array(
+      'title' => $t('PHP Curl Support'),
+      'description' => $t('Internet Archive API requires PHP to have the <a href="@url">Curl libraries</a>. If your version of PHP does not have it, check with your system administrator.', array('@url' => 'http://php.net/manual/en/book.curl.php')),
+      'value' => $curl ? $t('Enabled') : t('Not found'),
+      'severity' => $curl ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+    );
+  }
+
+  return $requirements;
+}
+
+
+/**
+ * Implements hook_install().
+ */
+function internet_archive_install() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_install_schema('internet_archive')
+}
+
+
+/**
+ * Implements hook_uninstall().
+ */
+function internet_archive_uninstall() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_uninstall_schema('internet_archive')
+}
+
+/**
+ * Implements hook_schema().
+ */
+function internet_archive_schema() {
+  $schema['internet_archive'] = array(
+    'description' => 'Holds file data for files stored at the internet archive.',
+    'fields' => array(
+      'tid' => array(
+        'type' => 'serial',
+        'description' => 'Transfer ID',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'in_path' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Original file path',
+      ),
+      'filename' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Filename',
+      ),
+      'filesize' => array(
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+        'description' => 'Filesize',
+      ),
+      'archive_url' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Path',
+      ),
+      'md5' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'MD5 hash of file',
+      ),
+      'item' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Item / Bucket',
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Transfer Status',
+      ),
+      'derivatives' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'All available derivative information',
+      ),
+      'attempts' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'transfer_initiated' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer start date as unix timestamp',
+      ),
+      'date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer finish date as unix timestamp',
+      ),
+    ),
+    'indexes' => array(
+      'tid' => array('tid'),
+    ),
+    'primary key' => array('in_path'),
+  );
+
+  $schema['internet_archive_log'] = array(
+    'description' => 'Holds log entries for file transfer actions',
+    'fields' => array(
+      'lid' => array(
+        'type' => 'serial',
+        'description' => 'Log ID',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'message' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message',
+      ),
+      'message_data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message data',
+      ),
+      'type' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Log entry date',
+      ),
+    ),
+    'indexes' => array(
+      'lid' => array('lid'),
+    ),
+    'primary key' => array('lid'),
+  );
+
+  // cache schema
+  $schema['cache_internet_archive'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_internet_archive']['description'] = 'Cache table for the Internet Archive module to store transfer data';
+
+  return $schema;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_1() {
+  $ret = array();
+  db_add_field('internet_archive', 'attempts', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_6100() {
+  $ret = array();
+  db_add_field('internet_archive', 'transfer_initiated', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Transfer start date as unix timestamp'));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_6101() {
+  $ret = array();
+  db_add_field('internet_archive', 'filesize', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Filesize'));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_6102() {
+  $ret = array();
+  db_add_field('internet_archive', 'derivatives', array('type' => 'text', 'not null' => FALSE, 'size' => 'big', 'serialize' => TRUE, 'description' => 'All available derivative information'));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_6103() {
+  $ret = array();
+  db_change_field('internet_archive', 'filesize', 'filesize', array('type' => 'int', 'size' => 'big', 'not null' => TRUE, 'description' => 'Filesize'));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_update_6104() {
+  $schema['internet_archive_log'] = array(
+    'description' => 'Holds log entries for file transfer actions',
+    'fields' => array(
+      'lid' => array(
+        'type' => 'serial',
+        'description' => 'Log ID',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'message' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message',
+      ),
+      'message_data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message data',
+      ),
+      'type' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Log entry date',
+      ),
+    ),
+    'indexes' => array(
+      'lid' => array('lid'),
+    ),
+    'primary key' => array('lid'),
+  );
+
+  $ret = array();
+  db_create_table('internet_archive_log', $schema['internet_archive_log']);
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}

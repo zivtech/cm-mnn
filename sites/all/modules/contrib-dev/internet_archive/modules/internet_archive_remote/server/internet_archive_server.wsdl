@@ -1,0 +1,56 @@
+<?xml version ='1.0' encoding ='UTF-8' ?> 
+<definitions name='InternetArchive' 
+  targetNamespace='http://ia.civicpixel.com/InternetArchive' 
+  xmlns:tns=' http://ia.civicpixel.com/InternetArchive ' 
+  xmlns:soap='http://schemas.xmlsoap.org/wsdl/soap/' 
+  xmlns:xsd='http://www.w3.org/2001/XMLSchema' 
+  xmlns:soapenc='http://schemas.xmlsoap.org/soap/encoding/' 
+  xmlns:wsdl='http://schemas.xmlsoap.org/wsdl/' 
+  xmlns='http://schemas.xmlsoap.org/wsdl/'> 
+
+<message name='getArchiveRequest'> 
+  <part name='request' type='xsd:string'/> 
+</message> 
+<message name='getArchiveResponse'> 
+  <part name='Result' type='xsd:string'/> 
+</message> 
+
+<portType name='InternetArchivePortType'> 
+  <operation name='putObject'> 
+    <input message='tns:getArchiveRequest'/> 
+    <output message='tns:getArchiveResponse'/> 
+  </operation> 
+  <operation name='testConnection'> 
+    <output message='tns:getArchiveResponse'/> 
+  </operation> 
+</portType> 
+
+<binding name='InternetArchiveBinding' type='tns:InternetArchivePortType'> 
+  <soap:binding style='rpc' 
+    transport='http://schemas.xmlsoap.org/soap/http'/> 
+  <operation name='putObject'> 
+    <soap:operation soapAction='urn:xmethods-delayed-quotes#putObject'/> 
+    <input> 
+      <soap:body use='encoded' namespace='urn:xmethods-delayed-quotes' 
+        encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'/> 
+    </input> 
+    <output> 
+      <soap:body use='encoded' namespace='urn:xmethods-delayed-quotes' 
+        encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'/> 
+    </output> 
+  </operation> 
+  <operation name='testConnection'> 
+    <soap:operation soapAction='urn:xmethods-delayed-quotes#testConnection'/> 
+    <output> 
+      <soap:body use='encoded' namespace='urn:xmethods-delayed-quotes' 
+        encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'/> 
+    </output> 
+  </operation> 
+</binding> 
+
+<service name='InternetArchiveService'> 
+  <port name='InternetArchivePort' binding='InternetArchiveBinding'> 
+    <soap:address location='http://www.yourserver.org/server/internet_archive_server.php'/> 
+  </port> 
+</service> 
+</definitions>

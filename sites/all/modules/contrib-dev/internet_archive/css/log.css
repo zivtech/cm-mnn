@@ -1,0 +1,10 @@
+table.ia-transfer-log td { padding: 5px; }
+
+table.ia-transfer-log tr.ia-notice td.ia-type { background-color: #E1F1C0; }
+table.ia-transfer-log tr.ia-warning td.ia-type { background-color: #FFFAC0; }
+table.ia-transfer-log tr.ia-error td.ia-type { background-color: #FFBBBA; }
+
+table.ia-transfer-log li.krumo-footnote { display: none; }
+
+table.ia-transfer-log div.krumo-root { margin: 0 0 5px 0; }
+

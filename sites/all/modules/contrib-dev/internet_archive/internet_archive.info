@@ -1,0 +1,15 @@
+name = Internet Archive
+package = Internet Archive
+description = Provides integration between Drupal files and Archive.org
+core = 7.x
+
+
+files[] = includes/archive.php
+
+configure = admin/config/internet_archive
+; Information added by drupal.org packaging script on 2013-10-31
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "internet_archive"
+datestamp = "1383180718"
+

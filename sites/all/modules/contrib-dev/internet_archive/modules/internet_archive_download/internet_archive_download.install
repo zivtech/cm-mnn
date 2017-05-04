@@ -1,0 +1,103 @@
+<?php
+
+/**
+ * @file
+ * Install file for Internet Archive Download Module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function internet_archive_download_install() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_install_schema('internet_archive_download')
+}
+
+
+/**
+ * Implements hook_uninstall().
+ */
+function internet_archive_download_uninstall() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_uninstall_schema('internet_archive_download')
+}
+
+/**
+ * Implements hook_schema().
+ */
+function internet_archive_download_schema() {
+  $schema['internet_archive_download'] = array(
+    'description' => 'Holds file data for files downloaded from the internet archive.',
+    'fields' => array(
+      'did' => array(
+        'type' => 'serial',
+        'description' => 'Download ID',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'url' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Original file path',
+      ),
+      'local_path' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Path',
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Transfer Status',
+      ),
+      'attempts' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'start_date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer start date as unix timestamp',
+      ),
+      'end_date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer finish date as unix timestamp',
+      ),
+    ),
+    'indexes' => array(
+      'tid' => array('did'),
+    ),
+    'primary key' => array('url'),
+  );
+
+  return $schema;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function internet_archive_download_update_6100() {
+  $ret = array();
+  db_add_field('internet_archive_download', 'filesize', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => 'Filesize'));
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}
+

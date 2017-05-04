@@ -1,0 +1,10 @@
+
+/**
+ * @file
+ * CSS definitions for mm_S3
+ */
+ 
+ /* Hide the perms fieldset */
+ .mm_archive_s3_perm_roles {
+   display: none;
+ }
