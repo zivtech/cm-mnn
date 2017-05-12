@@ -370,8 +370,10 @@ function mnn_project_autocomplete_callback($type, $field_name, $entity_type,
 }
 
 function mnn_project_node_view($node, $view_mode, $langcode) {
+  global $user;
+  $type = $node->type;
+  if ($type == 'cm_project' && user_access('delete any cm_project content')) {
 
-  if ($node->type == 'cm_project') {
       $cancel_project_link = l(t('Cancel Project'), 'admin/projects/cancel/'.
 			       $node->nid);
 
@@ -407,4 +409,47 @@ function mnn_project_active_series_spreadshet_phone_field($row) {
   }                                               
 
   return $ret;
+}
+
+
+function mnn_project_menu_alter(&$items) {
+  $items['node/%node/group']['access callback'] = 
+    'mnn_project_edit_project_access';
+
+}
+
+/**
+ * Callback to override OG settings
+ */
+function mnn_project_edit_project_access(){
+  return user_access('edit own cm_project content');
+}
+
+function mnn_project_node_access($node, $op, $account) {
+
+  $type = is_string($node) ? $node : $node->type;
+
+  if ($type == 'cm_project' && $op == 'update') {
+    if (user_access('edit any ' . $type . ' content', $account) ||
+	(user_access('edit own ' . $type . ' content', $account) &&
+	 ($account->uid == $node->uid))) {
+      return NODE_ACCESS_ALLOW;
+    }
+    else {
+      return NODE_ACCESS_DENY;
+    }
+  }
+  
+  if ($type == 'cm_project' && $op == 'delete') {
+    if (user_access('delete any ' . $type . ' content', $account) ||
+	(user_access('delete own ' . $type . ' content', $account) &&
+	 ($account->uid == $node->uid))) {
+      return NODE_ACCESS_ALLOW;
+    }
+    else {
+      return NODE_ACCESS_DENY;
+    }
+  }
+  
+  return NODE_ACCESS_IGNORE;
 }

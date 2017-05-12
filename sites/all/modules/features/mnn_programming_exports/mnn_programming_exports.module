@@ -55,7 +55,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'MNN Probel/Morpheus',
 	  'description' => 'MNN Probel/Morpheus',
 	  'page callback' => 'mnn_programming_exports_probel_morpheus_xml',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   ////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Media Load Log',
 	  'description' => 'Media Load Log',
 	  'page callback' => 'mnn_programming_exports_load_log',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/load-log/download'] = 
@@ -73,7 +73,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Required Media Log',
 	  'description' => 'Required Media Log',
 	  'page callback' => 'mnn_programming_exports_load_log_download',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/required-log'] = 
@@ -81,7 +81,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Required Media Log',
 	  'description' => 'Required Media Log',
 	  'page callback' => 'mnn_programming_exports_required_log',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/required-log/download'] = 
@@ -89,7 +89,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Required Media Log',
 	  'description' => 'Required Media Log',
 	  'page callback' => 'mnn_programming_exports_required_log_download',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/tvguide'] = 
@@ -97,7 +97,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'TV Guide',
 	  'description' => 'TV Guide',
 	  'page callback' => 'mnn_programming_exports_tvguide',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/tvguide/download'] = 
@@ -105,7 +105,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'TV Guide',
 	  'description' => 'TV Guide',
 	  'page callback' => 'mnn_programming_exports_tvguide_download',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   ////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Pebble Beach',
 	  'description' => 'Pebble Beach',
 	  'page callback' => 'mnn_programming_exports_pebble_beach',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/shows/pebble-beach/download'] = 
@@ -123,7 +123,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Pebble Beach',
 	  'description' => 'Pebble Beach',
 	  'page callback' => 'mnn_programming_exports_pebble_beach_download',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   ////////////////////////////////////////////////////////////////////////////
@@ -133,11 +133,11 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Project Letters and Labels',
 	  'description' => 'Project Letters and Labels',
 	  'page callback' => 'mnn_programming_exports_quarter_pdfs_form',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 
 	  'page callback' => 'drupal_get_form',
 	  'page arguments'=>array('mnn_programming_exports_quarter_pdfs_form'),
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	//'access callback' => 'mnn_programming_exports_project_label_access',
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
@@ -146,7 +146,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Project Letters and Labels',
 	  'description' => 'Project Letters and Labels',
 	  'page callback' => 'mnn_programming_exports_letters_pdf',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/projects/pdfs/labels/address/download'] = 
@@ -154,7 +154,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Project Letters and Labels',
 	  'description' => 'Project Letters and Labels',
 	  'page callback' => 'mnn_programming_exports_address_labels_pdf',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['admin/projects/pdfs/labels/show/download'] = 
@@ -162,7 +162,7 @@ function mnn_programming_exports_menu() {
 	  'title' => 'Project Letters and Labels',
 	  'description' => 'Project Letters and Labels',
 	  'page callback' => 'mnn_programming_exports_show_labels_pdf',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   ////////////////////////////////////////////////////////////////////////////
@@ -175,7 +175,7 @@ function mnn_programming_exports_menu() {
 	  'page callback' => 'drupal_get_form',
 	  'page arguments'=>array('mnn_programming_exports_quarter_pdfs_form',
 				  1),
-	  //'access arguments' => array('access content'),
+	  //'access arguments' => array('create cm_airing entities'),
 	  'access callback' => 'mnn_programming_exports_project_label_access',
 	  'access arguments' => array(1),
 	  'type' => MENU_LOCAL_TASK,
@@ -187,7 +187,7 @@ function mnn_programming_exports_menu() {
 	  //the following callback function is in show_label.inc of this dir
 	  'page callback' => 'mnn_programming_exports_project_show_labels_pdf',
 	  'page arguments'=>array(1),
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
 
@@ -198,7 +198,7 @@ function mnn_programming_exports_menu() {
 	  //the following callback function is in show_label.inc of this dir
 	  'page callback' => 'mnn_programming_exports_project_letter_pdf',
 	  'page arguments'=>array(1),
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   $items['node/%node/pdfs/labels/address/download'] = 
@@ -209,7 +209,7 @@ function mnn_programming_exports_menu() {
 	  'page callback' => 
 	    'mnn_programming_exports_project_address_label_pdf',
 	  'page arguments'=>array(1),
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('create cm_airing entities'),
 	  'type' => MENU_NORMAL_ITEM,
 	  ); 
   ////////////////////////////////////////////////////////////////////////////
@@ -221,7 +221,7 @@ function mnn_programming_exports_menu() {
 	  //the following callback function is in show_label.inc of this dir
 	  'page callback' => 'mnn_programming_exports_show_label_single',
 	  'page arguments' => array(1),
-	  //'access arguments' => array('access content'),
+	  //'access arguments' => array('create cm_airing entities'),
 	  'access callback' => 'mnn_programming_exports_single_label_access',
 	  'access arguments' => array(1),
 	  'type' => MENU_LOCAL_TASK,
@@ -232,7 +232,7 @@ function mnn_programming_exports_menu() {
 function mnn_programming_exports_single_label_access($node) {
 
   if($node->type == 'cm_show') {
-    return user_access('access content');
+    return user_access('create cm_airing entities');
   }
   return FALSE;
 }
@@ -241,7 +241,7 @@ function mnn_programming_exports_single_label_access($node) {
 function mnn_programming_exports_project_label_access($node) {
 
   if($node->type == 'cm_project') {
-    return user_access('access content');
+    return user_access('create cm_airing entities');
   }
   return FALSE;
 }
