@@ -81,3 +81,36 @@ function mnn_reservations_form_alter(&$form, &$form_state, $form_id) {
     }
   }
 }
+
+function mnn_reservations_node_access($node, $op, $account) {
+  if (is_string($node) || !$node->nid) {
+    return NODE_ACCESS_IGNORE;
+  }
+
+  $inventory_tid =
+    mnn_reservations_get_single_field_value($node, 'field_reservations_inventory', 'tid');
+
+  if ($inventory_tid && !user_access('manage reservations inventory')) {
+      return NODE_ACCESS_DENY;
+  }
+  
+  return NODE_ACCESS_IGNORE;
+}
+
+
+/**
+  * Helper function to get a single value off of a entity 
+ */
+function mnn_reservations_get_single_field_value($entity, 
+						 $field_name,
+						 $index = 'value') {
+  if (isset($entity->{$field_name})) {
+    $field = $entity->{$field_name};
+    if (isset($field[LANGUAGE_NONE]) &&
+        isset($field[LANGUAGE_NONE][0]) &&
+        isset($field[LANGUAGE_NONE][0][$index])) {
+      return $field[LANGUAGE_NONE][0][$index];
+    }
+  }
+  return NULL;
+}
