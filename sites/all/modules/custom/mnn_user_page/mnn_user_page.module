@@ -18,9 +18,20 @@ function mnn_user_page_user_view_alter(&$build) {
       $build['urls']['#markup'];
   }
   else {
-    unset($build['Verification Info']);	
-  }
+    unset($build['Verification Info']);
+    $value = $build['name_and_address']['name_and_address']['#value'];
+    $markup = $build['name_and_address']['name_and_address']['#markup'];
+    $search = '<span class="user-page-link" id="user-page-profile-Nam" ><span class="user-page-bullet">&raquo;</span> <a href="/user/';
+       
+    $index = strrpos($value, $search);
+    $value = substr($value, 0, ($index)); 
+    
+    $index = strrpos($markup, $search);
+    $markup = substr($markup, 0, ($index)); 
 
+    $build['name_and_address']['name_and_address']['#value'] = $value;
+    $build['name_and_address']['name_and_address']['#markup'] = $markup;
+  }
 }
 
 /**
