@@ -29,6 +29,12 @@ function mnn_user_page_user_view_alter(&$build) {
     $index = strrpos($markup, $search);
     $markup = substr($markup, 0, ($index)); 
 
+    $new = t("Please notify Media Education staff if you have changed address, or if this ".
+	     "information is out of date: 212-757-2670 x 312 or education@mnn.org");
+
+    $value .= "<br/>" . $new;
+    $markup .= "<br/>" . $new;
+    
     $build['name_and_address']['name_and_address']['#value'] = $value;
     $build['name_and_address']['name_and_address']['#markup'] = $markup;
   }
