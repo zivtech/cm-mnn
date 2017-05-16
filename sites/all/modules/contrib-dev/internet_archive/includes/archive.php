@@ -244,117 +244,166 @@ class S3 {
   * @param string $location Set as "EU" to create buckets hosted in Europe
   * @return boolean
   */
-  public static function putBucket($bucket, $metaHeaders = NULL, $location = false) {
+  public static function putBucket($bucket, $metaHeaders = NULL,
+				   $location = false) {
+    dsm('S3 putBucket');
     $rest = new S3Request('PUT', $bucket, '');
-
-    //TODO: remove irrelevant location information
-      $dom = new DOMDocument;
-      $createBucketConfiguration = $dom->createElement('CreateBucketConfiguration');
-      $locationConstraint = $dom->createElement('LocationConstraint', strtoupper($location));
-      $createBucketConfiguration->appendChild($locationConstraint);
-      $dom->appendChild($createBucketConfiguration);
-      $rest->data = $dom->saveXML();
-      $rest->size = strlen($rest->data);
-      $rest->setHeader('Content-Type', 'application/xml');
+    dsm($rest, 'S3 rest');
     
-    //brian@openmediafoundation.org: modification, archive expects content-length
+    //TODO: remove irrelevant location information
+    $dom = new DOMDocument;
+    $createBucketConfiguration =
+      $dom->createElement('CreateBucketConfiguration');
+
+    dsm($createBucketConfiguration, 'crate bucket config');
+    
+    $locationConstraint =
+      $dom->createElement('LocationConstraint', strtoupper($location));
+    
+    $createBucketConfiguration->appendChild($locationConstraint);
+    $dom->appendChild($createBucketConfiguration);
+    $rest->data = $dom->saveXML();
+    $rest->size = strlen($rest->data);
+    $rest->setHeader('Content-Type', 'application/xml');
+    
+    //brian@openmediafoundation.org: modification, archive expects
+    //content-length
     $rest->setHeader('Content-Length', strlen($rest->data)); 
     if ($metaHeaders) {
       foreach ($metaHeaders as $h => $v) $rest->setAmzHeader($h, $v);
     }
-    
+    dsm($rest, 'S3 rest before response');
     $rest = $rest->getResponse();
-
+    dsm($rest, 'S3 rest after response');
+    dsm($rest->code, 'rest code');
     switch ($rest->code) {
       case 200:
       case 201:
         if (variable_get('internet_archive_debug', FALSE)) {
-           watchdog('internet_archive', 'Item: ' . $bucket . ' created successfully (http 200)',NULL, WATCHDOG_NOTICE); }
+           watchdog('internet_archive', 'Item: ' . $bucket .
+		    ' created successfully (http 200)',NULL, WATCHDOG_NOTICE);
+	}
         if (is_numeric(self::$transfer_id)) {
-          $log_entry = array(
-            'tid' => self::$transfer_id,
-            'message' => 'Archive.org Item: ' . $bucket . ' created successfully',
-            'message_data' => array(
-              'bucket' => $bucket,
-              'metaheaders' => $metaHeaders,
-              'response' => $rest,
-            ),
-            'type' => 3,
-          );
+          $log_entry =
+	    array(
+		  'tid' => self::$transfer_id,
+		  'message' =>
+		  'Archive.org Item: ' . $bucket . ' created successfully',
+		  'message_data' => array(
+					  'bucket' => $bucket,
+					  'metaheaders' => $metaHeaders,
+					  'response' => $rest,
+					  ),
+		  'type' => 3,
+		  );
           internet_archive_log($log_entry);
         }
         break;
       case 400:
-        watchdog('internet_archive', 'Item: ' . $bucket . ' could not be created, (http 400). Bad request can suggest a problem with the metadata being attached to the item.',NULL, WATCHDOG_ERROR);
+        watchdog('internet_archive', 'Item: ' . $bucket .
+		 ' could not be created, (http 400). Bad request can ' .
+		 'suggest a problem with the metadata being attached to ' .
+		 'the item.',NULL, WATCHDOG_ERROR);
+
         if (is_numeric(self::$transfer_id)) {
-          $log_entry = array(
-            'tid' => self::$transfer_id,
-            'message' => 'Item: ' . $bucket . ' could not be created. Error returned was Bad Request. This can suggest a problem with the metadata being attached to the item.',
-            'message_data' => array(
-              'bucket' => $bucket,
-              'metaheaders' => $metaHeaders,
-              'response' => $rest,
-            ),
-            'type' => 1,
-          );
+          $log_entry =
+	    array(
+		  'tid' => self::$transfer_id,
+		  'message' => 'Item: ' . $bucket . ' could not be created. '.
+		  'Error returned was Bad Request. This can suggest a ' .
+		  'problem with the metadata being attached to the item.',
+		  'type' => 1,
+		  'message_data' => array(
+					  'bucket' => $bucket,
+					  'metaheaders' => $metaHeaders,
+					  'response' => $rest,
+					  ),
+		  
+		  );
           internet_archive_log($log_entry);
         }
         return false;
         break;    
       case 409:
-        //TODO: add support to check if item is owned with S3 credentials, if not append number to item name and try again.
+        //TODO: add support to check if item is owned with S3 credentials,
+	//if not append number to item name and try again.
         if (variable_get('internet_archive_debug', FALSE)) {
-           watchdog('internet_archive', 'Item: ' . $bucket . ' already exists, unable to create (http 409). This is only a problem if the existing bucket is not writable by this account.',NULL, WATCHDOG_WARNING); }
+	  watchdog('internet_archive', 'Item: ' . $bucket .
+		   ' already exists, unable to create (http 409). This is '.
+		   'only a problem if the existing bucket is not writable '.
+		   'by this account.',NULL, WATCHDOG_WARNING); }
         if (is_numeric(self::$transfer_id)) {
-          $log_entry = array(
-            'tid' => self::$transfer_id,
-            'message' => 'Item: ' . $bucket . ' already exists, unable to create. This probably means an item by this name already existed at Archive.org and is only a problem if the item is not writable by your account',
-            'message_data' => array(               
-              'item' => $bucket,
-              'metaheaders' => $metaHeaders,
-              'response' => $rest,
-            ),
-            'type' => 2,
-          );
+          $log_entry =
+	    array(
+		  'tid' => self::$transfer_id,
+		  'message' => 'Item: ' . $bucket . ' already exists, ' .
+		  'unable to create. This probably means an item by this '.
+		  'name already existed at Archive.org and is only a ' .
+		  'problem if the item is not writable by your account',
+		  'message_data' => array(               
+					  'item' => $bucket,
+					  'metaheaders' => $metaHeaders,
+					  'response' => $rest,
+							 ),
+		  'type' => 2,
+		  );
           internet_archive_log($log_entry);
         }
         break;
       case 403:
-        watchdog('internet_archive', 'Item: ' . $bucket . ' could not be created, (http 403). Access denied can suggest a problem with your S3 credentials or metadata being attached to the item, or you may have specified a collection you do not have access to.',NULL, WATCHDOG_ERROR);
+        watchdog('internet_archive', 'Item: ' . $bucket .
+		 ' could not be created, (http 403). Access denied can ' .
+		 'suggest a problem with your S3 credentials or metadata '.
+		 'being attached to the item, or you may have specified a '.
+		 'collection you do not have access to.',NULL, WATCHDOG_ERROR);
         if (is_numeric(self::$transfer_id)) {
-          $log_entry = array(
-            'tid' => self::$transfer_id,            
-            'message' => 'Item: ' . $bucket . ' could not be created. Error returned was Access Denied. This can suggest a problem with your S3 credentials or metadata being attached to the item, or you may have specified a collection you do not have access to',
-            'message_data' => array(               
-              'item' => $bucket,              
-              'metaheaders' => $metaHeaders,              
-              'response' => $rest,
-            ),
-            'type' => 1,
-          ); 
+          $log_entry =
+	    array(
+		  'tid' => self::$transfer_id,            
+		  'message' => 'Item: ' . $bucket . ' could not be created. '.
+		  'Error returned was Access Denied. This can suggest a '.
+		  'problem with your S3 credentials or metadata being ' .
+		  'attached to the item, or you may have specified a ' .
+		  'collection you do not have access to',
+		  'message_data' => array(               
+					  'item' => $bucket,  
+					  'metaheaders' => $metaHeaders,
+					  'response' => $rest,
+							 ),
+		  'type' => 1,
+		  ); 
           internet_archive_log($log_entry);
         }
         return false;
         break;    
       case 500:
-        watchdog('internet_archive', 'Item: ' . $bucket . ' could not be created, (http 500). This error can suggest there is something wrong at the Internet Archive. Check their blog or twitter feed to see if they have posted about any maintenance updates.', NULL, WATCHDOG_ERROR);
+        watchdog('internet_archive', 'Item: ' . $bucket .
+		 ' could not be created, (http 500). This error can suggest '.
+		 'there is something wrong at the Internet Archive. Check '.
+		 'their blog or twitter feed to see if they have posted '.
+		 'about any maintenance updates.', NULL, WATCHDOG_ERROR);
         if (is_numeric(self::$transfer_id)) {
-          $log_entry = array(
-            'tid' => self::$transfer_id,                        
-            'message' => 'Item: ' . $bucket . ' could not be created. The error returned suggests there may be something wrong at the Internet Archive. Check their blog or twitter feed to see if they have posted about any maintenance updates recently',
-            'message_data' => array(
-              'item' => $bucket,            
-              'metaheaders' => $metaHeaders,              
-              'response' => $rest,
-            ),
-            'type' => 1,
-          );
+          $log_entry =
+	    array(
+		  'tid' => self::$transfer_id,
+		  'message' => 'Item: ' . $bucket . ' could not be created. '.
+		  'The error returned suggests there may be something wrong '.
+		  'at the Internet Archive. Check their blog or twitter ' .
+		  'feed to see if they have posted about any maintenance '.
+		  'updates recently',
+		  'message_data' => array(
+					  'item' => $bucket,            
+					  'metaheaders' => $metaHeaders,
+					  'response' => $rest,
+					  ),
+		  'type' => 1,
+		  );
           internet_archive_log($log_entry);
         }
         return false;
         break;
     }
-
+    
     return true;
   }
 
