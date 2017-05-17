@@ -112,8 +112,6 @@ function internet_archive_menu() {
     'weight' => 50,
   );
 
-  //If drupal_queue is enabled, add queue processing tools
-  if (module_exists('drupal_queue')) {
     $items['admin/structure/internet_archive'] = array(
       'title' => 'Internet Archive Queues',
       'description' => t('View file transfer queues'),
@@ -138,7 +136,7 @@ function internet_archive_menu() {
       'type' => MENU_LOCAL_TASK,
       'weight' => 0,
     );
-  }
+
 
   //manual file and node based commands
   $items['internet_archive/%/transfer'] = array(
@@ -216,6 +214,7 @@ function internet_archive_queues_home() {
  * Implements hook_node_view().
  */
 function internet_archive_node_view($node, $view_mode = 'full') {
+  dsm('internet_archive_node_view');
   internet_archive_alter_field_display($node);
 }
 
@@ -236,13 +235,6 @@ function internet_archive_node_update($node) {
     }
   }
 }
-
-/**
- * Implements hook_nodeapi().
- * If directed to on the configuration page, updates metadata at archive.org
- * when a node is updated.
- */
-function internet_archive_nodeapi_OLD(&$node, $op, $a3 = NULL, $a4 = NULL) { }
 
 /**
  * Implements hook_field_display_alter().
@@ -283,18 +275,6 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
   }
 }
 
-
-
-
-/**
- *
- * @param $node
- *   A node object.
- */
-function internet_archive_alter_field_display(&$node) {
-  
-}
-
 /**
  * Loads all fields chosen on the general settings page
  *
@@ -304,7 +284,8 @@ function internet_archive_alter_field_display(&$node) {
 function internet_archive_fields() {
   $fields = array();
   $field_info = field_info_field_map();
-  if (($field_types = variable_get('internet_archive_fields', FALSE)) && variable_get('internet_archive_fields_list_display', FALSE)) {
+  if (($field_types = variable_get('internet_archive_fields', FALSE)) &&
+      variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
     }
@@ -389,16 +370,20 @@ function internet_archive_theme_field_display($field, $value_key) {
  *   An s3 class provided by includes/archive.php.
  */
 function internet_archive_new_s3($key = FALSE, $skey = FALSE) {
+  dsm('internet_archive_new_s3');
   // If the flash video module is installed, do not require this
-  require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'internet_archive') . '/includes/archive.php';
+  require_once DRUPAL_ROOT . '/' .
+    drupal_get_path('module', 'internet_archive') . '/includes/archive.php';
 
   // if keys are being passed in, override defaults
   // AWS access info
   if (!defined('archiveAccessKey')) {
-    define('archiveAccessKey', $key ? $key : variable_get('internet_archive_key', NULL));
+    define('archiveAccessKey', $key ? $key :
+	   variable_get('internet_archive_key', NULL));
   }
   if (!defined('archiveSecretKey')) {
-    define('archiveSecretKey', $skey ? $skey : variable_get('internet_archive_skey', NULL));
+    define('archiveSecretKey', $skey ? $skey :
+	   variable_get('internet_archive_skey', NULL));
   }
   $s3 = new S3(archiveAccessKey, archiveSecretKey);
 
