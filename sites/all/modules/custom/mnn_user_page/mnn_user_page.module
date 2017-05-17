@@ -51,11 +51,16 @@ function mnn_user_page_form_alter(&$form, &$form_state, $form_id) {
       $form['field_user'][LANGUAGE_NONE][0]['uid']['#default_value'] = $uid;
     }
   }
+  if ($form_id == 'user_profile_form' && !user_access('administer users') ) {
+    unset($form['picture']);
+    unset($form['field_suspension_notes']);
+    unset($form['contact']);
+  }
 }
 
 function mnn_user_page_menu_alter(&$items) { 
-  $items['user/%user/edit']['access callback'] = 
-    'mnn_user_page_edit_link_access';
+  $items['user/%user/edit']['title'] = t("Change Email/Password");
+  $items['user/%user/view']['title'] = t("User Account");
   $items['user/%user_category/edit/Name and Address']['access callback'] = 
     'mnn_user_page_edit_link_access';
   $items['user/%user_category/edit/account']['access callback'] = 

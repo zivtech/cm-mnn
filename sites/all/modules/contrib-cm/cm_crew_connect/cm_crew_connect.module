@@ -12,7 +12,7 @@ function cm_crew_connect_menu() {
 
   $items['user/%/cm_crew_connect'] =
     array(
-	  'title' => 'Crew Connect (Beta)',
+	  'title' => 'Crew Connect',
 	  'description' => 'Crew Connect',
 	  'access arguments' => array('access content'),
 	  'page callback' => 'cm_crew_connect_page',
