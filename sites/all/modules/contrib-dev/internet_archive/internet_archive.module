@@ -211,14 +211,6 @@ function internet_archive_queues_home() {
 }
 
 /**
- * Implements hook_node_view().
- */
-function internet_archive_node_view($node, $view_mode = 'full') {
-  dsm('internet_archive_node_view');
-  internet_archive_alter_field_display($node);
-}
-
-/**
  * Implements hook_node_update().
  */
 function internet_archive_node_update($node) {
@@ -308,6 +300,8 @@ function internet_archive_fields() {
  */
 function internet_archive_theme_field_display($field, $value_key) {
   dsm('internet_archive_theme_field_display');
+  $field_transfer = '';
+  $field_archived = '';
   foreach ($field as $key => $file_info) {
     if ($file_info[$value_key]) {
       dsm($file_info[$value_key], 'file info value key');
@@ -341,7 +335,9 @@ function internet_archive_theme_field_display($field, $value_key) {
       }
     }
   }
-  if ($field_archived) {
+
+  $field_output = '';
+  if (isset($field_archived) && $field_archived) {
     $field_output =
       '<span class="internet-archive-files">'.
       '<span class="internet-archive-archived">Archive.org: ' .
@@ -582,7 +578,7 @@ function internet_archive_file_views() {
       $views[$view->name] = $view->name;
     }
   }
-
+  asort($views);
   return $views;
 }
 
@@ -593,6 +589,7 @@ function internet_archive_file_views() {
  *   An array of filepaths.
  */
 function internet_archive_harvest_filepaths_from_views() {
+  dsm("internet_archive_harvest_filepaths_from_views");
   $views = variable_get('internet_archive_file_views', NULL);
 
   if (!$views) {
@@ -605,38 +602,44 @@ function internet_archive_harvest_filepaths_from_views() {
   foreach ($views as $view_name => $info) {
 
     $view_files = views_get_view_result($view_name);
-
+    
     if (count($view_files) > 0) {
-      if ($view_files[0]->files_filepath) {
-        $key_value = 'files_filepath';
-      }
-      else {
-        foreach ($fields as $field_name => $field_info) {
-          foreach ($view_files[0] as $key => $info) {
-            if (substr($key, '-' . strlen($field_name . '_fid')) == $field_name . '_fid') {
-              $filefield_flag = TRUE;
-              $key_value = $key;
-            }
-            elseif (substr($key, '-' . strlen($field_name . '_value')) == $field_name . '_value') {
-              $key_value = $key;
-            }
-          }
-        }
-      }
+      //FIND THE FIELDS THAT HAVE OUR FILE INFO
+      $key_value = '';
+      foreach ($fields as $field_name => $field_info) {
+	foreach ($view_files[0] as $key => $info) {
+	  if ("field_" . $field_name == $key) {
+	    $filefield_flag = TRUE;
+	    $key_value = $key;
+	    break;
+	  }
+	}
+	if ($key_value) {
+	  break;
+	}
+      }    
 
-      //if we dont find a key, quit now!
+      //IF WE DONT FIND A FIELD KEY TO GRAB FILE INFO THEN THIS VIEW IS
+      //NOT CONFIGURED CORRECTLY
       if (!$key_value) {
-        return;
+	drupal_set_message("Error Code #33453 No field found for $view_name",
+			   'error');
+        continue;
       }
 
       foreach ($view_files as $key => $fileinfo) {
         if ($filefield_flag) {
-          unset($path);
-          $path = db_query("SELECT filepath FROM {files} WHERE fid = :fid", array(':fid' => $fileinfo->{$key_value}))->fetchField();
-          $filepaths[] = $path;
+	  $field = $fileinfo->{$key_value};
+	  if (!$field) {
+	    //THE FIELD DOES NOT EXIST, MAYBE THE FILE IS NOT SET TO DISPLAY?
+	    continue;
+	  }
+	  $uri = $field[0]['raw']['uri'];
+
+          $filepaths[] = $uri;
         }
-        elseif (file_exists($fileinfo->{$key_value})) {
-          $filepaths[] = $fileinfo->{$key_value};
+        else if (file_exists($fileinfo->{$key_value})) {
+	  //FIXME, HANDLE THIS CASE FOR OTHER TYPES OF FIELDS
         }
       }
     }
@@ -646,7 +649,6 @@ function internet_archive_harvest_filepaths_from_views() {
 
   if ($filepaths) {
     foreach ($filepaths as $filepath) {
-
       $archive_data = internet_archive_load_data($filepath);
       if ((!$archive_data) && file_exists($filepath)) {
         $unarchived_files[] = $filepath;
@@ -661,18 +663,19 @@ function internet_archive_harvest_filepaths_from_views() {
  * Implements hook_cron().
  */
 function internet_archive_cron() {
-
+  dsm("internet archive cron");
   //validate previous transfers
   internet_archive_validate_transfers();
-
+  dsm("finished validating");
   if (variable_get('internet_archive_queue_harvest_cron', FALSE)) {
     //Add new files to queue if available
     internet_archive_harvest_files();
+    dsm("finished harvesting");
   }
-
+  
   //Check for new derivations to update.
   internet_archive_store_derivatives();
-
+  dsm("finished deriviatives");
 }
 
 /**
@@ -685,64 +688,95 @@ function internet_archive_harvest_files() {
   if ($cron_user = variable_get('internet_archive_cron_user', FALSE)) {
     global $user;
     $original_user = $user;
-    session_save_session(FALSE);
-    $user = array_shift(user_load_multiple(array(),
-					   array('name' => $cron_user)));
+    drupal_save_session(FALSE);
+    $tmp = array();
+    $users = array('name' => $cron_user);
+    $array = user_load_multiple($tmp, $users);
+    $user = array_shift($array);
   }
-
-  // Can we use the Queue module?
-  if (module_exists('drupal_queue')) {
-    // Make sure drupal_queue is included
-    drupal_queue_include();
-
-    //administrative setting for requeing stale/expired queue items
-    if (variable_get('internet_archive_expired_queue', FALSE)) {
-      internet_archive_harvest_expired_queued();
+  //administrative setting for requeing stale/expired queue items
+  if (variable_get('internet_archive_expired_queue', FALSE)) {
+    internet_archive_harvest_expired_queued();
+  }
+  
+  $filepaths = internet_archive_harvest_filepaths_from_views();
+  dsm($filepaths, 'got filepaths');
+  
+  if (variable_get('internet_archive_queue_attempts', 0) > 0) {
+    dsm("got queue attempts");
+    $reprocess_filepaths = internet_archive_harvest_failed();
+    dsm($reprocess_filepaths, 'found some reprocessed files?');
+    if ($reprocess_filepaths) {
+      $filepaths = array_merge($reprocess_filepaths, $filepaths);
     }
+  }
+  $transfer_queue = DrupalQueue::get('internet_archive_send_file');
+  dsm($transfer_queue->numberOfItems(), 'number of items');
+  dsm($transfer_queue, 'tq');
+  $limit = variable_get('internet_archive_queue_limit', '1');
+  if ($filepaths) {
+    foreach ($filepaths as $key => $filepath) {
+      dsm($filepath, 'filepath in loop');
+      //REMOVING THE LIMIT OF ITEMS GOING IN QUEUE, WE WILL USE LIMIT WHEN
+      //CLAMING ITEMS OUT OF THE QUEUE
+      //if ($transfer_queue->numberOfItems() < $limit) {
 
-    $filepaths = internet_archive_harvest_filepaths_from_views();
-    if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-      $reprocess_filepaths = internet_archive_harvest_failed();
-      if ($reprocess_filepaths) {
-        $filepaths = array_merge($reprocess_filepaths, $filepaths);
-      }
-    }
-    $transfer_queue = DrupalQueue::get('internet_archive_send_file');
+      if (file_exists($filepath)) {
+	
+	$status = internet_archive_get_status($filepath);
+	dsm($status, 'status');
+	if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
+	    && $status != ARCHIVE_TRANSFERRED &&
+	    $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
+	  //allow other modules to make changes before file is queued
+	  unset($node);
+	  $node = internet_archive_get_node_from_filepath($filepath);
+	  $archive_info = array(
+				'nid' => $node->nid,
+				'in_path' => $filepath,
+				'filename' => basename($filepath),
+				'filesize' =>
+				internet_archive_filesize($filepath),
+				'status' => ARCHIVE_QUEUED,
+				);
+	  internet_archive_invoke_internet_archive($archive_info, 'harvested');
 
-    $limit = variable_get('internet_archive_queue_limit', '1');
-    if ($filepaths) {
-      foreach ($filepaths as $key => $filepath) {
-        if ($transfer_queue->numberOfItems() < $limit) {
-          if (file_exists($filepath)) {
-            $status = internet_archive_get_status($filepath);
-            if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
-		&& $status != ARCHIVE_TRANSFERRED &&
-		$status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
-              //allow other modules to make changes before file is queued
-              unset($node);
-              $node = internet_archive_get_node_from_filepath($filepath);
-              $archive_info = array(
-                'nid' => $node->nid,
-                'in_path' => $filepath,
-                'filename' => basename($filepath),
-                'filesize' => internet_archive_filesize($filepath),
-                'status' => ARCHIVE_QUEUED,
-              );
-              internet_archive_invoke_internet_archive($archive_info, 'harvested');
-              //add the file to queue
-              $transfer_queue->createItem($filepath);
-              //update the file status to queued if this is the first attempt
-              if ($status != ARCHIVE_FAILED) {
-                // TODO Please convert this statement to the D7 database API syntax.
-                /* db_query("INSERT into {internet_archive} (nid, in_path, filename, filesize, status) VALUES (%d, '%s', '%s', %d, '%s')", $archive_info['nid'], $archive_info['in_path'], $archive_info['filename'], $archive_info['filesize'], $archive_info['status']) */
-                NULL;
-              }
-              unset($archive_info);
-              $archive_info = internet_archive_load_data($filepath);
-              internet_archive_invoke_internet_archive($archive_info, 'queued');
-            }
-          }
-        }
+	  //NEED TO MAKE SURE ITEM IS NOT ALREADY IN THE QUEUE
+	  $sql = "SELECT item_id FROM {queue} WHERE data = :data";
+	  $params = array(':data' => serialize($filepath));
+	  $queue_id = db_query($sql, $params)->fetchField();
+
+	  if ($queue_id) {
+	    dsm("found $queue_id in the queue!");
+	    continue;
+	  }
+	  //add the file to queue
+	  $transfer_queue->createItem($filepath);
+	  //update the file status to queued if this is the first attempt
+	  if ($status != ARCHIVE_FAILED) {
+	    $sql =
+	      "INSERT into {internet_archive} " .
+	      "(nid, in_path, filename, filesize, status, " .
+	      "attempts, transfer_initiated, date) " .
+	      "VALUES (:nid, :in_path, :filename, :size, :status, 0,0,0)";
+	    dsm($archive_info, 'ai');
+	    $params = array(':nid' => $archive_info['nid'],
+			    ':in_path' => $archive_info['in_path'],
+			    ':filename' => $archive_info['filename'],
+			    ':size' => $archive_info['filesize'],
+			    ':status' => $archive_info['status'],
+			    );
+	    dsm($params, 'params');
+			    
+	    db_query($sql, $params);
+	  }
+	  if (isset($archive_info)) {
+	    unset($archive_info);
+	  }
+	  $archive_info = internet_archive_load_data($filepath);
+	  dsm($archive_info, "archive data after fresh insert");
+	  internet_archive_invoke_internet_archive($archive_info, 'queued');
+	}
       }
     }
   }
@@ -1322,8 +1356,12 @@ function internet_archive_delete_files($archive_data) {
  * based on number of allowed attemps in administrative settings
  */
 function internet_archive_harvest_failed() {
+  dsm('internet_archive_harvest_failed');
   $attempts = variable_get('internet_archive_queue_attempts', 0) + 1;
-  $result = db_query("SELECT in_path FROM {internet_archive} WHERE status = :status AND attempts < :attempts", array(':status' => ARCHIVE_FAILED, ':attempts' => $attempts));
+  $result =
+    db_query("SELECT in_path FROM {internet_archive} " .
+	     "WHERE status = :status AND attempts < :attempts",
+	     array(':status' => ARCHIVE_FAILED, ':attempts' => $attempts));
 
   $filepaths = array();
   while ($filepath = $result->fetchField()) {
@@ -1351,7 +1389,7 @@ function internet_archive_harvest_expired_queued() {
     $ia_queued[] = $ia_data['in_path'];
   }
 
-  if ($ia_queued) {
+  if (isset($ia_queued) && $ia_queued) {
     //grab all the currently queued transfer items from drupal queue
     $queue_result = db_query("SELECT * FROM {queue} WHERE name = :name", array(':name' => 'internet_archive_send_file'));
     while ($queue_data = $queue_result->fetchAssoc()) {
@@ -1366,7 +1404,7 @@ function internet_archive_harvest_expired_queued() {
   }
 
   //take candidates and re-add them to the queue if there is room
-  if ($candidates) {
+  if (isset($candidates) && $candidates) {
     $transfer_queue = DrupalQueue::get('internet_archive_send_file');
     $limit = variable_get('internet_archive_queue_limit', '1');
 
@@ -1882,7 +1920,12 @@ function internet_archive_internet_archive(&$archive_data, $op) {
         $message = t('Queued for transfer');
       }
       else {
-        $message = t('Requeued for transfer due to previous failure, attempt %attempt of %retries', array('%attempt' => $archive_data['attempts'] + 1, '%retries' => variable_get('internet_archive_queue_attempts', 0) + 1));
+        $message = t('Requeued for transfer due to previous failure, attempt '.
+		     '%attempt of %retries',
+		     array('%attempt' => $archive_data['attempts'] + 1,
+			   '%retries' =>
+			   variable_get('internet_archive_queue_attempts', 0)
+			   + 1));
       }
       $log_data = array(
         'tid' => $archive_data['tid'],
@@ -1922,7 +1965,10 @@ function internet_archive_internet_archive(&$archive_data, $op) {
       );
       internet_archive_log($log_data);
 
-      //administrative option to store validated internet archive transfers to an emfield
+      /*
+       * TODO MAKE THIS WORK FOR DRUPAL 7
+      //administrative option to store validated internet archive transfers
+      //to an emfield
       $field_names = variable_get('internet_archive_storage_emfield', FALSE);
       if ($field_names) {
         if (!(count($field_names) == 1 && $field_names['none'] == 'none')) {
@@ -1932,12 +1978,19 @@ function internet_archive_internet_archive(&$archive_data, $op) {
               $node = node_load($archive_data['nid']);
 
               if ($node->{$field_name}) {
-                $node->{$field_name}[0]['embed'] = 'http://www.archive.org/details/' . $archive_data['item'];
+                $node->{$field_name}[0]['embed'] =
+				      'http://www.archive.org/details/' .
+				      $archive_data['item'];
                 node_save($node);
                 $archive_data['embed'] = $node->{$field_name}[0]['embed'];
                 $log_data = array(
                   'tid' => $archive_data['tid'],
-                  'message' => t('Archive.org embed information stored in %field on !node', array('%field' => $field_name, '!node' => l('node/' . $archive_info['nid'], 'node/' . $archive_info['nid']))),
+                  'message' => t('Archive.org embed information stored in ' .
+				 '%field on !node',
+				 array('%field' => $field_name,
+				       '!node' =>
+				       l('node/' . $archive_info['nid'],
+					 'node/' . $archive_info['nid']))),
                   'message_data' => $archive_data,
                   'type' => ARCHIVE_LOG_NOTICE,
                 );
@@ -1947,6 +2000,8 @@ function internet_archive_internet_archive(&$archive_data, $op) {
           }
         }
       }
+      */
+      
       break;
 
     case 'derived':
@@ -2807,6 +2862,7 @@ function internet_archive_derivative_url($item, $extension) {
  */
 function internet_archive_create_embed($url, $width = 470, $height = 371) {
   dsm("internet_archive_create_embed");
+  $embed = '';
   $pathinfo = pathinfo($url);
   dsm($pathinfo, 'path info');
   $base_url = $pathinfo['dirname'] . '/';
@@ -2822,7 +2878,7 @@ function internet_archive_create_embed($url, $width = 470, $height = 371) {
   $embed .= '<param name="movie" ' .
     'value="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" />';
 
-  $embed .= "<param value=\"config={'key':'#$aa4baff94a9bdcafce8','playlist':['format=Thumbnail?.jpg',{'autoPlay':false,'url':'" . $filename . "'}],'clip':{'autoPlay':true,'baseUrl':'" . $base_url . "','scaling':'fit','provider':'h264streaming'},'canvas':{'backgroundColor':'#000000','backgroundGradient':'none'},'plugins':{'controls':{'playlist':false,'fullscreen':true,'height':26,'backgroundColor':'#000000','autoHide':{'fullscreenOnly':true}},'h264streaming':{'url':'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf'}, 'sharing':{'url':'http://www.denveropenmedia.org/sites/all/plugins/flowplayer/flowplayer.sharing-3.2.1.swf'}},'contextMenu':[{},'-','Flowplayer v3.2.1']}\" name=\"flashvars\"/>";
+  $embed .= "<param value=\"config={'key':'#\$aa4baff94a9bdcafce8','playlist':['format=Thumbnail?.jpg',{'autoPlay':false,'url':'" . $filename . "'}],'clip':{'autoPlay':true,'baseUrl':'" . $base_url . "','scaling':'fit','provider':'h264streaming'},'canvas':{'backgroundColor':'#000000','backgroundGradient':'none'},'plugins':{'controls':{'playlist':false,'fullscreen':true,'height':26,'backgroundColor':'#000000','autoHide':{'fullscreenOnly':true}},'h264streaming':{'url':'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf'}, 'sharing':{'url':'http://www.denveropenmedia.org/sites/all/plugins/flowplayer/flowplayer.sharing-3.2.1.swf'}},'contextMenu':[{},'-','Flowplayer v3.2.1']}\" name=\"flashvars\"/>";
 
   $embed .= '<embed src="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" type="application/x-shockwave-flash" width="' . $width . '" height="' . $height . '" allowfullscreen="true" allowscriptaccess="always" cachebusting="true" bgcolor="#000000" quality="high" flashvars="config={\'key\':\'#$aa4baff94a9bdcafce8\',\'playlist\':[\'format=Thumbnail?.jpg\',{\'autoPlay\':false,\'url\':\'' . $filename . '\'}],\'clip\':{\'autoPlay\':true,\'baseUrl\':\'' . $base_url . '\',\'scaling\':\'fit\',\'provider\':\'h264streaming\'},\'canvas\':{\'backgroundColor\':\'#000000\',\'backgroundGradient\':\'none\'},\'plugins\':{\'controls\':{\'playlist\':false,\'fullscreen\':true,\'height\':26,\'backgroundColor\':\'#000000\',\'autoHide\':{\'fullscreenOnly\':true}},\'h264streaming\':{\'url\':\'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf\'}},\'contextMenu\':[{},\'-\',\'Flowplayer v3.2.1\']}"></embed>';
   //$embed .= '</object>';
@@ -2898,7 +2954,6 @@ function internet_archive_create_item_name($text) {
  */
 function internet_archive_load_data($key) {
   dsm("internet_archive_load_data");
-  dsm($key, 'key');
   if (is_numeric($key)) {
     $data = db_query("SELECT * from {internet_archive} WHERE tid = :tid",
 		     array(':tid' => $key))->fetchAssoc();

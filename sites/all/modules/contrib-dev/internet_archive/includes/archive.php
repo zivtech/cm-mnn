@@ -1096,10 +1096,15 @@ final class S3Request {
   * @return integer
   */
   private function __responseWriteCallback(&$curl, &$data) {
-    if ($this->response->code == 200 && $this->fp !== false)
+    if (!isset($this->response->body)) {
+      $this->response->body = '';
+    }
+    if ($this->response->code == 200 && $this->fp !== false) {
       return fwrite($this->fp, $data);
-    else
+    }
+    else {
       $this->response->body .= $data;
+    }
     return strlen($data);
   }
 
