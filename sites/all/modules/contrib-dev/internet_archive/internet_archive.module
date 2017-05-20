@@ -1094,39 +1094,48 @@ function internet_archive_send($config, $filepath) {
 
 
 
-  // There is a delay on archive.org regarding bucket creation.. so we pause
-  //for a moment.
-  // TODO: It would be good to find a better solution to this.
-  dsm('sleeping for 25!');
-  sleep(25);
 
-  //FIXME! ADD LOOP TO DEAL WITH THE ABOVE!
+  //SET VARIABLES FOR THE WAIT LOOP ON BUCKET CREATTION
+  $max_run_time = ini_get('max_execution_time') - 5 + strtotime('now');
 
-  //We had an incident where the S3 process was creating buckets but
-  //setting them as waiting for admin. This check has been added to make
-  //sure the bucket was created successfully before moving to the file transfer
-  if (!internet_archive_bucket_exists($config['internet_archive_bucket'])) {
-    dsm('bad things man');
-    $ia_data['status'] = ARCHIVE_FAILED;
-    $ia_data['attempts'] = $ia_data['attempts'] + 1;
-    $ia_data['item'] = $config['internet_archive_bucket'];
-    $ia_data['error'] = t('Item %item was not available at Archive.org after '.
-			  '25 seconds, transfer marked as failed.',
-			  array('%item' => $ia_data['item']));
-    watchdog('internet_archive', $ia_data['error'], NULL, WATCHDOG_ERROR);
-    
-    db_update('internet_archive')
-      ->fields(array(
-		     'status' => $ia_data['status'],
-		     'attempts' => $ia_data['attempts'],
-		     'item' => $ia_data['item'],
-		     ))
-      ->condition('in_path', $filepath)
-      ->execute();
-    internet_archive_invoke_internet_archive($ia_data, 'failed');
-    return FALSE;
+  //find a pause time for each loop, ideally so we get 3 nicely timed loops
+  $pause = (int)((ini_get('max_execution_time')-1)/5); 
+
+  dsm(($max_run_time/60), 'max runtime');
+  dsm($pause, 'pause');
+  
+  $max = 100;
+  $bucket_exists = FALSE;
+  $start = strtotime('now');
+  // There is a delay on archive.org regarding bucket creation.. so we check
+  // every x seconds
+  $pause = 5;
+  while (!$bucket_exists && $max_run_time > strtotime('now')) {
+    sleep($pause);
+    dsm(date('i:s', strtotime('now') - $start), strtotime('now'),
+	'elapsed time');
+    if ($max > 100) {
+      dsm('breaking out yo');
+      break;
+    }
+    $max++;
+    if (internet_archive_bucket_exists($config['internet_archive_bucket'])) {
+      $bucket_exists = TRUE;
+    }
+
   }
 
+  if (!$bucket_exists) {
+    $msg = t("Error Code #23244 Bucket could not be found for !filepath, ".
+	     "maybe bump up execution time from !max.",
+	     array('!filepath' => $filepath,
+		   '!max' => ini_get('max_execution_time')));
+    
+    watchdog('internet_archive', $msg, NULL, WATCHDOG_ERROR);
+    drupal_set_message($msg, 'error');
+    return FALSE;
+  }
+	 
   //TODO: better error checking if the putobject fails
   if (variable_get('internet_archive_remote', FALSE)) {
     internet_archive_remote_put_object($filepath,
@@ -1269,7 +1278,8 @@ function internet_archive_send($config, $filepath) {
  *   An array of internet archive files associated with the node.
  */
 function internet_archive_node_files($nid) {
-  $result = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid", array(':nid' => $nid));
+  $result = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid",
+		     array(':nid' => $nid));
   dsm($nid, 'nid');
   $files = array();
   while ($archive_data = $result->fetchAssoc()) {
@@ -1292,7 +1302,8 @@ function internet_archive_update_item($filepath) {
   $config = internet_archive_default_config();
 
   if (variable_get('internet_archive_debug', FALSE)) {
-    watchdog('internet_archive', 'Updating item: ' . $archive_data['item'], NULL, WATCHDOG_NOTICE);
+    watchdog('internet_archive', 'Updating item: ' .
+	     $archive_data['item'], NULL, WATCHDOG_NOTICE);
   }
 
   // load the S3 class
@@ -1331,8 +1342,8 @@ function internet_archive_update_item($filepath) {
  * Deletes all files in an item at archive.org
  *
  * @param $archive_data
- * An array of archive.org information from one of the internet_archive_load_data
- * functions.
+ * An array of archive.org information from one of the 
+ * internet_archive_load_data functions.
  */
 function internet_archive_delete_files($archive_data) {
 
@@ -1348,7 +1359,8 @@ function internet_archive_delete_files($archive_data) {
   $config['internet_archive_bucket'] = $archive_data['item'];
   $s3->bucket = $config['internet_archive_bucket'];
 
-  $s3->deleteFiles($config['internet_archive_bucket'], $archive_data['filename']);
+  $s3->deleteFiles($config['internet_archive_bucket'],
+		   $archive_data['filename']);
 }
 
 /**
@@ -1384,14 +1396,19 @@ function internet_archive_harvest_failed() {
 function internet_archive_harvest_expired_queued() {
   dsm('internet_archive_harvest_expired_queued');
   //grab all the queued non-transferred items from internet_archive table
-  $ia_result = db_query("SELECT * FROM {internet_archive} WHERE status = :status AND transfer_initiated = :transfer_initiated", array(':status' => 'queued', ':transfer_initiated' => 0));
+  $ia_result =
+    db_query("SELECT * FROM {internet_archive} " .
+	     "WHERE status = :status " .
+	     "AND transfer_initiated = :transfer_initiated",
+	     array(':status' => 'queued', ':transfer_initiated' => 0));
   while ($ia_data = $ia_result->fetchAssoc()) {
     $ia_queued[] = $ia_data['in_path'];
   }
 
   if (isset($ia_queued) && $ia_queued) {
     //grab all the currently queued transfer items from drupal queue
-    $queue_result = db_query("SELECT * FROM {queue} WHERE name = :name", array(':name' => 'internet_archive_send_file'));
+    $queue_result = db_query("SELECT * FROM {queue} WHERE name = :name",
+			     array(':name' => 'internet_archive_send_file'));
     while ($queue_data = $queue_result->fetchAssoc()) {
       $queue_queued[] = unserialize($queue_data['data']);
     }
@@ -1414,7 +1431,9 @@ function internet_archive_harvest_expired_queued() {
         if (file_exists($filepath)) {
           $node = internet_archive_get_node_from_filepath($filepath);
           $ia_info = internet_archive_load_data($filepath);
-          $message = t('Added transfer back to queue due to stale queue status.');
+          $message =
+	    t('Added transfer back to queue due to stale queue status.');
+	  
           $log_data = array(
             'tid' => $ia_info['tid'],
             'message' => $message,
@@ -1525,10 +1544,12 @@ function internet_archive_validate_transfer($tid) {
  * files are found on the node
  */
 function internet_archive_simple_derivative($nid, $ext) {
-  $archive = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid", array(':nid' => $nid))->fetchAssoc();
+  $archive = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid",
+		      array(':nid' => $nid))->fetchAssoc();
   if ($archive['status'] == ARCHIVE_TRANSFERRED) {
     $pathinfo = pathinfo($archive['filename']);
-    return 'http://www.archive.org/download/' . $archive['item'] . '/' . $pathinfo['filename'] . '.' . $ext;
+    return 'http://www.archive.org/download/' . $archive['item'] . '/' .
+      $pathinfo['filename'] . '.' . $ext;
   }
   else {
     return FALSE;
@@ -1561,7 +1582,8 @@ function internet_archive_derivative($item_name, $extension) {
     foreach ($bucket_info as $filename => $fileinfo) {
       $pathinfo = pathinfo($filename);
       if ($pathinfo['extension'] == $extension) {
-        $derivative_paths[$filename] = 'http://www.archive.org/download/' . $item_name . '/' . $filename;
+        $derivative_paths[$filename] = 'http://www.archive.org/download/' .
+	  $item_name . '/' . $filename;
       }
     }
   }
@@ -1665,12 +1687,13 @@ function internet_archive_is_archive_format($filename) {
 }
 
 /**
- * Checks for new derivative information from uploaded files and stores that information
- * as serialized data in the internet_archive table. Stops checking for metadata when a file
- * has completed deriving.
+ * Checks for new derivative information from uploaded files and stores that 
+ * information as serialized data in the internet_archive table. Stops 
+ * checking for metadata when a file has completed deriving.
  *
  * @param $limit
- *   An integer which limits how many files to check in a single run at archive.org
+ *   An integer which limits how many files to check in a single run at 
+ *   archive.org
  */
 function internet_archive_store_derivatives($limit = 25) {
   dsm('internet_archive_store_derivatives');
@@ -1810,13 +1833,8 @@ function internet_archive_transfer_confirm($form, $drupal_form, $filepath) {
     '#value' => $_SERVER['HTTP_REFERER'],
   );
 
-  return confirm_form(
-    $form,
-    t('Are you sure you want to transfer this file?'),
-    NULL,
-    $description = '',
-    t('Transfer'),
-    t('Cancel'));
+  return confirm_form($form, t('Are you sure you want to transfer this file?'),
+		      NULL, $description = '', t('Transfer'), t('Cancel'));
 }
 
 /**
@@ -1829,9 +1847,19 @@ function internet_archive_transfer_confirm($form, $drupal_form, $filepath) {
 function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
   dsm('internet_archive_transfer_confirm_submit');
   dsm($form_state, 'fs');
-  internet_archive_default_send($form_state['values']['filepath']);
+  
+  $status = internet_archive_default_send($form_state['values']['filepath']);
 
-  drupal_set_message('File transferred successfully, please note there may be a short delay before the file is available on Archive.org');
+  if ($status) {
+    drupal_set_message('File transferred successfully, please note there ' .
+		       'may be a short delay before the file is available ' .
+		       'on Archive.org');
+  }
+  else {
+    drupal_set_message('Error Code #5857 The file: ' .
+		       $form_state['values']['filepath'] . ' was not sent.',
+		       'error');
+  }
 
   //clear the page cache so updated file information appears on node
   //TODO: there has to be a less drastic way to accomplish the goal
@@ -1856,9 +1884,9 @@ function internet_archive_default_send($filepath) {
   $config = internet_archive_default_config();
 
   //send the file
-  internet_archive_send($config, $filepath);
+  $status = internet_archive_send($config, $filepath);
 
-  return;
+  return $status;
 }
 
 /**
@@ -1870,10 +1898,15 @@ function internet_archive_default_send($filepath) {
  */
 function internet_archive_default_config() {
   $config = array();
-  $config['internet_archive_bucket'] = variable_get('internet_archive_bucket', str_replace(' ', '_', variable_get('site_name', t('My Site'))));
+  $config['internet_archive_bucket'] =
+    variable_get('internet_archive_bucket',
+		 str_replace(' ', '_', variable_get('site_name',
+						    t('My Site'))));
   $config['internet_archive_drupal_file_path'] = 0;
   $config['advanced'] = array(
-    'internet_archive_server_url' => variable_get('internet_archive_default_server_url', "http://s3.us.archive.org/"),
+    'internet_archive_server_url' =>
+    variable_get('internet_archive_default_server_url',
+		 "https://s3.us.archive.org/"),
   );
 
   return $config;
@@ -2035,26 +2068,89 @@ function internet_archive_reports_statistics() {
   $count = db_query("SELECT COUNT(*) FROM {internet_archive}")->fetchField();
 
   if (module_exists('internet_archive_download')) {
-    $file_rows[] = array('Downloaded', db_query("SELECT COUNT(*) FROM {internet_archive_download} WHERE status = :status", array(':status' => 'downloaded'))->fetchField());
+    $file_rows[] =
+      array('Downloaded',
+	    db_query("SELECT COUNT(*) FROM {internet_archive_download} " .
+		     "WHERE status = :status",
+		     array(':status' => 'downloaded'))->fetchField());
   }
-  $file_rows[] = array('Derived', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'derived'))->fetchField());
-  $file_rows[] = array('Validated', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'validated'))->fetchField());
-  $file_rows[] = array('Transferred', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'transferred'))->fetchField());
-  $file_rows[] = array('Transferring', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'transferring'))->fetchField());
-  $file_rows[] = array('Queued', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'queued'))->fetchField());
-  $file_rows[] = array('Failed', db_query("SELECT COUNT(*) FROM {internet_archive} WHERE status = :status", array(':status' => 'failed'))->fetchField());
-  $file_table = theme('table', array('header' => $header, 'rows' => $file_rows));
+  $file_rows[] =
+    array('Derived',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} " .
+		   "WHERE status = :status",
+		   array(':status' => 'derived'))->fetchField());
 
-  $transfer_rows[] = array('Total Data Uploaded', round(db_query("SELECT sum(filesize) FROM {internet_archive} WHERE status = :status OR status = :status", array(':status' => 'validated', ':status' => 'derived'))->fetchField() / 1024 / 1024) . ' MB');
-  $transfer_rows[] = array('Upload Rate Average (overall)', internet_archive_transfer_rate($limit = 0) . ' Mb/sec | ' . internet_archive_transfer_rate($limit = 0, 'time') . ' min/file');
+  $file_rows[] =
+    array('Validated',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} " .
+		   "WHERE status = :status",
+		   array(':status' => 'validated'))->fetchField());
+  
+  $file_rows[] =
+    array('Transferred',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} " .
+		   "WHERE status = :status",
+		   array(':status' => 'transferred'))->fetchField());
+  
+  $file_rows[] =
+    array('Transferring',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} ".
+		   "WHERE status = :status",
+		   array(':status' => 'transferring'))->fetchField());
+
+  $file_rows[] =
+    array('Queued',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} ".
+		   "WHERE status = :status",
+		   array(':status' => 'queued'))->fetchField());
+  
+  $file_rows[] =
+    array('Failed',
+	  db_query("SELECT COUNT(*) FROM {internet_archive} " .
+		   "WHERE status = :status",
+		   array(':status' => 'failed'))->fetchField());
+  
+  $file_table = theme('table',array('header'=> $header, 'rows' => $file_rows));
+
+  $total = db_query("SELECT sum(filesize) FROM {internet_archive} ".
+		    "WHERE status = :status OR status = :status",
+		    array(':status' => 'validated',
+			  ':status' => 'derived'))->fetchField();
+  $transfer_rows[] = array('Total Data Uploaded',
+			   round($total / 1024 / 1024) . ' MB');
+  
+  $transfer_rows[] = array('Upload Rate Average (overall)',
+			   internet_archive_transfer_rate($limit = 0) .
+			   ' Mb/sec | ' .
+			   internet_archive_transfer_rate($limit = 0, 'time').
+			   ' min/file');
   if ($count > 20) {
-    $transfer_rows[] = array('Upload Rate Average (last 15 transfers)', internet_archive_transfer_rate(15) . ' Mb/sec | ' . internet_archive_transfer_rate($limit = 15, 'time') . ' min/file');
+    $transfer_rows[] = array('Upload Rate Average (last 15 transfers)',
+			     internet_archive_transfer_rate(15) .
+			     ' Mb/sec | ' .
+			     internet_archive_transfer_rate($limit = 15,
+							    'time') .
+			     ' min/file');
   }
   if ($count > 55) {
-    $transfer_rows[] = array('Upload Rate Average (last 50 transfers)', internet_archive_transfer_rate(50) . ' Mb/sec | ' . internet_archive_transfer_rate($limit = 50, 'time') . ' min/file');
+    $transfer_rows[] = array('Upload Rate Average (last 50 transfers)',
+			     internet_archive_transfer_rate(50) . ' Mb/sec | '.
+			     internet_archive_transfer_rate($limit = 50,
+							    'time') .
+			     ' min/file');
   }
-  $transfer_rows[] = array('Average Filesize', round((db_query("SELECT avg(filesize) FROM {internet_archive} WHERE status = :status OR status = :status", array(':status' => 'validated', ':status' => 'derived'))->fetchField() / 1024 / 1024), 4) . ' MB');
-  $transfer_table = theme('table', array('header' => $header, 'rows' => $transfer_rows));
+
+  $val_plus_derived = db_query("SELECT avg(filesize) " .
+			       "FROM {internet_archive} " .
+			       "WHERE status = :status OR status = :status",
+			       array(':status' => 'validated',
+				     ':status' => 'derived'))->fetchField();
+  
+  $transfer_rows[] = array('Average Filesize',
+			   round($val_plus_derived / 1024 / 1024, 4) . ' MB');
+
+  $transfer_table = theme('table', array('header' => $header,
+					 'rows' => $transfer_rows));
 
   if (module_exists('internet_archive_download')) {
     $download_stats = internet_archive_download_statistics();
@@ -2085,8 +2181,13 @@ function internet_archive_reports_statistics() {
  * of recent file uploads
  */
 function internet_archive_reports_log() {
-  $output .= 'Typical file status process is: Queued->Transferring->Transferred->Validated->Derived';
-  $output .= '<br />For information on Archive.org status, please <a href="http://blog.archive.org/">checkout their blog</a> and/or subscribe to <a href="http://twitter.com/internetarchive">their twitter feed</a>.<br /><br />';
+  $output .= 'Typical file status process is: Queued -> Transferring -> '.
+    'Transferred -> Validated- > Derived';
+  
+  $output .= '<br />For information on Archive.org status, please ' .
+    '<a href="http://blog.archive.org/">checkout their blog</a> and/or ' .
+    'subscribe to <a href="http://twitter.com/internetarchive">their '.
+    'twitter feed</a>.<br /><br />';
   $output .= internet_archive_uploads();
   return $output;
 }
