@@ -68,15 +68,12 @@ function mnn_programming_exports_letter_pdfbuild($project_data, $letters) {
 
     if ($project_array['format_tid'] ==
 	MNN_PROGRAMMING_EXPORTS_LIVE_FORMAT_TID){
-      $letter_text = "Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end. <b>Please note that your Project ID is an important identifier that MNN uses to track and program your shows.</b>  You may be asked for this number when submitting requests or communicating with MNN.";
+    
+      $letter_text = "<br/><br/>Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end. Please note that your Project ID is an important identifier that MNN uses to track and program your shows. You may be asked for this number when submitting requests or communicating with MNN.";
 
-      $letter_text .= "<br/><br/><b>Since you have a live show, MNN has made your studio reservations in advance for the entire quarter.</b>";
+      $letter_text .= "<br/><br/>Since you have a live show, MNN has made your studio reservations in advance for the entire quarter.";
       
-      $letter_text .= "<br/><br/><b>In the unlikely event that you cannot go live as scheduled, you must upload your program digitally to MNN in order for your program to be cablecast on our channels.&nbsp;&nbsp;</b>
-      Please follow the media submission guidelines outlined in this packet of materials.";
-
-      $letter_text .= "<br/><br/>You can upload files from your own computer or our upload stations in the 59th St. Facility Lobby. Certified, non-linear producers can upload files from the 59th St. Studios second floor edit stations.";
-
+      $letter_text .= "<br/><br/>In the unlikely event that you cannot go live as scheduled, you must upload your program digitally to MNN in order for your program to be cablecast on our channels. You can upload files from your own computer or from the upload stations located at any MNN facility.";
     }
  /******************   NEW PRODUCER LETTERS ARE BEING DONE IN ANOTHER MANNER
     else if ($project_array['season_number'] <= 1) {
@@ -86,13 +83,18 @@ function mnn_programming_exports_letter_pdfbuild($project_data, $letters) {
 
     }
  **********************************************************/
-    else { 
-      $letter_text = "Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end.<b> Please note that your Project ID is an important identifier that MNN uses to track and program your shows.&nbsp;</b>  You may be asked for this number when submitting requests or communicating with MNN.";
-      
-      $letter_text .= "<br/><br/><b>You must upload your program digitally to MNN in order for your program to be cablecast on our channels.&nbsp;&nbsp;</b> 
-      You can upload files from your own computer or our upload stations in the 59th St. Facility Lobby. Certified, non-linear producers can upload files from the 59th St. Studios second floor edit stations.";
-      
-    }  
+    else {
+      $letter_text = "<br/><br/>Below is your confirmed schedule for the $quarter Quarter, which runs from $quarter_start through $quarter_end. Please note that your Project ID is an important identifier that MNN uses to track and program your shows. You may be asked for this number when submitting requests or communicating with MNN.";
+
+      $letter_text .= "<br/><br/>You must upload your program digitally to MNN in order for your program to be cablecast on our channels. You can upload files from your own computer or from the upload stations located at any MNN facility.";
+    }
+
+    $letter_text .= "<br/><br/><b>We're pleased to let you know that your schedule of first-run episodes is now available online!</b> Just log into Access Center (<a href='https://cm.mnn.org'>https://cm.mnn.org</a>) with your Member ID and password to view your schedule.";
+
+    $letter_text .= "<br/><br/>Please be sure to visit <a href='http://mnn.org/mnn-program-agreement'>http://mnn.org/mnn-program-agreement</a> to sign an updated Program Agreement.";
+
+    $letter_text .= "<br/><br/><b>Be on the lookout for an email from us with more information about how to access your online schedule and for a direct link to sign your updated Programming Agreement.</b>"; 
+    
     $thank_out_text = "Thank you for your involvement with MNN, and best wishes for a successful quarter!";
     $pdf->SetFont(PDF_FONT_NAME_MAIN, "", 8);
     $pdf->Write(4, date('M j, Y'));
