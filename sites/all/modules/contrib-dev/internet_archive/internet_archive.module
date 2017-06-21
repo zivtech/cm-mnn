@@ -664,6 +664,8 @@ function internet_archive_harvest_filepaths_from_views() {
  */
 function internet_archive_cron() {
   dsm("internet archive cron");
+  dsm("returning now, uncomment later!");
+  return;
   //validate previous transfers
   internet_archive_validate_transfers();
   dsm("finished validating");
@@ -985,7 +987,7 @@ function internet_archive_send($config, $filepath) {
   dsm('internet_archive_send');
   //grab any existing information available for this filepath
   $ia_data = internet_archive_load_data($filepath);
-  dsm($ia_data, 'id');
+  dsm($ia_data, 'did we find data in the internet archive for '.$filepath);
   if (variable_get('internet_archive_debug', FALSE)) {
     watchdog('internet_archive', 'Sending file: ' . $filepath, NULL,
 	     WATCHDOG_NOTICE);
@@ -995,7 +997,7 @@ function internet_archive_send($config, $filepath) {
   if (! $s3 = internet_archive_new_s3()) {
     return FALSE;
   }
-  dsm($s3, 's3');
+
   $s3->setTransferId($ia_data['tid']);
 
   // can we read the file?
@@ -1009,10 +1011,17 @@ function internet_archive_send($config, $filepath) {
   //grab metadata if it is available
   $metadata = array();
   $metadata = internet_archive_get_metadata($filepath);
-  dsm("back from internet_archive_get_metadata");
+  dsm($metadata, "back from internet_archive_get_metadata");
   $headers = internet_archive_process_metadata($metadata);
   dsm($headers, 'headers');
   //TODO: add some sort of backup in case there is no title/pattern...
+
+  dsm(variable_get('internet_archive_itemname', NULL),
+      'variable internet_archive_itemname');
+
+  dsm(variable_get('internet_archive_bucket_title', NULL),
+      'variable internet_archive_bucket_title');
+  
   if ($itempattern = variable_get('internet_archive_itemname', NULL)) {
     $token_node = internet_archive_get_node_from_filepath($filepath);
     dsm($token_node, 'got my node');
@@ -1020,13 +1029,12 @@ function internet_archive_send($config, $filepath) {
 			  $leading = '[', $trailing = ']', $options = array());
 
     $name = internet_archive_create_item_name($name);
-    dsm($name, 'name');
-    $name = substr($name, 0, 40);
+    dsm($name, 'name 1');
   }
   elseif (variable_get('internet_archive_bucket_title', FALSE)) {
     $name = internet_archive_create_item_name($metadata['title']);
     $name = internet_archive_create_item_name($name);
-    $name = substr($name, 0, 40);
+    dsm($name, 'name 2');
   }
   else {
     $default_item =
@@ -1036,7 +1044,7 @@ function internet_archive_send($config, $filepath) {
     
     $name = internet_archive_create_item_name($default_item);
     $name = internet_archive_create_item_name($name);
-    $name = substr($name, 0, 40);
+    dsm($name, 'name 3');
   }
 
   if (variable_get('internet_archive_queue_attempts', 0) > 0) {
@@ -1044,20 +1052,30 @@ function internet_archive_send($config, $filepath) {
       $name = $ia_data['item'];
     }
   }
+  dsm($name, 'name4');
+
 
   $config['internet_archive_bucket'] = $name;
   $s3->bucket = $config['internet_archive_bucket'];
 
   dsm('putting bucket up');
-  dsm($config['internet_archive_bucket'], 'bucket');
-  dsm($headers, $headers);
-  $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
+  dsm($config, 'config');
+  dsm($headers, 'headers');
+
+  
+  $status =
+    $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
+
+  if (!$status) {
+    dsm("couldn't upload bucket, returning!!!!!");
+    return FALSE;
+  }
 
   // We need to set the filename based on the setting in this configuration
   // Sometimes it is a good idea to save the full $filepath as the filename
   if (! $config['internet_archive_drupal_file_path']) {
     $s3_filename = basename($filepath);
-    dsm('basenaming it');
+    dsm($s3_filename, 'basenaming it');
   }
   else {
     $s3_filename = $filepath;
@@ -1092,33 +1110,26 @@ function internet_archive_send($config, $filepath) {
   dsm($filesize, 'filesize');
   dsm($config, 'config');
 
-
-
-
   //SET VARIABLES FOR THE WAIT LOOP ON BUCKET CREATTION
-  $max_run_time = ini_get('max_execution_time') - 5 + strtotime('now');
 
   //find a pause time for each loop, ideally so we get 3 nicely timed loops
-  $pause = (int)((ini_get('max_execution_time')-1)/5); 
+  $pause = 5;
 
-  dsm(($max_run_time/60), 'max runtime');
-  dsm($pause, 'pause');
-  
   $max = 100;
+  $index = 0;
   $bucket_exists = FALSE;
   $start = strtotime('now');
+  $max_run_time = 35;
+    
   // There is a delay on archive.org regarding bucket creation.. so we check
   // every x seconds
   $pause = 5;
-  while (!$bucket_exists && $max_run_time > strtotime('now')) {
+  while (!$bucket_exists && ($max_run_time + $start) > strtotime('now')){
     sleep($pause);
-    dsm(date('i:s', strtotime('now') - $start), strtotime('now'),
-	'elapsed time');
-    if ($max > 100) {
-      dsm('breaking out yo');
+    if ($index > $max) {
       break;
     }
-    $max++;
+    $index++;
     if (internet_archive_bucket_exists($config['internet_archive_bucket'])) {
       $bucket_exists = TRUE;
     }
@@ -1129,7 +1140,7 @@ function internet_archive_send($config, $filepath) {
     $msg = t("Error Code #23244 Bucket could not be found for !filepath, ".
 	     "maybe bump up execution time from !max.",
 	     array('!filepath' => $filepath,
-		   '!max' => ini_get('max_execution_time')));
+		   '!max' => $max_run_time));
     
     watchdog('internet_archive', $msg, NULL, WATCHDOG_ERROR);
     drupal_set_message($msg, 'error');
@@ -1605,7 +1616,7 @@ function internet_archive_derivative($item_name, $extension) {
 function internet_archive_bucket_exists($item_name) {
   dsm('internet_archive_bucket_exists');
   $bucket_url = 'https://www.archive.org/details/' . $item_name;
-  dsm($bucket_url, 'url');
+  dsm($bucket_url, 'looking for bucket with url');
   if (internet_archive_validate_url($bucket_url)) {
     return TRUE;
   }
@@ -1923,8 +1934,8 @@ function internet_archive_default_config() {
  *   The returned value of the invoked hooks.
  */
 function internet_archive_invoke_internet_archive(&$archive_data, $op) {
-  dsm('internet_archive_load_data');
-  dsm($archive_data, $op);
+  dsm('internet_archive_invoke_internet_archive');
+  dsm($archive_data, 'archive data for ' .$op);
   $return = array();
   foreach (module_implements('internet_archive') as $name) {
     $function = $name . '_internet_archive';
@@ -2439,17 +2450,25 @@ function internet_archive_config($step) {
   $form['internet_archive']['internet_archive_bucket'] = array(
     '#type' => 'textfield',
     '#title' => t('S3 Bucket'),
-    '#default_value' => $step->settings['internet_archive_bucket'] ? $step->settings['internet_archive_bucket'] : variable_get('internet_archive_bucket', str_replace(" ", "_", variable_get('site_name', 'my_site'))),
-    '#description' => t("Name of the S3 bucket, note this has to be unique on Archive's servers"),
+    '#default_value' => $step->settings['internet_archive_bucket'] ?
+    $step->settings['internet_archive_bucket'] :
+    variable_get('internet_archive_bucket',
+		 str_replace(" ", "_", variable_get('site_name', 'my_site'))),
+    '#description' => t("Name of the S3 bucket, note this has to be ".
+			"unique on Archive's servers"),
   );
 
   $form['internet_archive']['internet_archive_drupal_file_path'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use full Drupal filepath on S3'),
-    '#description' => t('Selecting this will store your files on S3 with the Drupal directory path as
-      part of the file name- for example <em>sites/default/files/myfile.jpg</em> This is useful if you
-      are concerned about duplicate filenames or using URL rewriting to serve files from Archive'),
-    '#default_value' => $step->settings['internet_archive_drupal_file_path'] ? $step->settings['internet_archive_drupal_file_path'] : FALSE,
+    '#description' =>
+    t('Selecting this will store your files on S3 with the Drupal directory '.
+      'path as part of the file name- for example '.
+      '<em>sites/default/files/myfile.jpg</em> This is useful if you
+      are concerned about duplicate filenames or using URL rewriting to '.
+      'serve files from Archive'),
+    '#default_value' => $step->settings['internet_archive_drupal_file_path'] ?
+    $step->settings['internet_archive_drupal_file_path'] : FALSE,
   );
 
   $form['internet_archive']['advanced'] = array(
@@ -2690,6 +2709,7 @@ function internet_archive_get_metadata($filepath) {
   if (!$metadata['mediatype']) {
     $pathinfo = pathinfo($filepath);
     $filemime = file_get_mimetype($filepath);
+    dsm($filemime, 'filemime');
     switch ($filemime) {
       case 'image/jpeg':
         $metadata['mediatype'] = 'Image';
@@ -2698,27 +2718,37 @@ function internet_archive_get_metadata($filepath) {
         $metadata['mediatype'] = 'audio';
         break;
       case 'video/mp2p':
+    case 'video/mp4':
       case 'video/quicktime':
       case 'video/x-flv':
         $metadata['mediatype'] = 'movies';
         break;
       default:
         if (variable_get('internet_archive_debug', FALSE)) {
-          watchdog('internet_archive', 'Warning, no media type found. Defaulting to: ' . variable_get('internet_archive_mediatype', 'movies'), NULL, WATCHDOG_WARNING);
+          watchdog('internet_archive',
+		   'Warning, no media type found. Defaulting to: ' .
+		   variable_get('internet_archive_mediatype', 'movies'),
+		   NULL, WATCHDOG_WARNING);
         }
 
-        $metadata['mediatype'] = variable_get('internet_archive_mediatype', 'movies');
+        $metadata['mediatype'] = variable_get('internet_archive_mediatype',
+					      'movies');
         break;
     }
   }
 
-  //if no collection was specified in hook_internet_archive_metadata, check for default in settings
-  if (!$metadata['collection'] && ($default_collection = variable_get('internet_archive_collection', "test_collection"))) {
+  //if no collection was specified in hook_internet_archive_metadata, check
+  //for default in settings
+  if (!$metadata['collection'] &&
+      ($default_collection =
+       variable_get('internet_archive_collection', "test_collection"))) {
     $metadata['collection'] = explode(',', $default_collection);
   }
 
-  //if no title has been provided, and administrative setting is set item to node title, set it now
-  if (variable_get('internet_archive_bucket_title', FALSE) && !$metadata['title'] && $node->title) {
+  //if no title has been provided, and administrative setting is set item to
+  //node title, set it now
+  if (variable_get('internet_archive_bucket_title', FALSE) &&
+      !$metadata['title'] && $node->title) {
     $metadata['title'] = $node->title;
   }
   elseif (!$metadata['title']) {
@@ -2726,12 +2756,15 @@ function internet_archive_get_metadata($filepath) {
     $metadata['title'] = basename($filepath);
   }
 
-  //if no description has been provided, and administrative setting is set description to body, set it now
-  if (variable_get('internet_archive_bucket_body', FALSE) && !$metadata['description'] && $node->body) {
+  //if no description has been provided, and administrative setting is set
+  ///description to body, set it now
+  if (variable_get('internet_archive_bucket_body', FALSE) &&
+      !$metadata['description'] && $node->body) {
     $metadata['description'] = $node->body;
   }
 
-  //if no creative commons license has been provided, but it is available in node, set it now
+  //if no creative commons license has been provided, but it is available
+  //in node, set it now
   if (!$metadata['licenseurl'] && $node->cc->uri) {
     $metadata['licenseurl'] = $node->cc->uri;
   }
@@ -3040,7 +3073,9 @@ function internet_archive_get_field_tables() {
  *   Same text stripped of all non-alphanumeric characters
  */
 function internet_archive_create_item_name($text) {
-  $clean = preg_replace("/[^a-zA-Z0-9\-/_]/", "_", $text);
+  dsm('internet_archive_create_item_name');
+  $clean = preg_replace("/[^a-z0-9_-]+/i", "_", $text);
+  $clean = substr($clean, 0, 60);
   return strtolower($clean);
 }
 
@@ -3662,6 +3697,7 @@ function internet_archive_delete_node_files($node, $tid) {
  * Log function used to record all updates associated with file transfers
  */
 function internet_archive_log($data) {
+  dsm($data, "Log entry!!!!!!!!!!!!!!!!!!!!!!!!!");
   if ($data['tid'] && $data['message'] && $data['type']) {
     // TODO Please review the conversion of this statement to the D7 database API syntax.
     /* db_query("INSERT INTO {internet_archive_log} (tid, message, message_data, type, date) VALUES (%d, '%s', '%s', %d, %d)", $data['tid'], $data['message'], serialize($data['message_data']), $data['type'], REQUEST_TIME) */
@@ -3859,4 +3895,47 @@ function internet_archive_help_links($name, $type = 'icon') {
   }
 
   return $output;
+}
+
+/** * Implementation of hook_cron_queue_info() */
+function internet_archive_cron_queue_info() {
+  dsm("hi dad");
+  // This is the callback function for each queue item.
+  $queues['internet_archive_send_file'] =
+    array(
+	  'worker callback' => 'internet_archive_send_file_run',
+	  'time' => 180, 
+	  );
+  return $queues;
+}
+
+function internet_archive_send_file_run($item) {
+  global $internet_archive_queue_count;
+
+  $internet_archive_queue_count = $internet_archive_queue_count ?
+    $internet_archive_queue_count : 0;
+
+  $internet_archive_queue_count ++;
+
+  dsm($internet_archive_queue_count, 'my count');
+
+  $limit = variable_get('internet_archive_queue_limit', '1');
+
+  if ($internet_archive_queue_count > $limit) {
+    throw new Exception('Item will remain in the queue.');
+  }
+
+  //FETCH DAYS OF WEEK AND CHECK
+  if (!internet_archive_day_check()) {
+    throw new Exception('Item will remain in the queue.');
+  }
+  
+  //FETCH HOUR OF DAY AND CHECK
+  if (!internet_archive_hour_check()) {
+    throw new Exception('Item will remain in the queue.');
+  }
+
+  dsm($item, 'item');
+  internet_archive_default_send($item);
+  
 }

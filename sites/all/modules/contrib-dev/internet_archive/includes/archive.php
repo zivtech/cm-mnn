@@ -246,17 +246,15 @@ class S3 {
   */
   public static function putBucket($bucket, $metaHeaders = NULL,
 				   $location = false) {
-    dsm('S3 putBucket');
+    dsm($bucket, 'S3 putBucket');
+    
     $rest = new S3Request('PUT', $bucket, '');
-    dsm($rest, 'S3 rest');
     
     //TODO: remove irrelevant location information
     $dom = new DOMDocument;
     $createBucketConfiguration =
       $dom->createElement('CreateBucketConfiguration');
 
-    dsm($createBucketConfiguration, 'crate bucket config');
-    
     $locationConstraint =
       $dom->createElement('LocationConstraint', strtoupper($location));
     
@@ -276,6 +274,10 @@ class S3 {
     $rest = $rest->getResponse();
     dsm($rest, 'S3 rest after response');
     dsm($rest->code, 'rest code');
+
+    if(!($rest->code > 0)) {
+      $rest->code = 400;
+    }
     switch ($rest->code) {
       case 200:
       case 201:
@@ -451,66 +453,99 @@ class S3 {
   * @param string $bucket Bucket name
   * @param string $uri Object URI
   * @param array $metaHeaders Array of x--meta-* headers
-  * @param array $requestHeaders Array of request headers or content type as a string
+  * @param array $requestHeaders Array of request headers or content type 
+  * as a string
   * @return boolean
   */
-  public static function putObject($input, $bucket, $uri, $metaHeaders = array(), $requestHeaders = array()) {
-    if ($input === false) return false;
+  public static function putObject($input, $bucket, $uri,
+				   $metaHeaders = array(),
+				   $requestHeaders = array()) {
+    dsm('archive.php putObject()');
+    if ($input === false) {
+      return false;
+    }
     $rest = new S3Request('PUT', $bucket, $uri);
 
-    if (is_string($input)) $input = array(
-      'data' => $input, 'size' => strlen($input),
-      'md5sum' => base64_encode(md5($input, true))
-    );
+    if (is_string($input)) {
+      $input = array(
+		     'data' => $input, 'size' => strlen($input),
+		     'md5sum' => base64_encode(md5($input, true))
+		     );
+    }
 
     // Data
-    if (isset($input['fp']))
+    if (isset($input['fp'])) {
       $rest->fp =& $input['fp'];
-    elseif (isset($input['file']))
+    }
+    elseif (isset($input['file'])) {
       $rest->fp = @fopen($input['file'], 'rb');
-    elseif (isset($input['data']))
+    }
+    elseif (isset($input['data'])) {
       $rest->data = $input['data'];
+    }
 
     // Content-Length (required)
-    if (isset($input['size']) && $input['size'] >= 0)
+    if (isset($input['size']) && $input['size'] >= 0) {
       $rest->size = $input['size'];
+    }
     else {
-      if (isset($input['file']))
+      if (isset($input['file'])) {
         $rest->size = internet_archive_filesize($input['file']);
-      elseif (isset($input['data']))
+      }
+      elseif (isset($input['data'])) {
         $rest->size = strlen($input['data']);
+      }
     }
 
-    // Custom request headers (Content-Type, Content-Disposition, Content-Encoding)
-    if (is_array($requestHeaders))
-      foreach ($requestHeaders as $h => $v) $rest->setHeader($h, $v);
-    elseif (is_string($requestHeaders)) // Support for legacy contentType parameter
+    // Custom request headers (Content-Type, Content-Disposition,
+    //Content-Encoding)
+    if (is_array($requestHeaders)) {
+      foreach ($requestHeaders as $h => $v) {
+	$rest->setHeader($h, $v);
+      }
+    }
+    // Support for legacy contentType parameter
+    elseif (is_string($requestHeaders)) {
       $input['type'] = $requestHeaders;
-
+    }
     // Content-Type
     if (!isset($input['type'])) {
-      if (isset($requestHeaders['Content-Type']))
+      if (isset($requestHeaders['Content-Type'])) {
         $input['type'] =& $requestHeaders['Content-Type'];
-      elseif (isset($input['file']))
+      }
+      elseif (isset($input['file'])) {
         $input['type'] = self::__getMimeType($input['file']);
-      else
+      }
+      else{
         $input['type'] = 'application/octet-stream';
+      }
     }
-
+    dsm($rest, 'rest object before response check');
     // We need to post with Content-Length and Content-Type, MD5 is optional
     if ($rest->size >= 0 && ($rest->fp !== false || $rest->data !== false)) {
       $rest->setHeader('Content-Type', $input['type']);
-      if (isset($input['md5sum'])) $rest->setHeader('Content-MD5', $input['md5sum']);
+      if (isset($input['md5sum'])) {
+	$rest->setHeader('Content-MD5', $input['md5sum']);
+      }
       //BRIAN changed metadata tag to archives version
-      foreach ($metaHeaders as $h => $v) $rest->setAmzHeader($h, $v);
+      foreach ($metaHeaders as $h => $v) {
+	$rest->setAmzHeader($h, $v);
+      }
+          dsm($rest, 'rest object before response');
       $rest = $rest->getResponse();
+      dsm($rest, 'rest after response');
     } 
     else {
-      watchdog('internet_archive', 'Unable to put file: '.$uri.', missing input parameters.',NULL, WATCHDOG_ERROR); 
+      dsm("errror!");
+      watchdog('internet_archive', 'Unable to put file: '.$uri.
+	       ', missing input parameters.',NULL, WATCHDOG_ERROR); 
       if(!$rest->size >= 0) {
-        $message = 'Unable to post file to item '.$bucket.' on Archive.org due to : '.$rest->size;
-      }elseif($rest->fp !== false || $rest->data !== false) {
-        $message = 'Unable to post file to item '.$bucket.' on Archive.org due to a problem accessing the file.';
+        $message = 'Unable to post file to item '.$bucket.
+	  ' on Archive.org due to : '.$rest->size;
+      }
+      elseif($rest->fp !== false || $rest->data !== false) {
+        $message = 'Unable to post file to item '.$bucket.
+	  ' on Archive.org due to a problem accessing the file.';
       }
       $message_data = array(
         'item' => $bucket,
@@ -528,7 +563,7 @@ class S3 {
       internet_archive_log($log_entry);
       return false;
     }
-     
+    dsm($rest->code, 'rest code');
     switch ($rest->code) {
       case 200:
       case 201:
@@ -547,13 +582,20 @@ class S3 {
         internet_archive_log($log_entry);
 
         if (variable_get('internet_archive_debug', FALSE)) {
-           watchdog('internet_archive', 'File: ' . $uri . ' created successfully (http 200)',NULL, WATCHDOG_NOTICE); }
+           watchdog('internet_archive', 'File: ' . $uri .
+		    ' created successfully (http 200)',NULL, WATCHDOG_NOTICE);
+	}
         break;
       case 400:
-        watchdog('internet_archive', 'File: ' . $uri . ' could not be created, (http 400). Bad request can suggest a problem with the metadata being attached to the file.',NULL, WATCHDOG_ERROR);
+        watchdog('internet_archive', 'File: ' . $uri .
+		 ' could not be created, (http 400). Bad request can '.
+		 'suggest a problem with the metadata being attached to '.
+		 'the file.',NULL, WATCHDOG_ERROR);
         $log_entry = array(
           'tid' => self::$transfer_id,
-          'message' => 'File: ' . $uri . ' could not be created. Error returned was Bad Request. This can suggest a problem with the metadata being attached to the file',
+          'message' => 'File: ' . $uri . ' could not be created. Error '.
+	  'returned was Bad Request. This can suggest a problem with the '.
+	  'metadata being attached to the file',
           'message_data' => array(
             'item' => $bucket,
             'uri' => $uri,
@@ -567,11 +609,15 @@ class S3 {
         return false;
         break;
       case 409:
-        //TODO: add support to check if item is owned with S3 credentials, if not append number to item name and try again.
-        watchdog('internet_archive', 'File: ' . $uri . ' already exists, unable to create (http 409).',NULL, WATCHDOG_ERROR);
+        //TODO: add support to check if item is owned with S3 credentials,
+	//if not append number to item name and try again.
+        watchdog('internet_archive', 'File: ' . $uri .
+		 ' already exists, unable to create (http 409).',NULL,
+		 WATCHDOG_ERROR);
         $log_entry = array(
           'tid' => self::$transfer_id,
-          'message' => 'File: ' . $uri . ' already exists, unable to create. Error returned was http 409',
+          'message' => 'File: ' . $uri .
+	  ' already exists, unable to create. Error returned was http 409',
           'message_data' => array(
             'item' => $bucket,
             'uri' => $uri,
@@ -585,10 +631,16 @@ class S3 {
         return false;
         break;
       case 403:
-        watchdog('internet_archive', 'File: ' . $uri . ' could not be created, (http 403). Access denied can suggest a problem with your S3 credentials or metadata being attached to the file.',NULL, WATCHDOG_ERROR);
+        watchdog('internet_archive', 'File: ' . $uri . ' could not be ' .
+		 'created, (http 403). Access denied can suggest a problem '.
+		 'with your S3 credentials or metadata being attached to the '.
+		 'file.',NULL, WATCHDOG_ERROR);
         $log_entry = array(
           'tid' => self::$transfer_id,
-          'message' => 'File: ' . $uri . ' could not be created. Error return was http 403, Access Denied. This suggests a problem with your S3 credentials or metadata being attached to the file',
+          'message' => 'File: ' . $uri .
+	  ' could not be created. Error return was http 403, Access Denied. '.
+	  'This suggests a problem with your S3 credentials or metadata '.
+	  'being attached to the file',
           'message_data' => array(
             'item' => $bucket,
             'uri' => $uri,
