@@ -35,7 +35,7 @@ function internet_archive_mnn_metadata_internet_archive_metadata($node = NULL,
 
   if ($node) {
     $metadata['title'] = $node->title;
-
+    
     if ($node->body) {
       $metadata['description'] = $node->body;
     }
@@ -79,6 +79,20 @@ function internet_archive_mnn_metadata_internet_archive_metadata($node = NULL,
 
       $metadata['creator'] = $producer;
       $metadata['project'] = $project->title;
+
+      
+      $episode_number =
+	internet_archive_mnn_metadata_get_single_field_value($node,
+							     'field_episode_'.
+							     'number',
+							     'value');
+
+      if ($episode_number) {
+	$bucket_name = 'mnn_'. $project_id . '_' . $episode_number;
+	$bucket_name = internet_archive_create_item_name($bucket_name);
+	$metadata['bucket-name'] = $bucket_name;
+	$metadata['mnn-house-id'] = $bucket_name;
+      }
     }
 
     $genre_tid =

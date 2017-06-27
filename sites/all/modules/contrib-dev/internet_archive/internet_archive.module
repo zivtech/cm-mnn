@@ -1022,8 +1022,6 @@ function internet_archive_send($config, $filepath) {
   $metadata = array();
   $metadata = internet_archive_get_metadata($filepath);
   dsm($metadata, "back from internet_archive_get_metadata");
-  $headers = internet_archive_process_metadata($metadata);
-  dsm($headers, 'headers');
   //TODO: add some sort of backup in case there is no title/pattern...
 
   dsm(variable_get('internet_archive_itemname', NULL),
@@ -1031,8 +1029,15 @@ function internet_archive_send($config, $filepath) {
 
   dsm(variable_get('internet_archive_bucket_title', NULL),
       'variable internet_archive_bucket_title');
-  
-  if ($itempattern = variable_get('internet_archive_itemname', NULL)) {
+
+  //CHECK TO SEE THE METADATA HOOK HAS SET A BUCKET NAME, THIS TAKES
+  //PRECEDENT OVER THE OTHER METHODS
+  if (isset($metadata['bucket-name']) && $metadata['bucket-name']) {
+    $name = $metadata['bucket-name'];
+    unset($metadata['bucket-name']);
+    dsm($name, 'name 0');
+  }
+  else if ($itempattern = variable_get('internet_archive_itemname', NULL)) {
     $token_node = internet_archive_get_node_from_filepath($filepath);
     dsm($token_node, 'got my node');
     $name = token_replace($itempattern, $type = 'node', $object = $token_node,
@@ -1043,7 +1048,6 @@ function internet_archive_send($config, $filepath) {
   }
   elseif (variable_get('internet_archive_bucket_title', FALSE)) {
     $name = internet_archive_create_item_name($metadata['title']);
-    $name = internet_archive_create_item_name($name);
     dsm($name, 'name 2');
   }
   else {
@@ -1053,7 +1057,6 @@ function internet_archive_send($config, $filepath) {
 			       variable_get('site_name', t('My Site'))));
     
     $name = internet_archive_create_item_name($default_item);
-    $name = internet_archive_create_item_name($name);
     dsm($name, 'name 3');
   }
 
@@ -1064,6 +1067,8 @@ function internet_archive_send($config, $filepath) {
   }
   dsm($name, 'name4');
 
+  $headers = internet_archive_process_metadata($metadata);
+  dsm($headers, 'headers with metadata');
 
   $config['internet_archive_bucket'] = $name;
   $s3->bucket = $config['internet_archive_bucket'];
@@ -1245,8 +1250,6 @@ function internet_archive_send($config, $filepath) {
   ->execute();
     }
     else {
-      dsm('here is the problem!');
-
       $sql =
 	"INSERT into {internet_archive} ".
 	"(item, in_path, filename, filesize, status, attempts, ".
