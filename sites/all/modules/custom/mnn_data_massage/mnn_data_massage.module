@@ -86,7 +86,14 @@ function mnn_data_massage_page($function) {
 function mnn_data_massage_function_tester() {
   dsm("hi mom!");
 
-  drupal_cron_run();
+  $node = node_load(701208);
+  dsm($node, 'node');
+  $metadata =
+    internet_archive_mnn_metadata_internet_archive_metadata($node, '');
+
+  
+  dsm($metadata, 'metadata');
+  //drupal_cron_run();
 
   
   //internet_archive_cron();

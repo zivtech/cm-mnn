@@ -31,35 +31,43 @@ function internet_archive_permission() {
   return array(
     'administer internet_archive' => array(
       'title' => t('administer internet_archive'),
-      'description' => t('TODO Add a description for \'administer internet_archive\''),
+      'description' =>
+      t('TODO Add a description for \'administer internet_archive\''),
     ),
     'access all internet_archive node tabs' => array(
       'title' => t('access all internet_archive node tabs'),
-      'description' => t('TODO Add a description for \'access all internet_archive node tabs\''),
+      'description' =>
+      t("TODO Add a description for 'access all internet_archive node tabs'"),
     ),
     'access own internet_archive node tabs' => array(
       'title' => t('access own internet_archive node tabs'),
-      'description' => t('TODO Add a description for \'access own internet_archive node tabs\''),
+      'description' =>
+      t("TODO Add a description for 'access own internet_archive node tabs'"),
     ),
     'update all internet_archive metadata' => array(
       'title' => t('update all internet_archive metadata'),
-      'description' => t('TODO Add a description for \'update all internet_archive metadata\''),
+      'description' =>
+      t('TODO Add a description for \'update all internet_archive metadata\''),
     ),
     'update own internet_archive metadata' => array(
       'title' => t('update own internet_archive metadata'),
-      'description' => t('TODO Add a description for \'update own internet_archive metadata\''),
+      'description' =>
+      t('TODO Add a description for \'update own internet_archive metadata\''),
     ),
     'access internet_archive logs' => array(
       'title' => t('access internet_archive logs'),
-      'description' => t('TODO Add a description for \'access internet_archive logs\''),
+      'description' =>
+      t('TODO Add a description for \'access internet_archive logs\''),
     ),
     'delete all internet_archive files' => array(
       'title' => t('delete all internet_archive files'),
-      'description' => t('TODO Add a description for \'delete all internet_archive files\''),
+      'description' =>
+      t('TODO Add a description for \'delete all internet_archive files\''),
     ),
     'delete own internet_archive files' => array(
       'title' => t('delete own internet_archive files'),
-      'description' => t('TODO Add a description for \'delete own internet_archive files\''),
+      'description' =>
+      t('TODO Add a description for \'delete own internet_archive files\''),
     ),
   );
 }
@@ -475,10 +483,12 @@ function internet_archive_admin_form($form) {
       '#type' => 'fieldset',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#description' => t('The following tokens are available to help with this string generation.'),
+      '#description' => t('The following tokens are available to help with '.
+			  'this string generation.'),
       '#value' => theme('token_help', 'node'),
     );
-    $form['internet_archive_data']['internet_archive_itemname']['#description'] = theme('fieldset', $token_help);
+    $form['internet_archive_data']['internet_archive_itemname']['#description']
+      = theme('fieldset', $token_help);
     $form['internet_archive_data']['internet_archive_itemname'] = array(
       '#type' => 'textfield',
       '#title' => t('Pattern for item names'),
@@ -1154,7 +1164,7 @@ function internet_archive_send($config, $filepath) {
 				       $s3_filename, $headers, $mimetype);
   }
   else {
-    dsm('hi mommy');
+    dsm('putting local file to bucket');
     if (!$s3->putObjectFile($filepath, $config['internet_archive_bucket'],
 			    $s3_filename, $headers, $mimetype)) {
       dsm("error!");
@@ -1307,6 +1317,7 @@ function internet_archive_node_files($nid) {
  *   A source filepath of a file transferred to archive.org
  */
 function internet_archive_update_item($filepath) {
+  dsm('internet_archive_update_item');
   $archive_data = internet_archive_load_data($filepath);
 
   //grab all the necessary information
@@ -1323,6 +1334,7 @@ function internet_archive_update_item($filepath) {
   }
   $s3->setTransferId($archive_data['tid']);
 
+  dsm($archive_data, 'archive data for node');
   //grab metadata if it is available
   $metadata = array();
   $metadata = internet_archive_get_metadata($filepath);
@@ -1335,6 +1347,7 @@ function internet_archive_update_item($filepath) {
   $config['internet_archive_bucket'] = $archive_data['item'];
   $s3->bucket = $config['internet_archive_bucket'];
 
+  dsm('about to putBucket with updated metadata');
   // Send new metadata
   $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
 
@@ -2788,7 +2801,8 @@ function internet_archive_process_metadata($metadata) {
     if (is_array($info)) {
       $counter = 1;
       foreach ($info as $i_key => $value) {
-        $headers['x-amz-meta0' . $counter . '-' . $m_key] = internet_archive_clean_text($value);
+        $headers['x-amz-meta0' . $counter . '-' . $m_key] =
+	  internet_archive_clean_text($value);
         $counter++;
       }
     }
