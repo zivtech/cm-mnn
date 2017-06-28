@@ -2296,10 +2296,17 @@ function internet_archive_reports_log() {
  */
 function internet_archive_reports_system_messages() {
   if (arg(4) == 'all') {
-    $output .= t('All status messages recorded by the system are shown below.') . l(' Click here to view only warnings and errors.', 'admin/reports/internet_archive/log');
+    $output .=
+      t('All status messages recorded by the system are shown below.') .
+      l(' Click here to view only warnings and errors.',
+	'admin/reports/internet_archive/log');
   }
   else {
-    $output .= t('All warning and error level status messages recorded by the system are shown below.') . l(' Click here to view all messages, including notices.', 'admin/reports/internet_archive/log/all');
+    $output .=
+      t('All warning and error level status messages recorded by the system '.
+	'are shown below.') .
+      l(' Click here to view all messages, including notices.',
+	'admin/reports/internet_archive/log/all');
   }
   $output .= internet_archive_log_view('global');
   return $output;
@@ -2333,7 +2340,9 @@ function internet_archive_uploads() {
   $rows = array();
 
   $has_results = FALSE;
+  $count = 0;
   while ($archive_data = $result->fetchAssoc()) {
+    $count ++;
     $has_results = TRUE;
     unset($transfer_time);
     unset($filesize);
@@ -2403,7 +2412,7 @@ function internet_archive_uploads() {
     $table .= "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
   }
 
-  if ($has_results) {
+  if ($has_results && $count == $results_per_page) {
     $next_page = $page_number + 1;
     $table .= l(" Next >>>>>>", "admin/reports/internet_archive/".$next_page);
   }
@@ -3847,24 +3856,48 @@ function internet_archive_log($data) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_log_table($type = 'tid', $identifier = NULL, $show_notices = FALSE) {
+function internet_archive_log_table($type = 'tid', $identifier = NULL,
+				    $show_notices = FALSE) {
+  dsm('internet_archive_log_table');
+  $args = array();
   switch ($type) {
     case 'tid':
-      $where = ' WHERE log.tid=%d';
+      $where = ' WHERE log.tid=:tid';
+      $args[':tid'] = $identifier;
       break;
     case 'nid':
-      $where = ' WHERE archive.nid=%d';
+      $where = ' WHERE archive.nid=:nid';
+      $args[':nid'] = $identifier;
       break;
     case 'global':
       if (!$show_notices) {
-        $where = " WHERE log.type='" . ARCHIVE_LOG_WARNING . "' OR log.type='" . ARCHIVE_LOG_ERROR . "'";
+        $where = " WHERE log.type='" . ARCHIVE_LOG_WARNING .
+	  "' OR log.type='" . ARCHIVE_LOG_ERROR . "'";
       }
       break;
   }
 
-  $query = "SELECT log.lid,log.tid,log.message,log.message_data,log.type,log.date FROM {internet_archive_log} AS log JOIN {internet_archive} AS archive ON archive.tid=log.tid" . $where . " ORDER BY log.date DESC";
+  $query =
+    "SELECT log.lid, log.tid, log.message, log.message_data, log.type,".
+    "log.date ".
+    "FROM {internet_archive_log} AS log ".
+    "INNER JOIN {internet_archive} AS archive ON archive.tid=log.tid" .
+    $where . " ORDER BY log.date DESC";
 
-  $result = pager_query($query, $limit = 10, $element = 0, $count_query = NULL, $identifier);
+  dsm($query, 'query');
+  $page_number = arg(3);
+  $results_per_page = variable_get('internet_archive_results_per_page', 100);
+
+  if ($page_number && $page_number > 1) {
+    $min = (($results_per_page) * $page_number) - $results_per_page;
+  }
+  else {
+    $page_number = 1;
+    $min = 0;
+  }
+  
+  $result = db_query_range($query, $min, $results_per_page, $args);
+
   while ($log_entry = $result->fetchAssoc()) {
     switch ($log_entry['type']) {
       case 1:
@@ -3879,27 +3912,31 @@ function internet_archive_log_table($type = 'tid', $identifier = NULL, $show_not
     }
 
     $message = $log_entry['message'];
-    $message .= '&nbsp;on <em>' . date("F j, Y, g:i a", $log_entry['date']) . '</em>';
+    $message .= "&nbsp;on <em>" . date("F j, Y, g:i a", $log_entry['date']) .
+      "</em>";
 
+    dsm($message, 'message');
     if (function_exists('krumo') && php_sapi_name() != 'cli') {
       $message .= '<br />';
       $message .= krumo_ob(unserialize($log_entry['message_data']));
     }
 
-    $rows[] = array(
-      'data' => array($message, array(
-          'data' => $friendly_type,
-          'class' => 'ia-type',
-        )),
-      'class' => 'ia-' . $friendly_type,
-    );
+    $rows[] = array('data' => array(array('data'=>$message,
+					  'class'=>array('')),
+				    array('data'=>$friendly_type,
+					  'class'=>array('ia-type')),
+				    ),
+		    'class' => array('ia-' . $friendly_type),
+		    );
+    
   }
 
   if (count($rows) > 0) {
     $header = array('Message', 'Type');
-    $table = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => 'ia-transfer-log')));
-    // TODO Please change this theme call to use an associative array for the $variables parameter.
-    $table .= theme('pager');
+    dsm($rows, 'rows');
+    dsm($header, 'header');
+    $table = theme('table', array('header' => $header, 'rows' => $rows));
+
     if (!function_exists('krumo') || php_sapi_name() == 'cli') {
       $table .= t('For more detailed debugging, please install the devel module and return to this page.');
     }
@@ -3915,16 +3952,29 @@ function internet_archive_log_table($type = 'tid', $identifier = NULL, $show_not
  * @see http://drupal.org/node/1354
  */
 function internet_archive_log_view($type = 'tid', $identifier = NULL) {
+  dsm('internet_archive_log_view');
+
   if (user_access('access internet_archive logs')) {
-    drupal_add_css(drupal_get_path('module', 'internet_archive') . '/css/log.css');
+    drupal_add_css(drupal_get_path('module', 'internet_archive') .
+		   '/css/log.css');
     if ($type == 'tid') {
       $item = internet_archive_load_data_tid($identifier);
-      $output = '<br /><h3>Log for source file: ' . $item['in_path'] . '</h3>';
-      $output .= l('Visit the node associated with this transfer', 'node/' . $item['nid'] . '/ia');
-      $output .= ' | ' . l('View the main log page', 'admin/reports/internet_archive/log');
+      $node = node_load($item['nid']);
+      $output = '<br /><h3>Log for <i>' . $node->title . '</i> source file: ' .
+	$item['in_path'] . '</h3>';
+
+      $output .=
+	l('Visit the node associated with this transfer',
+	  'node/' . $item['nid'] . '/ia');
+      
+      $output .= ' | ' . l('View the main log page',
+			   'admin/reports/internet_archive/log');
     }
     elseif ($type == 'nid') {
-      $output = '<h3>Combined log for all transfers associated with this node</h3>';
+      $node = node_load($identifier);
+      $output =
+	'<h3>Combined log for all transfers associated with the '.
+	'<i>' . $node->title . '</i> node</h3>';
     }
     elseif ($type == 'global') {
       $output = '<h3>Global message log</h3>';
@@ -3936,11 +3986,12 @@ function internet_archive_log_view($type = 'tid', $identifier = NULL) {
     else {
       $show_notices = FALSE;
     }
+    
     $output .= internet_archive_log_table($type, $identifier, $show_notices);
     return $output;
   }
   else {
-    return FALSE;
+    drupal_access_denied();
   }
 
 }
