@@ -400,109 +400,146 @@ function internet_archive_new_s3($key = FALSE, $skey = FALSE) {
  * @ingroup forms
  */
 function internet_archive_admin_form($form) {
-  $form['internet_archive_help'] = array(
-    '#value' => '<p><strong>' . internet_archive_help_links('using-internet-archive', 'link') . '</strong></p>',
+  $form['internet_archive_help'] =
+    array(
+	  '#value' => '<p><strong>' .
+	  internet_archive_help_links('using-internet-archive', 'link') .
+	  '</strong></p>',
   );
 
-  $form['internet_archive_account'] = array(
-    '#type' => 'fieldset',
-    '#element_validate' => array('internet_archive_admin_validate'),
-    '#title' => 'Archive.org Account Configuration',
-    '#description' => t('Global settings for Archive.org S3 configurations.'),
+  $form['internet_archive_account'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#element_validate' => array('internet_archive_admin_validate'),
+	  '#title' => 'Archive.org Account Configuration',
+	  '#description' =>
+	  t('Global settings for Archive.org S3 configurations.'),
   );
 
-  $form['internet_archive_account']['internet_archive_bucket'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Default Archive.org Item to store files in'),
-    '#default_value' => variable_get('internet_archive_bucket', str_replace(' ', '_', variable_get('site_name', t('My Site')))),
-    '#description' => t("Name of the Archive.org item that files will be placed into, note this has to be unique. This can be overridden by a configuration, but this is the default value and used to test your connection."),
-    '#required' => TRUE,
-  );
-  $form['internet_archive_account']['internet_archive_default_server_url'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Archive.org S3 URL'),
-    '#default_value' => variable_get('internet_archive_default_server_url', "http://s3.us.archive.org/"),
-    '#description' => t('URL to send to archive. You probably do not need to change this.'),
-    '#required' => TRUE,
-  );
-  $form['internet_archive_account']['internet_archive_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Archive.org S3 Access Key'),
-    '#default_value' => variable_get('internet_archive_key', ""),
-    '#description' => t("You can obtain one at: ") . l('http://www.archive.org/account/s3.php', 'http://www.archive.org/account/s3.php'),
-    '#required' => TRUE,
-  );
-  $form['internet_archive_account']['internet_archive_skey'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Archive.org S3 Secret Key'),
-    '#default_value' => variable_get('internet_archive_skey', ""),
-    '#description' => t("You can obtain one at: ") . l('http://www.archive.org/account/s3.php', 'http://www.archive.org/account/s3.php'),
-    '#required' => TRUE,
-  );
+  $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
+  $default_value = variable_get('internet_archive_bucket', $default_value);
+  
+  $form['internet_archive_account']['internet_archive_bucket'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Default Archive.org Item to store files in'),
+	  '#default_value' => $default_value,
+	  '#description' =>
+	  t("Name of the Archive.org item that files will be placed into, ".
+	    "note this has to be unique. This can be overridden by a , ".
+	    "configuration but this is the default value and used to test ".
+	    "your connection."),
+	  '#required' => TRUE,
+	  );
 
-  $form['internet_archive_data'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Basic item and metadata options',
-    '#description' => t('Basic item and metadata options. More advanced configurations can override these settings in a custom module via hook_internet_archive_metadata.'),
-  );
+  $default_value =
+    variable_get('internet_archive_default_server_url',
+		 "http://s3.us.archive.org/");
+    
+  $form['internet_archive_account']['internet_archive_default_server_url'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Archive.org S3 URL'),
+	  '#default_value' => $default_value,
+	  '#description' =>
+	  t("URL to send to archive. You probably don't need to change this."),
+	  '#required' => TRUE,
+	  );
+  
+  $form['internet_archive_account']['internet_archive_key'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Archive.org S3 Access Key'),
+	  '#default_value' => variable_get('internet_archive_key', ""),
+	  '#description' => t("You can obtain one at: ") .
+	  l('http://www.archive.org/account/s3.php',
+	    'http://www.archive.org/account/s3.php'),
+	  '#required' => TRUE,
+	  );
+  
+  $form['internet_archive_account']['internet_archive_skey'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Archive.org S3 Secret Key'),
+	  '#default_value' => variable_get('internet_archive_skey', ""),
+	  '#description' => t("You can obtain one at: ") .
+	  l('http://www.archive.org/account/s3.php',
+	    'http://www.archive.org/account/s3.php'),
+	  '#required' => TRUE,
+	  );
+
+  $form['internet_archive_data'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Basic item and metadata options',
+	  '#description' =>
+	  t('Basic item and metadata options. More advanced configurations '.
+	    'can override these settings in a custom module via '.
+	    'hook_internet_archive_metadata.'),
+	  );
+  
   $form['internet_archive_data']['internet_archive_update'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Update metadata on archive.org for already transferred files when nodes are updated?'),
+    '#title' =>
+    t('Update metadata on archive.org for already transferred files when '.
+      'nodes are updated?'),
     '#default_value' => variable_get('internet_archive_update', FALSE),
-    '#description' => t("If this option is checked, all item metadata will be resent to archive.org when their associated nodes are updated."),
+    '#description' =>
+    t("If this option is checked, all item metadata will be resent to ".
+      "archive.org when their associated nodes are updated."),
   );
   $form['internet_archive_data']['internet_archive_bucket_title'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use node title for item name when available?'),
     '#default_value' => variable_get('internet_archive_bucket_title', FALSE),
-    '#description' => t("This provides a simple alternative to storing files in the default item above. Checking this box will result in all transferred files being stored in a item/bucket based on their source node title."),
+    '#description' =>
+    t("This provides a simple alternative to storing files in the default ".
+      "item above. Checking this box will result in all transferred files ".
+      "being stored in a item/bucket based on their source node title."),
   );
   $form['internet_archive_data']['internet_archive_bucket_body'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use node body for item description when available?'),
     '#default_value' => variable_get('internet_archive_bucket_body', FALSE),
-    '#description' => t("If this box is checked, when a node body is available it will be sent along as the description for the item on archive.org"),
+    '#description' =>
+    t("If this box is checked, when a node body is available it will be sent ".
+      "along as the description for the item on archive.org"),
   );
+
+  $default_value =
+    variable_get('internet_archive_collection', "test_collection");
+  $description =
+    t("Archive.org is broken into many collections. For initial testing ".
+      "this defaults to the test collection where files are automatically ".
+      "deleted after 30 days. Once you are done testing, you should change ".
+      "this to an appropriate permanent collection. You can specify ".
+      "multiple collections separated by commas but make sure to put them ".
+      "in order of most specific to most general. Note that if you are ".
+      "using the om_metadata submodule you do not need to add additional ".
+      "collections like openmediaproject or community_media here as the ".
+      "submodule handles that automatically") . '<br /><strong>' .
+    t("Example: denveropenmedia") . '</strong>';
+
   $form['internet_archive_data']['internet_archive_collection'] = array(
     '#type' => 'textfield',
     '#title' => t('Default collection to store files to'),
-    '#default_value' => variable_get('internet_archive_collection', "test_collection"),
-    '#description' => t("Archive.org is broken into many collections. For initial testing this defaults to the test collection where files are automatically deleted after 30 days. Once you are done testing, you should change this to an appropriate permanent collection. You can specify multiple collections separated by commas but make sure to put them in order of most specific to most general. Note that if you are using the om_metadata submodule you do not need to add additional collections like openmediaproject or community_media here as the submodule handles that automatically") . '<br /><strong>' . t("Example: denveropenmedia") . '</strong>',
+    '#default_value' => $default_value,
+    '#description' => $description,
   );
   $form['internet_archive_data']['internet_archive_derivatives'] = array(
     '#type' => 'textfield',
     '#title' => t('Number of expected derivatives'),
     '#default_value' => variable_get('internet_archive_derivatives', 3),
-    '#description' => t("For a video file, archive.org typically creates 3 derivatives in addition to the original file (GIF, OGG, MP4). For audio, there is typically 1 derivation (OGG). The module uses this value in order to discern when your transfer has finished the derivation process, once the number of derivatives reported is equal to or greater than the value entered here, the module will update the file status to derived and it will start displaying in embeds."),
+    '#description' =>
+    t("For a video file, archive.org typically creates 3 derivatives in ".
+      "addition to the original file (GIF, OGG, MP4). For audio, there is ".
+      "typically 1 derivation (OGG). The module uses this value in order to ".
+      "discern when your transfer has finished the derivation process, once ".
+      "the number of derivatives reported is equal to or greater than the ".
+      "value entered here, the module will update the file status to ".
+      "derived and it will start displaying in embeds."),
   );
 
-  if (module_exists('token')) {
-    // TODO Please change this theme call to use an associative array for the $variables parameter.
-    $token_help = array(
-      '#title' => t('Replacement patterns'),
-      '#type' => 'fieldset',
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#description' => t('The following tokens are available to help with '.
-			  'this string generation.'),
-      '#value' => theme('token_help', 'node'),
-    );
-    $form['internet_archive_data']['internet_archive_itemname']['#description']
-      = theme('fieldset', $token_help);
-    $form['internet_archive_data']['internet_archive_itemname'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Pattern for item names'),
-      '#default_value' => variable_get('internet_archive_itemname', ''),
-      '#description' => 'You can use any of the tokens available below to define your item name. If used, this setting will override the previous use node title for item name setting if checked.' . theme('fieldset', $token_help),
-    );
-  }
-  else {
-    $form['internet_archive_data']['no_token'] = array(
-      '#type' => 'markup',
-      '#title' => 'Pattern for item names',
-      '#value' => '<strong>' . t('Item values will be set automatically based on title. For more control, please install and enable the token module.') . '</strong>',
-    );
-  }
   $form['internet_archive_data']['internet_archive_mediatype'] = array(
     '#type' => 'select',
     '#title' => t('Default filetype to store files as'),
@@ -515,59 +552,93 @@ function internet_archive_admin_form($form) {
       'movies' => 'Video',
     ),
     '#multiple' => FALSE,
-    '#description' => t("This type applies in situations where the system is not provided with a media type from hook_internet_archive_metadata, and is not able to defer the type from the file itself."),
-  );
-  
-  
-  $form['internet_archive']['internet_archive_field_support'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Field Integration',
-    '#description' => '<div>' . t('Select any fields below that you would like to use to transfer files to Archive.org. File, text and embedded media fields are supported.') . '<strong>' . t(' All fields selected must contain accessible path information as their value. Any embedded media fields must be using a <a href="http://drupal.org/project/media_video_flotsam">custom type</a>, with paths entered for the URL. In other words, don\'t expect this module to transfer your embedded youtube videos to Archive.org. If you are storing path data for files on a remote server, please enable and configure the Internet Archive Remote submodule.') . '</strong>',
-  );
-
-  $form['internet_archive']['internet_archive_field_support']['internet_archive_fields'] = array(
-    '#type' => 'select',
-    '#title' => t('Include the following fields as file sources'),
-    '#default_value' => variable_get('internet_archive_fields', FALSE),
-    '#options' => internet_archive_field_select_options(),
-    '#multiple' => TRUE,
-  );
-  $form['internet_archive']['internet_archive_field_support']['internet_archive_fields_list_display'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Display archive.org file information when displaying selected fields on nodes?'),
-      '#default_value' => variable_get('internet_archive_fields_list_display', TRUE),
-    );
-  $form['internet_archive']['internet_archive_field_support']['internet_archive_fields_add_inline'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Offer "add to Archive.org" link when displaying selected fields on nodes?'),
-      '#default_value' => variable_get('internet_archive_fields_add_inline', TRUE),
+    '#description' =>
+    t("This type applies in situations where the system is not provided ".
+      "with a media type from hook_internet_archive_metadata, and is not ".
+      "able to defer the type from the file itself."),
   );
   
 
-  if (module_exists('media_archive')) {
-    $form['internet_archive']['internet_archive_storage'] = array(
-      '#type' => 'fieldset',
-      '#title' => 'Additional Storage Options',
-      '#description' => t('In addition to the internet_archive module storing transfer information, you can enable additional storage options below.'),
-    );
+  $description = '<div>' .
+    t('Select any fields below that you would like to use to transfer '.
+      'files to Archive.org. File, text and embedded media fields are '.
+      'supported.') . '<strong>' .
+    t(' All fields selected must contain accessible path information as '.
+      'their value. Any embedded media fields must be using a '.
+      '<a href="http://drupal.org/project/media_video_flotsam">custom type</a>'
+      .', with paths entered for the URL. In other words, don\'t expect '.
+      'this module to transfer your embedded youtube videos to Archive.org.'.
+      'If you are storing path data for files on a remote server, please '.
+      'enable and configure the Internet Archive Remote submodule.') .
+    '</strong>';
+    
+  $form['internet_archive']['internet_archive_field_support'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Field Integration',
+	  '#description' => $description,
+	  );
 
-    $emfield_options = array('none' => '--None--');
-    $emfield_options = $emfield_options + internet_archive_field_select_options(array('emvideo', 'emaudio'));
-    $form['internet_archive']['internet_archive_storage']['internet_archive_storage_emfield'] = array(
-      '#type' => 'select',
-      '#title' => t('Store archive.org video or audio information in emfield'),
-      '#default_value' => variable_get('internet_archive_storage_emfield', 'none'),
-      '#options' => $emfield_options,
-      '#description' => t('If an Embedded Video or Audio Field is selected here, archive.org information will be automatically inserted into the field on the source node after a transfer has validated. To display properly, you will need to also have the <a href="http://drupal.org/project/media_archive">Media: Archive module</a> enabled. Be aware that if you select a field that contains existing data, it will be overwritten!'),
-      '#multiple' => TRUE,
-    );
-  }
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields'] =
+    array(
+	  '#type' => 'select',
+	  '#title' => t('Include the following fields as file sources'),
+	  '#default_value' => variable_get('internet_archive_fields', FALSE),
+	  '#options' => internet_archive_field_select_options(),
+	  '#multiple' => TRUE,
+	  );
 
+  $default_value =
+    variable_get('internet_archive_fields_list_display', TRUE);
+  
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields_list_display'] =
+    array(
+	  '#type' => 'checkbox',
+	  '#title' =>
+	  t('Display archive.org file information when displaying '.
+	    'selected fields on nodes?'),
+	  '#default_value' => $default_value,
+	  );
+
+  $default_value = variable_get('internet_archive_fields_add_inline', TRUE);
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields_add_inline'] =
+    array(
+	  '#type' => 'checkbox',
+	  '#title' =>
+	  t('Offer "add to Archive.org" link when displaying selected '.
+	    'fields on nodes?'),
+	  '#default_value' => $default_value,
+	  );
+  
+
+  $form['internet_archive']['internet_archive_report_settings'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Report Settings',
+	  '#description' => $description,
+	  );
+
+  $form['internet_archive']['internet_archive_report_settings']
+    ['internet_archive_results_per_page'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Number of results per report page'),
+	  '#default_value' =>
+	  variable_get('internet_archive_results_per_page', 100),
+	  '#description' =>
+	  t('The number of results that appear on the '.
+	    'Internet Archive Log report'),
+	  );
+  
   $form['internet_archive']['internet_archive_debug'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable Debug Mode'),
     '#default_value' => variable_get('internet_archive_debug', FALSE),
-    '#description' => t("Enables verbose watchdog messages for debug purposes."),
+    '#description' =>
+    t("Enables verbose watchdog messages for debug purposes."),
   );
 
   return system_settings_form($form);
@@ -2240,20 +2311,39 @@ function internet_archive_reports_system_messages() {
  * @param $limit
  *   Number of upload entries to show on a single page.
  */
-function internet_archive_uploads($limit = 10) {
-  $result = pager_query("SELECT * FROM {internet_archive} ORDER BY transfer_initiated DESC", $limit);
-  $header = array('ID', 'Node', 'Filename', 'Filesize (MB)', 'Start', 'Finish', 'Time(min)<br />Rate(Mb/sec)', 'Status', 'Log');
-  $rows = array();
-  $counter = 0;
+function internet_archive_uploads() {
+  $page_number = arg(3);
+  $results_per_page = variable_get('internet_archive_results_per_page', 100);
 
+  if ($page_number && $page_number > 1) {
+    $min = (($results_per_page) * $page_number) - $results_per_page;
+  }
+  else {
+    $page_number = 1;
+    $min = 0;
+  }
+  
+  $result =db_query_range("SELECT * FROM {internet_archive} ".
+			  "ORDER BY transfer_initiated DESC",
+			  $min, $results_per_page);
+  
+  $header = array('ID', 'Node', 'Filename', 'Filesize (MB)', 'Start', 'Finish',
+		  'Time(min)<br />Rate(Mb/sec)', 'Status', 'Log');
+  
+  $rows = array();
+
+  $has_results = FALSE;
   while ($archive_data = $result->fetchAssoc()) {
+    $has_results = TRUE;
     unset($transfer_time);
     unset($filesize);
     unset($transfer_rate);
     unset($filename);
 
     if ($archive_data['date'] > 0 && $archive_data['transfer_initiated'] > 0) {
-      $transfer_time = round((($archive_data['date'] - $archive_data['transfer_initiated']) / 60), 2);
+      $transfer_time =
+	($archive_data['date'] - $archive_data['transfer_initiated']) / 60;
+      $transfer_time =round($transfer_time, 2);
     }
     else {
       $transfer_time = 'N/A';
@@ -2266,9 +2356,14 @@ function internet_archive_uploads($limit = 10) {
       $filesize = 'N/A';
     }
 
-    if ($archive_data['filesize'] > 0 && $archive_data['date'] > 0 && $archive_data['transfer_initiated'] > 0) {
+    if ($archive_data['filesize'] > 0 && $archive_data['date'] > 0 &&
+	$archive_data['transfer_initiated'] > 0) {
+
       $transfer_rate = $archive_data['filesize'] * 8 / 1000 / 1000;
-      $transfer_rate = $transfer_rate / ($archive_data['date'] - $archive_data['transfer_initiated']);
+
+      $transfer_rate = $transfer_rate /
+	($archive_data['date'] - $archive_data['transfer_initiated']);
+      
       $transfer_rate = round($transfer_rate, 4);
     }
     else {
@@ -2282,14 +2377,36 @@ function internet_archive_uploads($limit = 10) {
       $filename = $archive_data['filename'];
     }
 
-    $rows[] = array(l($archive_data['tid'], 'http://www.archive.org/details/' . $archive_data['item']), l($archive_data['nid'], 'node/' . $archive_data['nid']), $filename, $filesize, $archive_data['transfer_initiated'], $archive_data['date'], $transfer_time . '<br />' . $transfer_rate, $archive_data['status'], l('View', 'ia/log/' . $archive_data['tid']));
-    $counter++;
+    $rows[] =
+      array(l($archive_data['tid'], 'http://www.archive.org/details/' .
+	      $archive_data['item']),
+	    l($archive_data['nid'], 'node/' . $archive_data['nid']),
+	    $filename, $filesize, $archive_data['transfer_initiated'],
+	    $archive_data['date'],
+	    $transfer_time . '<br />' . $transfer_rate,
+	    $archive_data['status'],
+	    l('View', 'ia/log/' . $archive_data['tid']));
   }
 
-  $rows = internet_archive_format_dates($rows, $limit);
-  $table = theme('table', array('header' => $header, 'rows' => $rows));
-  // TODO Please change this theme call to use an associative array for the $variables parameter.
-  $table .= theme('pager');
+  if ($has_results) {
+    $rows = internet_archive_format_dates($rows, $limit);
+    $table = theme('table', array('header' => $header, 'rows' => $rows));
+  }
+  else {
+    $table = "<h3>" . t("There are no more results to show.") . "</h3>";
+  }
+
+  if ($page_number > 1) {
+    $prev_page = $page_number - 1;
+    $table .= "<br/>" .
+      l("<<<<< Previous ", "admin/reports/internet_archive/" . $prev_page);
+    $table .= "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
+  }
+
+  if ($has_results) {
+    $next_page = $page_number + 1;
+    $table .= l(" Next >>>>>>", "admin/reports/internet_archive/".$next_page);
+  }
   return $table;
 }
 
@@ -2304,7 +2421,7 @@ function internet_archive_uploads($limit = 10) {
  * @return
  *   An array of report rows with adjusted friendly date data
  */
-function internet_archive_format_dates($rows, $limit) {
+function internet_archive_format_dates($rows) {
   $counter = 0;
   $formatted_rows = array();
 
@@ -2323,10 +2440,6 @@ function internet_archive_format_dates($rows, $limit) {
       $formatted_rows[$key][5] = date("m/d/y g:ia", $row[5]);
     }
     $counter++;
-
-    if ($counter >= $limit) {
-      break;
-    }
   }
 
   return $formatted_rows;
