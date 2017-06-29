@@ -92,7 +92,6 @@ function internet_archive_menu() {
 	  'page callback' => 'drupal_get_form',
 	  'page arguments' => array('internet_archive_admin_form'),
 	  'access arguments' => array('administer internet_archive'),
-	  'type' => MENU_DEFAULT_LOCAL_TASK,
 	  'weight' => -3,
 	  );
 
@@ -103,7 +102,6 @@ function internet_archive_menu() {
 	    'page arguments' => array('internet_archive_queue_settings_form'),
 	    'access arguments' => array('administer internet_archive'),
 	    'file' => 'includes/internet_archive_queue.inc',
-	    'type' => MENU_LOCAL_TASK,
 	    'weight' => 0,
 	    );
     
@@ -156,9 +154,20 @@ function internet_archive_menu() {
 	  'page arguments' => array('internet_archive_queue_add_remove_form'),
 	  'access arguments' => array('administer internet_archive'),
 	  'file' => 'includes/internet_archive_queue.inc',
-	  'type' => MENU_LOCAL_TASK,
+	  'type' => MENU_DEFAULT_LOCAL_TASK,
 	  'weight' => 0,
 	  );
+  $items['admin/structure/internet_archive/transfers'] =
+    array(
+	  'title' => 'Transferred Items',
+	  'page callback' => 'drupal_get_form',
+	  'page arguments' => array('internet_archive_transferred_items'),
+	  'access arguments' => array('administer internet_archive'),
+	  'file' => 'includes/internet_archive_queue.inc',
+	  'type' => MENU_LOCAL_TASK,
+    	  'weight' => 1,
+	  );
+  
 
   //manual file and node based commands
   $items['internet_archive/%/transfer'] =

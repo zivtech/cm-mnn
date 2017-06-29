@@ -9,7 +9,6 @@ function internet_archive_mnn_metadata_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('internet_archive_mnn_metadata_admin_form'),
     'access arguments' => array('administer internet_archive'),
-    'type' => MENU_LOCAL_TASK,
     'weight' => 17,
   );
 
