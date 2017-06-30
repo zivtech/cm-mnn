@@ -3256,7 +3256,12 @@ function internet_archive_field_formatter_info() {
  * @return Array with Views API version.
  */
 function internet_archive_views_api() {
-  return array('api' => 2.0);
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'internet_archive').'/includes'
+	       );
 }
 
 /**
@@ -4061,7 +4066,9 @@ function internet_archive_send_file_run($item) {
   
 }
 
-
+/**
+ * implements hook_action_info()
+ */
 function internet_archive_action_info() {
   $items = array();
     $items['internet_archive_delete_archive_item_action'] =
@@ -4090,18 +4097,43 @@ function internet_archive_action_info() {
   return $items;
 }
 
+/**
+ * Custom VBO action callback function
+ */
 function internet_archive_complete_transfer_action(&$node, $context) {
-  dsm($archive_item, 'i will be actiing on this item');
-  dsm($context, 'context');
-
-  dsm('validating');
   internet_archive_validate_transfers($node->nid);
 
-  dsm('deriving');
   internet_archive_store_derivatives($node->nid);
 }
-
+/**
+ * Custom VBO action callback function
+ */
 function internet_archive_delete_archive_item_action(&$archive_item, $context){
   dsm($archive_item, 'i will be deleting this item');
   dsm($context, 'context');
+}
+/**
+ * implements hook_form_alter()
+ */
+function internet_archive_form_alter(&$form, &$form_state, $form_id) {
+  if ($form['#id'] == 'views-exposed-form-internet-archive-transfers-page') {
+    $options = array(
+		     '' => '<select>',
+		     ARCHIVE_QUEUED => ARCHIVE_QUEUED,
+		     ARCHIVE_TRANSFERRING => ARCHIVE_TRANSFERRING,
+		     ARCHIVE_TRANSFERRED => ARCHIVE_TRANSFERRED,
+		     ARCHIVE_VALIDATED => ARCHIVE_VALIDATED,
+		     ARCHIVE_DERIVED => ARCHIVE_DERIVED,
+		     ARCHIVE_DELETED => ARCHIVE_DELETED,
+		     ARCHIVE_FAILED => ARCHIVE_FAILED,
+		     );
+
+    $form['status_1'] =
+      array(
+	    '#type' => 'select',
+	    '#options' => $options,
+	  );
+
+
+  }
 }
