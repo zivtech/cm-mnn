@@ -437,11 +437,3 @@ function internet_archive_queue_drupal_queue_cron_run() {
     }
   }
 }
-
-function internet_archive_transferred_items() {
-  $form = array();
-
-  $form['test'] = array('#markup' => 'hi mom');
-
-  return $form;
-}
