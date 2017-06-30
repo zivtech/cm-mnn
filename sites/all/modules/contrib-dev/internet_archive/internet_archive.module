@@ -1471,6 +1471,32 @@ function internet_archive_update_item($filepath) {
  * An array of archive.org information from one of the 
  * internet_archive_load_data functions.
  */
+function internet_archive_delete_item($archive_data) {
+
+  //grab all the necessary information
+  $config = internet_archive_default_config();
+
+  // load the S3 class
+  if (! $s3 = internet_archive_new_s3()) {
+    return FALSE;
+  }
+  $s3->setTransferId($archive_data['tid']);
+
+  $config['internet_archive_bucket'] = $archive_data['item'];
+  $s3->bucket = $config['internet_archive_bucket'];
+
+  $s3->deleteObject($config['internet_archive_bucket'],
+		    $archive_data['filename']);
+}
+
+
+/**
+ * Deletes all files in an item at archive.org
+ *
+ * @param $archive_data
+ * An array of archive.org information from one of the 
+ * internet_archive_load_data functions.
+ */
 function internet_archive_delete_files($archive_data) {
 
   //grab all the necessary information
@@ -4108,9 +4134,37 @@ function internet_archive_complete_transfer_action(&$node, $context) {
 /**
  * Custom VBO action callback function
  */
-function internet_archive_delete_archive_item_action(&$archive_item, $context){
-  dsm($archive_item, 'i will be deleting this item');
-  dsm($context, 'context');
+function internet_archive_delete_archive_item_action(&$node, $context){
+  dsm($node, 'internet_archive_delete_archive_item_action');
+
+  $sql = "SELECT * from {internet_archive} where nid = :nid";
+  $results = db_query($sql, array(':nid' => $node->nid));
+
+  while($result = $results->fetchAssoc()) {
+    $archive_data = internet_archive_load_data_tid($result['tid']);
+    dsm($archive_data, 'woohoo archive data');
+    internet_archive_delete_files($archive_data);
+    internet_archive_delete_item($archive_data);
+
+    db_delete('internet_archive')
+      ->condition('tid', $archive_data['tid'])
+      ->execute();
+
+    $msg = t('Selected files at Archive.org deleted. <strong>Note that it '.
+	     'may take some time for this update to be visible at '.
+	     'Archive.org!</strong>');
+	     
+    drupal_set_message($msg);
+    $log_entry = array(
+      'tid' => $tid,
+      'message' => t('File and derivatives deleted at Archive.org'),
+      'message_data' => $archive_data,
+      'type' => ARCHIVE_LOG_WARNING,
+    );
+    internet_archive_log($log_entry);
+
+  }
+  
 }
 /**
  * implements hook_form_alter()

@@ -750,10 +750,13 @@ class S3 {
   * @return boolean
   */
   public static function deleteObject($bucket, $uri) {
+    dsm('archive.php deleteObject');
     $rest = new S3Request('DELETE', $bucket, $uri);
     $rest = $rest->getResponse();
+    dsm($rest, 'after response');
     if ($rest->error === false && $rest->code !== 204)
-      $rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
+      $rest->error = array('code' => $rest->code,
+			   'message' => 'Unexpected HTTP status');
     if ($rest->error !== false) {
       trigger_error(sprintf("S3::deleteObject(): [%s] %s",
       $rest->error['code'], $rest->error['message']), E_USER_WARNING);
@@ -770,11 +773,12 @@ class S3 {
   * @return boolean
   */
   public static function deleteFiles($bucket, $uri) {
+    dsm('archive.php deleteFiles');
     $rest = new S3Request('DELETE', $bucket, $uri);
     $rest->setHeader('x-archive-cascade-delete', '1');
     
     $rest = $rest->getResponse();
- 
+    dsm($rest, 'after response');
     if ($rest->error === false && $rest->code !== 204)
       $rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
     if ($rest->error !== false) {
