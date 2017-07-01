@@ -258,7 +258,6 @@ function internet_archive_node_update($node) {
  * beneath relevant field displays
  */
 function internet_archive_field_attach_view_alter(&$output, $context) {
-  dsm('internet_archive_field_attach_view_alter');
   //grab all applicable fields
   $fields = internet_archive_fields();
 
@@ -279,7 +278,6 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
     }
     if (isset($output[$field_name]) && $output[$field_name]) {
       if ($output[$field_name]['#items'][0][$value_key]) {
-	dsm($output[$field_name]['#items'], 'yo');
         $suffix =
 	  internet_archive_theme_field_display($output[$field_name]['#items'],
 					       $value_key);
@@ -323,59 +321,51 @@ function internet_archive_fields() {
  *   A string containing formatted archive.org utility links
  */
 function internet_archive_theme_field_display($field, $value_key) {
-  dsm('internet_archive_theme_field_display');
-  $field_transfer = '';
-  $field_archived = '';
+  $html = '';
+
+  //loop through all of the data pairs on the field looking for the file
   foreach ($field as $key => $file_info) {
+    //did we find the file name we wanted?
     if ($file_info[$value_key]) {
-      dsm($file_info[$value_key], 'file info value key');
+      //grab the data from the internet archive using the filename 
       $archive_data = internet_archive_load_data($file_info[$value_key]);
-      dsm($archive_data, 'archive data');
+      $path = 'https://www.archive.org/details/' .$archive_data['item'];
+      
+      //if our file has already been transferred and is in a positive state
+      //we will give links to view the item on archive.org or download it
       if ($archive_data && ($archive_data['status'] == ARCHIVE_VALIDATED ||
 			    $archive_data['status'] == ARCHIVE_DERIVED)) {
-        $field_archived .= l(basename($file_info[$value_key]),
-			     $archive_data['archive_url']) . ' ';
-	
-        $url_info = parse_url($archive_data['archive_url']);
-        $field_archived .= ' | ' .
-	  l($archive_data['item'],
-	    'https://www.archive.org/details/' .$archive_data['item']);
-
-	$field_archived .= internet_archive_embed($archive_data['tid']);
-	dsm($field_archived, 'fa');
+	$html .= "<li>";
+        $html .=l(t("View Item on Archive.org"), $path);
+	$html .= "</li><li>";
+	$html .=l(t("Download from Archive.org"),$archive_data['archive_url']);
+	$html .= "</li>";
       }
+      //if we have data from teh internet archive table but we aren't yet
+      //in a completed state, give a link to the item on archive.org
+      //if it exists there it means we haven't run cron or use the transfer VBO
       elseif ($archive_data && ($archive_data['status'] != ARCHIVE_VALIDATED ||
 				$archive_data['status'] != ARCHIVE_DERIVED)) {
-        $field_transfer .= 'Currently pending transfer...';
+	$html .= "<li>";
+	$html .= l(t("View Partially Transferred Item on Archive.org"), $path);
+	$html .= "</li>";
       }
+      //we haven't started the transfer yet, so offer a link to do so
       else {
 	$uri = $file_info[$value_key];
-
-        $field_transfer .=
-	  l(basename($file_info[$value_key]), 'internet_archive/' .
-	    urlencode(str_replace('/', '!-!', $uri)) .
-	    '/transfer', array('query' => drupal_get_destination())) . ' ';
-	dsm($field_transfer, 'ft');
+	$uri = urlencode(str_replace('/', '!-!', $uri)); 
+	$transfer_path = 'internet_archive/' . $uri . '/transfer';
+	$args = array('query' => drupal_get_destination());
+	$html .= "<li>";
+        $html .= l(t("Transfer File to Archive.org"), $transfer_path, $args);
+	$html .= "</li>";
       }
     }
   }
 
-  $field_output = '';
-  if (isset($field_archived) && $field_archived) {
-    $field_output =
-      '<span class="internet-archive-files">'.
-      '<span class="internet-archive-archived">Archive.org: ' .
-      $field_archived . '</span>';
-  }
-  if ($field_archived && $field_transfer) {
-    $field_output .= '<br />';
-  }
-  if ($field_transfer) {
-    $field_output .= '<span class="internet-archive-transfer">'.
-      'Transfer to Archive.org: ' . $field_transfer . '</span>';
-  }
+  $html = '<span class="internet-archive-files"><ul>'.$html.'</ul></span>';
 
-  return "<br/>".$field_output;
+  return $html;
 }
 
 /**
@@ -390,7 +380,6 @@ function internet_archive_theme_field_display($field, $value_key) {
  *   An s3 class provided by includes/archive.php.
  */
 function internet_archive_new_s3($key = FALSE, $skey = FALSE) {
-  dsm('internet_archive_new_s3');
   // If the flash video module is installed, do not require this
   require_once DRUPAL_ROOT . '/' .
     drupal_get_path('module', 'internet_archive') . '/includes/archive.php';
@@ -699,7 +688,6 @@ function internet_archive_file_views() {
  *   An array of filepaths.
  */
 function internet_archive_harvest_filepaths_from_views() {
-  dsm("internet_archive_harvest_filepaths_from_views");
   $views = variable_get('internet_archive_file_views', NULL);
 
   if (!$views) {
@@ -710,7 +698,6 @@ function internet_archive_harvest_filepaths_from_views() {
 
   $fids = array();
   foreach ($views as $view_name => $info) {
-    dsm($view_name, 'view name');
     $view_files = views_get_view_result($view_name);
     
     if (count($view_files) > 0) {
@@ -738,7 +725,6 @@ function internet_archive_harvest_filepaths_from_views() {
       }
 
       foreach ($view_files as $key => $fileinfo) {
-	dsm($fileinfo, 'fileinfo');
         if ($filefield_flag) {
 	  $field = $fileinfo->{$key_value};
 	  if (!$field) {
@@ -753,7 +739,6 @@ function internet_archive_harvest_filepaths_from_views() {
 	  //FIXME, HANDLE THIS CASE FOR OTHER TYPES OF FIELDS
         }
       }
-      dsm($filepaths, 'filepaths');
     }
   }
 
@@ -775,20 +760,16 @@ function internet_archive_harvest_filepaths_from_views() {
  * Implements hook_cron().
  */
 function internet_archive_cron() {
-  dsm("internet archive cron");
-
   //validate previous transfers
   internet_archive_validate_transfers();
-  dsm("finished validating");
+
   if (variable_get('internet_archive_queue_harvest_cron', FALSE)) {
     //Add new files to queue if available
     internet_archive_harvest_files();
-    dsm("finished harvesting");
   }
   
   //Check for new derivations to update.
   internet_archive_store_derivatives();
-  dsm("finished deriviatives");
 }
 
 /**
@@ -796,7 +777,6 @@ function internet_archive_cron() {
  * settings and adds them to a drupal queue for later transfer.
  */
 function internet_archive_harvest_files() {
-  dsm('internet_archive_harvest_files');
   //Check to see if we should authenticate
   if ($cron_user = variable_get('internet_archive_cron_user', FALSE)) {
     global $user;
@@ -813,29 +793,21 @@ function internet_archive_harvest_files() {
   }
   
   $filepaths = internet_archive_harvest_filepaths_from_views();
-  dsm($filepaths, 'got filepaths');
   
   if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-    dsm("got queue attempts");
     $reprocess_filepaths = internet_archive_harvest_failed();
-    dsm($reprocess_filepaths, 'found some reprocessed files?');
     if ($reprocess_filepaths) {
       $filepaths = array_merge($reprocess_filepaths, $filepaths);
     }
   }
-  dsm($filepaths, 'filepaths after merge');
   $transfer_queue = DrupalQueue::get('internet_archive_send_file');
-  dsm($transfer_queue->numberOfItems(), 'number of items');
-  dsm($transfer_queue, 'tq');
 
   if ($filepaths) {
     foreach ($filepaths as $key => $filepath) {
-      dsm($filepath, 'filepath in loop');
-
       if (file_exists($filepath)) {
 	
 	$status = internet_archive_get_status($filepath);
-	dsm($status, 'status');
+
 	if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
 	    && $status != ARCHIVE_TRANSFERRED &&
 	    $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
@@ -858,7 +830,6 @@ function internet_archive_harvest_files() {
 	  $queue_id = db_query($sql, $params)->fetchField();
 
 	  if ($queue_id) {
-	    dsm("found item_id: $queue_id in the queue!");
 	    continue;
 	  }
 	  //add the file to queue
@@ -870,14 +841,12 @@ function internet_archive_harvest_files() {
 	      "(nid, in_path, filename, filesize, status, " .
 	      "attempts, transfer_initiated, date) " .
 	      "VALUES (:nid, :in_path, :filename, :size, :status, 0,0,0)";
-	    dsm($archive_info, 'ai');
 	    $params = array(':nid' => $archive_info['nid'],
 			    ':in_path' => $archive_info['in_path'],
 			    ':filename' => $archive_info['filename'],
 			    ':size' => $archive_info['filesize'],
 			    ':status' => $archive_info['status'],
 			    );
-	    dsm($params, 'params');
 			    
 	    db_query($sql, $params);
 	  }
@@ -885,7 +854,6 @@ function internet_archive_harvest_files() {
 	    unset($archive_info);
 	  }
 	  $archive_info = internet_archive_load_data($filepath);
-	  dsm($archive_info, "archive data after fresh insert");
 	  internet_archive_invoke_internet_archive($archive_info, 'queued');
 	}
       }
@@ -3025,11 +2993,9 @@ function internet_archive_animated_thumb_from_filepath($key) {
  * @see http://drupal.org/node/1354
  */
 function internet_archive_embed($key, $width = 470, $height = 371) {
-  dsm("internet_archive_embed");
   $data = internet_archive_load_data($key);
-  dsm($data, 'dataa');
   $url = internet_archive_derivative_url($data, 'mp4');
-  dsm($url, 'url');
+
   if ($url) {
     $embed = internet_archive_create_embed($url, $width, $height);
   }
@@ -3069,10 +3035,8 @@ function internet_archive_derivative_url($item, $extension) {
  * @see http://drupal.org/node/1354
  */
 function internet_archive_create_embed($url, $width = 470, $height = 371) {
-  dsm("internet_archive_create_embed");
   $embed = '';
   $pathinfo = pathinfo($url);
-  dsm($pathinfo, 'path info');
   $base_url = $pathinfo['dirname'] . '/';
   $filename = $pathinfo['basename'];
 
@@ -3145,7 +3109,6 @@ function internet_archive_get_field_tables() {
  *   Same text stripped of all non-alphanumeric characters
  */
 function internet_archive_create_item_name($text) {
-  dsm('internet_archive_create_item_name');
   $clean = preg_replace("/[^a-z0-9_-]+/i", "_", $text);
   $clean = substr($clean, 0, 60);
   return strtolower($clean);
@@ -3161,11 +3124,9 @@ function internet_archive_create_item_name($text) {
  *   An array of internet archive data, or FALSE if not found.
  */
 function internet_archive_load_data($key) {
-  dsm("internet_archive_load_data");
   if (is_numeric($key)) {
     $data = db_query("SELECT * from {internet_archive} WHERE tid = :tid",
 		     array(':tid' => $key))->fetchAssoc();
-    dsm($data, 'wtf');
     return $data;
   }
   else {
@@ -3528,11 +3489,16 @@ function internet_archive_tab_permission($node) {
 function internet_archive_node_status($node) {
   global $user;
   $files = internet_archive_node_files($node->nid);
-  //$field_files = internet_archive_node_field_files($node);
 
   if (count($files) >= 1) {
-    if (user_access('update all internet_archive metadata') || (user_access('update own internet_archive metadata') && $user->uid == $node->uid) || user_access('administer internet_archive')) {
-      $operations .= l('Click here to update Metadata stored at Archive.org for this node', 'node/' . $node->nid . '/ia/update-metadata');
+    if (user_access('update all internet_archive metadata') ||
+	(user_access('update own internet_archive metadata') &&
+	 $user->uid == $node->uid) ||
+	user_access('administer internet_archive')) {
+
+      $operations .=
+	l('Click here to update Metadata stored at Archive.org for ' .
+	  'this node', 'node/' . $node->nid . '/ia/update-metadata');
     }
     if ($operations) {
       $output .= '<div class="admin-panel">';
