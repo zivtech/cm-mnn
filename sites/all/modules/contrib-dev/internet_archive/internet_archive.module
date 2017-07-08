@@ -688,6 +688,7 @@ function internet_archive_file_views() {
  *   An array of filepaths.
  */
 function internet_archive_harvest_filepaths_from_views() {
+  dsm('internet_archive_harvest_filepaths_from_views');
   $views = variable_get('internet_archive_file_views', NULL);
 
   if (!$views) {
@@ -696,15 +697,17 @@ function internet_archive_harvest_filepaths_from_views() {
 
   $fields = internet_archive_fields();
 
+  dsm($fields, 'fields');
   $fids = array();
   foreach ($views as $view_name => $info) {
     $view_files = views_get_view_result($view_name);
-    
+    dsm($view_files, 'view files');
     if (count($view_files) > 0) {
       //FIND THE FIELDS THAT HAVE OUR FILE INFO
       $key_value = '';
       foreach ($fields as $field_name => $field_info) {
 	foreach ($view_files[0] as $key => $info) {
+	  dsm($key, 'key');
 	  if ("field_" . $field_name == $key) {
 	    $filefield_flag = TRUE;
 	    $key_value = $key;
@@ -728,6 +731,7 @@ function internet_archive_harvest_filepaths_from_views() {
         if ($filefield_flag) {
 	  $field = $fileinfo->{$key_value};
 	  if (!$field) {
+	    dsm("aha");
 	    //THE FIELD DOES NOT EXIST, MAYBE THE FILE IS NOT SET TO DISPLAY?
 	    continue;
 	  }
@@ -736,6 +740,7 @@ function internet_archive_harvest_filepaths_from_views() {
           $filepaths[] = $uri;
         }
         else if (file_exists($fileinfo->{$key_value})) {
+	  dsm("woo hoo");
 	  //FIXME, HANDLE THIS CASE FOR OTHER TYPES OF FIELDS
         }
       }
@@ -787,6 +792,7 @@ function internet_archive_harvest_files() {
     $array = user_load_multiple($tmp, $users);
     $user = array_shift($array);
   }
+
   //administrative setting for requeing stale/expired queue items
   if (variable_get('internet_archive_expired_queue', FALSE)) {
     internet_archive_harvest_expired_queued();
@@ -2872,7 +2878,7 @@ function internet_archive_clean_text($string) {
 function internet_archive_get_node_from_filepath($filepath) {
   dsm('internet_archive_get_node_from_filepath');
   $tables = internet_archive_get_field_tables();
-
+  dsm($filepath, 'fp');
   foreach ($tables as $key => $table_info) {
 
     switch ($table_info['type']) {
@@ -3072,21 +3078,23 @@ function internet_archive_get_field_tables() {
     $extra = field_info_field($field_name);
     list($table, $table_info) =
       each($extra['storage']['details']['sql'][FIELD_LOAD_CURRENT]);
-    
-    //FIXME FIGURE OUT NEW WAY TO $db_info
-    $db_info = array();
+
     switch ($field_info['type']) {
-    case 'filefield':
     case 'text':
-    case 'emvideo':
-      $value_key = NULL;
-      drupal_set_message('Only the file field type is defined at this time',
-			 'warning');
+      $value_key = $table_info['value'];
       break;
+
     case 'file':
       $value_key = $table_info['fid'];
       
       break;
+    case 'filefield':
+    case 'emvideo':
+      $value_key = NULL;
+      drupal_set_message('Only the file and text field types are defined ' .
+			 'at this time2', 'warning');
+      break;
+    
     }
     
     $tables[] = array(
@@ -3095,7 +3103,7 @@ function internet_archive_get_field_tables() {
       'type' => $field_info['type'],
     );
   }
-
+  dsm($tables, 'tables');
   return $tables;
 }
 
