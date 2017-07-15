@@ -311,6 +311,7 @@ class CRM_Core_Resources {
     foreach ($this->settingsFactories as $callable) {
       $result = $this->mergeSettings($result, $callable());
     }
+    CRM_Utils_Hook::alterResourceSettings($result);
     return $result;
   }
 
@@ -500,7 +501,7 @@ class CRM_Core_Resources {
       $file = '';
     }
     if ($addCacheCode) {
-      $file .= '?r=' . $this->getCacheCode();
+      $file = $this->addCacheCode($file);
     }
     // TODO consider caching results
     $base = $this->paths->hasVariable($ext)
@@ -643,7 +644,8 @@ class CRM_Core_Resources {
       // Load custom or core css
       $config = CRM_Core_Config::singleton();
       if (!empty($config->customCSSURL)) {
-        $this->addStyleUrl($config->customCSSURL, 99, $region);
+        $customCSSURL = $this->addCacheCode($config->customCSSURL);
+        $this->addStyleUrl($customCSSURL, 99, $region);
       }
       if (!Civi::settings()->get('disable_core_css')) {
         $this->addStyleFile('civicrm', 'css/civicrm.css', -99, $region);
@@ -740,9 +742,7 @@ class CRM_Core_Resources {
       $items[] = "packages/jquery/plugins/jquery.tableHeader.js";
       $items[] = "packages/jquery/plugins/jquery.menu.min.js";
       $items[] = "css/civicrmNavigation.css";
-      $items[] = "packages/jquery/plugins/jquery.jeditable.min.js";
       $items[] = "packages/jquery/plugins/jquery.notify.min.js";
-      $items[] = "js/jquery/jquery.crmeditable.js";
     }
 
     // JS for multilingual installations
@@ -881,6 +881,17 @@ class CRM_Core_Resources {
         $fileName = $nonMiniFile;
       }
     }
+  }
+
+  /**
+   * @param string $url
+   * @return string
+   */
+  public function addCacheCode($url) {
+    $hasQuery = strpos($url, '?') !== FALSE;
+    $operator = $hasQuery ? '&' : '?';
+
+    return $url . $operator . 'r=' . $this->cacheCode;
   }
 
 }
