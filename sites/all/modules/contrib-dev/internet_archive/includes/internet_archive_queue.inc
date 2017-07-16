@@ -412,15 +412,24 @@ function internet_archive_queue_drupal_queue_cron_run() {
   $lease = 9000; //Seconds allowed per transfer task
   $queue_name = 'internet_archive_send_file';
 
-  dsm(REQUEST_TIME, 'req time');
+  dsm(date('H:i:s', REQUEST_TIME), 'req time');
   $end = REQUEST_TIME + $time;
   dsm(date('H:i:s' , $end), 'end');
   $queue = DrupalQueue::get($queue_name);
   while (REQUEST_TIME < $end && ($item = $queue->claimItem($lease))) {
-    $status = internet_archive_get_status($item->data);
+    dsm('hi mom');
     $archive_info = internet_archive_load_data($item->data);
-    
+    $status = $archive_info['status'];
+    dsm($status, 'found new status');
     if ($status != ARCHIVE_TRANSFERRING) {
+      $transfer_status = internet_archive_transfer_file_worker($item->data);
+      if (!$transfer_status) {
+	$msg =t("!filename could not be transferred and remains in the queue.",
+		array('!filename' => $archive_info['filename']));
+	drupal_set_message($msg, 'error');
+	continue;
+      }
+      
       dsm('updating to transfer');
       //update the file status to transferring
       db_update('internet_archive')
@@ -432,7 +441,6 @@ function internet_archive_queue_drupal_queue_cron_run() {
       $archive_info['status'] = ARCHIVE_TRANSFERRING;
       internet_archive_invoke_internet_archive($archive_info, 'transferring');
 
-      internet_archive_transfer_file_worker($item->data);
       $queue->deleteItem($item);
     }
   }

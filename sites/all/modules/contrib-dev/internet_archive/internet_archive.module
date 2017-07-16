@@ -238,14 +238,9 @@ function internet_archive_queues_home() {
  * Implements hook_node_update().
  */
 function internet_archive_node_update($node) {
-  dsm($node,'node');
   if (variable_get('internet_archive_update', FALSE)) {
-    dsm('hi mom');
     if ($files = internet_archive_node_files($node->nid)) {
-      dsm($files, 'files');
       foreach ($files as $key => $archive_data) {
-	dsm($file, 'file');
-	dsm($archive_data, 'ad');
         internet_archive_update_item($archive_data['in_path']);
       }
     }
@@ -264,18 +259,20 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
   foreach ($fields as $field_name => $field_info) {
     //get the value key to reference
     switch ($field_info['type']) {
-    case 'filefield':
+    case 'file':
+      $value_key = 'uri';
+      break;
     case 'text':
-    case 'emvideo':
+      $value_key = 'value';
+      break;
+    default: 
       $value_key = NULL;
       drupal_set_message('Only the file field type is defined at this time',
 			 'warning');
       break;
-    case 'file':
-      $value_key = 'uri';
-      break;
       
     }
+
     if (isset($output[$field_name]) && $output[$field_name]) {
       if ($output[$field_name]['#items'][0][$value_key]) {
         $suffix =
@@ -339,6 +336,14 @@ function internet_archive_theme_field_display($field, $value_key) {
         $html .=l(t("View Item on Archive.org"), $path);
 	$html .= "</li><li>";
 	$html .=l(t("Download from Archive.org"),$archive_data['archive_url']);
+	$html .= "</li>";
+      }
+      //if we have data from teh internet archive table and we are queued
+      //offer a link to see it in the internet_archive_send_file queue 
+      else if ($archive_data && ($archive_data['status'] == ARCHIVE_QUEUED)) {
+	$html .= "<li>";
+	$html .= l(t("View item in the queue"),
+		   "/admin/structure/internet_archive");
 	$html .= "</li>";
       }
       //if we have data from teh internet archive table but we aren't yet
@@ -623,7 +628,7 @@ function internet_archive_admin_form($form) {
     array(
 	  '#type' => 'fieldset',
 	  '#title' => 'Report Settings',
-	  '#description' => $description,
+	  '#description' => '',
 	  );
 
   $form['internet_archive']['internet_archive_report_settings']
@@ -697,67 +702,68 @@ function internet_archive_harvest_filepaths_from_views() {
 
   $fields = internet_archive_fields();
 
-  dsm($fields, 'fields');
-  $fids = array();
+  //right now only text and file fields are supported
+  $view_field_keys = array(
+			   'text' => array(),
+			   'file'=>array()
+			   );
   foreach ($views as $view_name => $info) {
     $view_files = views_get_view_result($view_name);
-    dsm($view_files, 'view files');
+
     if (count($view_files) > 0) {
       //FIND THE FIELDS THAT HAVE OUR FILE INFO
       $key_value = '';
       foreach ($fields as $field_name => $field_info) {
 	foreach ($view_files[0] as $key => $info) {
-	  dsm($key, 'key');
 	  if ("field_" . $field_name == $key) {
-	    $filefield_flag = TRUE;
-	    $key_value = $key;
+	    $view_field_keys[$field_info['type']][] = $key;
 	    break;
 	  }
-	}
-	if ($key_value) {
-	  break;
 	}
       }    
 
       //IF WE DONT FIND A FIELD KEY TO GRAB FILE INFO THEN THIS VIEW IS
       //NOT CONFIGURED CORRECTLY
-      if (!$key_value) {
+      if (!$view_field_keys) {
 	drupal_set_message("Error Code #33453 No field found for $view_name",
 			   'error');
         continue;
       }
 
       foreach ($view_files as $key => $fileinfo) {
-        if ($filefield_flag) {
-	  $field = $fileinfo->{$key_value};
-	  if (!$field) {
-	    dsm("aha");
-	    //THE FIELD DOES NOT EXIST, MAYBE THE FILE IS NOT SET TO DISPLAY?
-	    continue;
+	foreach($view_field_keys as $filetype => $field_keys) {
+	  foreach($field_keys as $field_key) {
+	    $field = $fileinfo->{$field_key};
+	    if ($filetype == 'file' && $field) {
+	      $uri = $field[0]['raw']['uri'];
+	      if (file_exists($uri)) {
+		$filepaths[] = $uri;
+	      }
+	    }
+	    else if($filetype == 'text' && $field) {
+	      $filepaths[] =  $field[0]['raw']['value'];
+	    }
+	    else if ($field) {
+	      drupal_set_message("Error Code #8268: Can't find filepath for " .
+				 "field of type $filetype", 'error');
+	    }
 	  }
-	  $uri = $field[0]['raw']['uri'];
-
-          $filepaths[] = $uri;
-        }
-        else if (file_exists($fileinfo->{$key_value})) {
-	  dsm("woo hoo");
-	  //FIXME, HANDLE THIS CASE FOR OTHER TYPES OF FIELDS
-        }
+	}
       }
     }
   }
-
+  dsm($filepaths, 'filepaths');
   $unarchived_files = array();
 
   if ($filepaths) {
     foreach ($filepaths as $filepath) {
       $archive_data = internet_archive_load_data($filepath);
-      if ((!$archive_data) && file_exists($filepath)) {
+      if ((!$archive_data)) {
         $unarchived_files[] = $filepath;
       }
     }
   }
-
+  dsm($unarchived_files, 'unarchived files being harvested');
   return $unarchived_files;
 }
 
@@ -810,58 +816,58 @@ function internet_archive_harvest_files() {
 
   if ($filepaths) {
     foreach ($filepaths as $key => $filepath) {
-      if (file_exists($filepath)) {
-	
-	$status = internet_archive_get_status($filepath);
+      $status = internet_archive_get_status($filepath);
 
-	if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
-	    && $status != ARCHIVE_TRANSFERRED &&
-	    $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
-	  //allow other modules to make changes before file is queued
-	  unset($node);
-	  $node = internet_archive_get_node_from_filepath($filepath);
-	  $archive_info = array(
-				'nid' => $node->nid,
-				'in_path' => $filepath,
-				'filename' => basename($filepath),
-				'filesize' =>
-				internet_archive_filesize($filepath),
-				'status' => ARCHIVE_QUEUED,
-				);
-	  internet_archive_invoke_internet_archive($archive_info, 'harvested');
-
-	  //NEED TO MAKE SURE ITEM IS NOT ALREADY IN THE QUEUE
-	  $sql = "SELECT item_id FROM {queue} WHERE data = :data";
-	  $params = array(':data' => serialize($filepath));
-	  $queue_id = db_query($sql, $params)->fetchField();
-
-	  if ($queue_id) {
-	    continue;
-	  }
-	  //add the file to queue
-	  $transfer_queue->createItem($filepath);
-	  //update the file status to queued if this is the first attempt
-	  if ($status != ARCHIVE_FAILED) {
-	    $sql =
-	      "INSERT into {internet_archive} " .
-	      "(nid, in_path, filename, filesize, status, " .
-	      "attempts, transfer_initiated, date) " .
-	      "VALUES (:nid, :in_path, :filename, :size, :status, 0,0,0)";
-	    $params = array(':nid' => $archive_info['nid'],
-			    ':in_path' => $archive_info['in_path'],
-			    ':filename' => $archive_info['filename'],
-			    ':size' => $archive_info['filesize'],
-			    ':status' => $archive_info['status'],
-			    );
-			    
-	    db_query($sql, $params);
-	  }
-	  if (isset($archive_info)) {
-	    unset($archive_info);
-	  }
-	  $archive_info = internet_archive_load_data($filepath);
-	  internet_archive_invoke_internet_archive($archive_info, 'queued');
+      if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
+	  && $status != ARCHIVE_TRANSFERRED &&
+	  $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
+	//allow other modules to make changes before file is queued
+	unset($node);
+	$node = internet_archive_get_node_from_filepath($filepath);
+	if (!$filesize = internet_archive_filesize($filepath)) {
+	  $filesize = 0;
 	}
+
+	$archive_info = array(
+			      'nid' => $node->nid,
+			      'in_path' => $filepath,
+			      'filename' => basename($filepath),
+			      'filesize' => $filesize,
+			      'status' => ARCHIVE_QUEUED,
+			      );
+	internet_archive_invoke_internet_archive($archive_info, 'harvested');
+	
+	//NEED TO MAKE SURE ITEM IS NOT ALREADY IN THE QUEUE
+	$sql = "SELECT item_id FROM {queue} WHERE data = :data";
+	$params = array(':data' => serialize($filepath));
+	$queue_id = db_query($sql, $params)->fetchField();
+	
+	if ($queue_id) {
+	  continue;
+	}
+	//add the file to queue
+	$transfer_queue->createItem($filepath);
+	//update the file status to queued if this is the first attempt
+	if ($status != ARCHIVE_FAILED) {
+	  $sql =
+	    "INSERT into {internet_archive} " .
+	    "(nid, in_path, filename, filesize, status, " .
+	    "attempts, transfer_initiated, date) " .
+	    "VALUES (:nid, :in_path, :filename, :size, :status, 0,0,0)";
+	  $params = array(':nid' => $archive_info['nid'],
+			  ':in_path' => $archive_info['in_path'],
+			  ':filename' => $archive_info['filename'],
+			  ':size' => $archive_info['filesize'],
+			  ':status' => $archive_info['status'],
+			  );
+	  
+	  db_query($sql, $params);
+	}
+	if (isset($archive_info)) {
+	  unset($archive_info);
+	}
+	$archive_info = internet_archive_load_data($filepath);
+	internet_archive_invoke_internet_archive($archive_info, 'queued');
       }
     }
   }
@@ -988,10 +994,13 @@ function internet_archive_get_status($filepath) {
  *
  * @param $filepath
  *   A string containing a relative filepath
+ * @return $status
+ *   True or False
  */
 function internet_archive_transfer_file_worker($filepath) {
   dsm('internet_archive_transfer_file_worker');
-  internet_archive_default_send($filepath);
+  $status = internet_archive_default_send($filepath);
+  return $status;
 }
 
 
@@ -1375,7 +1384,6 @@ function internet_archive_send($config, $filepath) {
  *   An array of internet archive files associated with the node.
  */
 function internet_archive_node_files($nid) {
-  dsm('internet_archive_node_files');
   $result = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid",
 		     array(':nid' => $nid));
   $files = array();
@@ -2882,13 +2890,6 @@ function internet_archive_get_node_from_filepath($filepath) {
   foreach ($tables as $key => $table_info) {
 
     switch ($table_info['type']) {
-    case 'filefield':
-    case 'text':
-    case 'emvideo':
-      drupal_set_message('Only the file field type is defined at this time',
-			 'warning');
-      return NULL;
-      break;
     case 'file':
       $query =
 	"SELECT entity_id FROM {" . $table_info['name'] . "} ft ".
@@ -2897,12 +2898,30 @@ function internet_archive_get_node_from_filepath($filepath) {
 	"WHERE fm.uri=:uri";
       
       $nid = db_query($query, array(':uri' => $filepath))->fetchField();
-
+      
       if ($nid) {
 	$node = node_load($nid);
 	dsm($node, "found node from filepath: $filepath");
 	return $node;
       }
+      break;
+    case 'text':
+      $query =
+	"SELECT entity_id FROM {" . $table_info['name'] . "} ".
+	"WHERE " . $table_info['value_column'] . "=:filepath";
+      
+      $nid = db_query($query, array(':filepath' => $filepath))->fetchField();
+      
+      if ($nid) {
+	$node = node_load($nid);
+	dsm($node, "found node from text field filepath: $filepath");
+	return $node;
+      }
+      break;
+    default:
+      drupal_set_message('Only the file field type is defined at this time.',
+			 'warning');
+      return NULL;
       break;
     }
   }
