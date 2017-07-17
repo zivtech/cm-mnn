@@ -985,7 +985,7 @@ final class S3Request {
     //BRIAN CHANGED LINE BELOW
     $url = 'http://'.$this->headers['Host'].$this->uri;
     //var_dump($this->bucket, $this->uri, $this->resource, $url);
-
+    dsm($url, 'url in archive.php');
     // Basic setup
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_USERAGENT, 'S3/php');

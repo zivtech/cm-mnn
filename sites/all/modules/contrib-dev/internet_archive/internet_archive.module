@@ -241,7 +241,7 @@ function internet_archive_node_update($node) {
   if (variable_get('internet_archive_update', FALSE)) {
     if ($files = internet_archive_node_files($node->nid)) {
       foreach ($files as $key => $archive_data) {
-        internet_archive_update_item($archive_data['in_path']);
+        internet_archive_update_item($archive_data);
       }
     }
   }
@@ -273,14 +273,14 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
       
     }
 
+    //IF OUR Archive.org FIELD HAS A VAULE, ADD A SUFFIX
     if (isset($output[$field_name]) && $output[$field_name]) {
       if ($output[$field_name]['#items'][0][$value_key]) {
         $suffix =
-	  internet_archive_theme_field_display($output[$field_name]['#items'],
+	  internet_archive_theme_field_display($field_name,
+					       $output[$field_name]['#items'],
 					       $value_key);
-      }
-      if ($suffix) {
-	$output['field_internet_archive'][0]['#suffix'] = $suffix;
+	$output[$field_name][0]['#suffix'] = $suffix;
       }
     }
   }
@@ -293,12 +293,28 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
  *   An array of field objects.
  */
 function internet_archive_fields() {
+  global $internet_archive_fields_info;
+
+  $internet_archive_fields_info = array();
+  $internet_archive_fields_info['local'] = array();
+  $internet_archive_fields_info['remote'] = array();
+  
   $fields = array();
   $field_info = field_info_field_map();
   if (($field_types = variable_get('internet_archive_fields', FALSE)) &&
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
+      $internet_archive_fields_info['local'][$field_name] =
+	$field_info[$field_name];
+    }
+  }
+  if (($field_types = variable_get('internet_archive_fields_remote', FALSE)) &&
+      variable_get('internet_archive_fields_list_display', FALSE)) {
+    foreach ($field_types as $field_name => $description) {
+      $fields[$field_name] = $field_info[$field_name];
+      $internet_archive_fields_info['remote'][$field_name] =
+	$field_info[$field_name];
     }
   }
 
@@ -317,15 +333,22 @@ function internet_archive_fields() {
  * @return $filefield_output
  *   A string containing formatted archive.org utility links
  */
-function internet_archive_theme_field_display($field, $value_key) {
+function internet_archive_theme_field_display($field_name, $field, $value_key){
   $html = '';
-
+  dsm($field, 'my field in internet_archive_theme_field_display');
+  dsm($field_name, 'field_name');
+  dsm($field, 'field');
+  dsm($value_key, 'value_key');
   //loop through all of the data pairs on the field looking for the file
-  foreach ($field as $key => $file_info) {
+  foreach ($field as $file_info) {
     //did we find the file name we wanted?
     if ($file_info[$value_key]) {
-      //grab the data from the internet archive using the filename 
-      $archive_data = internet_archive_load_data($file_info[$value_key]);
+      dsm($file_info[$value_key], 'file info value key');
+      dsm($field_name,' field name');
+      //grab the data from the internet archive using the file_name 
+      $archive_data = internet_archive_load_data($file_info[$value_key],
+						 $field_name);
+      
       $path = 'https://www.archive.org/details/' .$archive_data['item'];
       
       //if our file has already been transferred and is in a positive state
@@ -357,10 +380,16 @@ function internet_archive_theme_field_display($field, $value_key) {
       }
       //we haven't started the transfer yet, so offer a link to do so
       else {
+	global $internet_archive_fields_info;
+	$file_location = $internet_archive_fields_info['remote'][$field_name] ?
+	  'remote' : 'local';
+
 	$uri = $file_info[$value_key];
 	$uri = urlencode(str_replace('/', '!-!', $uri)); 
 	$transfer_path = 'internet_archive/' . $uri . '/transfer';
 	$args = array('query' => drupal_get_destination());
+	$args['query']['field_name'] = $field_name;
+	$args['query']['file_location'] = $file_location;
 	$html .= "<li>";
         $html .= l(t("Transfer File to Archive.org"), $transfer_path, $args);
 	$html .= "</li>";
@@ -425,23 +454,7 @@ function internet_archive_admin_form($form) {
 	  '#description' =>
 	  t('Global settings for Archive.org S3 configurations.'),
   );
-
-  $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
-  $default_value = variable_get('internet_archive_bucket', $default_value);
   
-  $form['internet_archive_account']['internet_archive_bucket'] =
-    array(
-	  '#type' => 'textfield',
-	  '#title' => t('Default Archive.org Item to store files in'),
-	  '#default_value' => $default_value,
-	  '#description' =>
-	  t("Name of the Archive.org item that files will be placed into, ".
-	    "note this has to be unique. This can be overridden by a , ".
-	    "configuration but this is the default value and used to test ".
-	    "your connection."),
-	  '#required' => TRUE,
-	  );
-
   $default_value =
     variable_get('internet_archive_default_server_url',
 		 "http://s3.us.archive.org/");
@@ -487,7 +500,7 @@ function internet_archive_admin_form($form) {
 	    'can override these settings in a custom module via '.
 	    'hook_internet_archive_metadata.'),
 	  );
-  
+
   $form['internet_archive_data']['internet_archive_update'] = array(
     '#type' => 'checkbox',
     '#title' =>
@@ -498,6 +511,21 @@ function internet_archive_admin_form($form) {
     t("If this option is checked, all item metadata will be resent to ".
       "archive.org when their associated nodes are updated."),
   );
+  $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
+  $default_value = variable_get('internet_archive_bucket', $default_value);
+
+  $form['internet_archive_data']['internet_archive_bucket'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Default Archive.org Item to store files in'),
+	  '#default_value' => $default_value,
+	  '#description' =>
+	  t("Name of the Archive.org item that files will be placed into, ".
+	    "note this has to be unique. This can be overridden by a , ".
+	    "configuration but this is the default value and used to test ".
+	    "your connection."),
+	  '#required' => TRUE,
+	  );
   $form['internet_archive_data']['internet_archive_bucket_title'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use node title for item name when available?'),
@@ -568,18 +596,15 @@ function internet_archive_admin_form($form) {
       "able to defer the type from the file itself."),
   );
   
-
   $description = '<div>' .
     t('Select any fields below that you would like to use to transfer '.
       'files to Archive.org. File, text and embedded media fields are '.
       'supported.') . '<strong>' .
     t(' All fields selected must contain accessible path information as '.
-      'their value. Any embedded media fields must be using a '.
-      '<a href="http://drupal.org/project/media_video_flotsam">custom type</a>'
-      .', with paths entered for the URL. In other words, don\'t expect '.
-      'this module to transfer your embedded youtube videos to Archive.org.'.
-      'If you are storing path data for files on a remote server, please '.
-      'enable and configure the Internet Archive Remote submodule.') .
+      'their value. Currently this only works with "file" and "text" fields.'.
+      'If you are storing path data for files on a remote server, DO NOT '.
+      'select the field here. Please enable and configure the Internet '.
+      'Archive Remote submodule.') .
     '</strong>';
     
   $form['internet_archive']['internet_archive_field_support'] =
@@ -690,7 +715,7 @@ function internet_archive_file_views() {
  * Builds an array of filepaths from views chosen on the general settings page.
  *
  * @return $unarchived_files
- *   An array of filepaths.
+ *   An associated array of field info and their value filepaths.
  */
 function internet_archive_harvest_filepaths_from_views() {
   dsm('internet_archive_harvest_filepaths_from_views');
@@ -700,23 +725,30 @@ function internet_archive_harvest_filepaths_from_views() {
     return FALSE;
   }
 
-  $fields = internet_archive_fields();
+  //GET ALL THE FIELDS THAT THAT WILL PUSH DATA TO INTERNET ARCHIVE
+  $archive_fields = internet_archive_fields();
 
+  //GLOBAL SET IN internet_archive_fields()
+  global $internet_archive_fields_info;
+  
   //right now only text and file fields are supported
-  $view_field_keys = array(
+  $field_keys_by_type = array(
 			   'text' => array(),
 			   'file'=>array()
 			   );
-  foreach ($views as $view_name => $info) {
-    $view_files = views_get_view_result($view_name);
 
-    if (count($view_files) > 0) {
+  //LOOP OVER EACH VIEW THAT CAN HARVEST ENTITY FIELDS THAT ARE CONFIGURED TO
+  //PUSH DATA TO Archive.org
+  foreach ($views as $view_name => $info) {
+    $harvest_results = views_get_view_result($view_name);
+
+    if (count($harvest_results) > 0) {
       //FIND THE FIELDS THAT HAVE OUR FILE INFO
-      $key_value = '';
-      foreach ($fields as $field_name => $field_info) {
-	foreach ($view_files[0] as $key => $info) {
+      foreach ($archive_fields as $field_name => $field_info) {
+	
+	foreach ($harvest_results[0] as $key => $info) {
 	  if ("field_" . $field_name == $key) {
-	    $view_field_keys[$field_info['type']][] = $key;
+	    $field_keys_by_type[$field_info['type']][$field_name] = $key;
 	    break;
 	  }
 	}
@@ -724,28 +756,45 @@ function internet_archive_harvest_filepaths_from_views() {
 
       //IF WE DONT FIND A FIELD KEY TO GRAB FILE INFO THEN THIS VIEW IS
       //NOT CONFIGURED CORRECTLY
-      if (!$view_field_keys) {
+      if (!$field_keys_by_type) {
 	drupal_set_message("Error Code #33453 No field found for $view_name",
 			   'error');
         continue;
       }
 
-      foreach ($view_files as $key => $fileinfo) {
-	foreach($view_field_keys as $filetype => $field_keys) {
-	  foreach($field_keys as $field_key) {
-	    $field = $fileinfo->{$field_key};
-	    if ($filetype == 'file' && $field) {
-	      $uri = $field[0]['raw']['uri'];
-	      if (file_exists($uri)) {
-		$filepaths[] = $uri;
+      //LOOP OVER ALL THE RESULTS WE GOT FROM VIEWS
+      foreach ($harvest_results as $key => $fileinfo) {
+	//LOOP OVER ALL THE RELEVANT FIELD KEYS FOR WITHIN A VIEW RESULT
+	foreach($field_keys_by_type as $field_type => $field_keys) {
+	  //LOOP THROUGH ALL THE FIELD KEYS & GRAB THE VALUES FROM VIEW RESULT
+	  foreach($field_keys as $field_name => $field_key) {
+	    $field_value = $fileinfo->{$field_key};
+
+	    //WE HAVE A VALUE FOR OUR FIELD
+	    if ($field_value) {
+	      $file_location =
+		$internet_archive_fields_info['remote'][$field_name] ?
+		'remote' : 'local';
+	      
+	      //IF WE HAVE A 'file' FIELD
+	      if ($field_type == 'file') {
+		$uri = $field_value[0]['raw']['uri'];
+		if (file_exists($uri) || ($file_location == 'remote')) {
+		  $filepaths[$uri] = array('field_name' => $field_name,
+					   'file_location' => $file_location);
+		}
 	      }
-	    }
-	    else if($filetype == 'text' && $field) {
-	      $filepaths[] =  $field[0]['raw']['value'];
-	    }
-	    else if ($field) {
-	      drupal_set_message("Error Code #8268: Can't find filepath for " .
-				 "field of type $filetype", 'error');
+	      //IF WE HAVE A VALUE FOR A 'text' FIELD
+	      else if($field_type == 'text') {
+		$uri = $field_value[0]['raw']['value'];
+		$filepaths[$uri] = array('field_name' =>$field_name,
+					 'file_location' => $file_location);
+	      }
+	      //WE HAVE A VALUE BUT NO LOGIC SET UP FOR THE $field_type
+	      else {
+		drupal_set_message("Error Code #8268: Can't find filepath " .
+				   "for field of type $field_type", 'error');
+	      }
 	    }
 	  }
 	}
@@ -755,11 +804,14 @@ function internet_archive_harvest_filepaths_from_views() {
   dsm($filepaths, 'filepaths');
   $unarchived_files = array();
 
+  //IF WE FOUND VALUES FOR Archive.org FIELDS, CHECK TO SEE IF THEY THEY
+  //ALREADY EXIST IN THE internet_archive CUSTOM TABLE
   if ($filepaths) {
-    foreach ($filepaths as $filepath) {
-      $archive_data = internet_archive_load_data($filepath);
+    foreach ($filepaths as $filepath => $file_info) {
+      $archive_data = internet_archive_load_data($filepath,
+						 $file_info['field_name']);
       if ((!$archive_data)) {
-        $unarchived_files[] = $filepath;
+        $unarchived_files[$filepath] = $file_info;
       }
     }
   }
@@ -805,7 +857,7 @@ function internet_archive_harvest_files() {
   }
   
   $filepaths = internet_archive_harvest_filepaths_from_views();
-  
+  dsm($filepaths, 'filepaths');
   if (variable_get('internet_archive_queue_attempts', 0) > 0) {
     $reprocess_filepaths = internet_archive_harvest_failed();
     if ($reprocess_filepaths) {
@@ -815,59 +867,84 @@ function internet_archive_harvest_files() {
   $transfer_queue = DrupalQueue::get('internet_archive_send_file');
 
   if ($filepaths) {
-    foreach ($filepaths as $key => $filepath) {
-      $status = internet_archive_get_status($filepath);
+    foreach ($filepaths as $filepath => $file_info) {
+      dsm($filepath, 'filepath');
+      dsm($file_info, 'fileinfo');
+      $archive_data = internet_archive_load_data($filepath,
+						 $file_info['field_name']);
+      $status = isset($archive_data['status']) ?
+	$archive_data['status'] : NULL;
 
       if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
 	  && $status != ARCHIVE_TRANSFERRED &&
 	  $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
 	//allow other modules to make changes before file is queued
 	unset($node);
-	$node = internet_archive_get_node_from_filepath($filepath);
-	if (!$filesize = internet_archive_filesize($filepath)) {
-	  $filesize = 0;
+	$node =
+	  internet_archive_get_node_from_filepath($filepath,
+						  $file_info['field_name']);
+	
+	if ($file_info['file_location'] == 'local' &&
+	    internet_archive_file_size($filepath)) {
+	  $file_size = 0;
 	}
-
-	$archive_info = array(
+	dsm($file_size, 'file_size');
+	$archive_data = array(
 			      'nid' => $node->nid,
 			      'in_path' => $filepath,
-			      'filename' => basename($filepath),
-			      'filesize' => $filesize,
+			      'file_name' => basename($filepath),
+			      'file_size' => $file_size,
 			      'status' => ARCHIVE_QUEUED,
+			      'field_name' => $file_info['field_name'],
+			      'file_location' => $file_info['file_location'],
 			      );
-	internet_archive_invoke_internet_archive($archive_info, 'harvested');
-	
+	internet_archive_invoke_internet_archive($archive_data, 'harvested');
+
+	//PREPARE QUEUE ITEM
+	$queue_item = array();
+	$queue_item = array('file_name' => $filepath,
+			    'field_name' => $archive_data['field_name'],
+			    'file_location' => $archive_data['file_location']);
+
 	//NEED TO MAKE SURE ITEM IS NOT ALREADY IN THE QUEUE
 	$sql = "SELECT item_id FROM {queue} WHERE data = :data";
-	$params = array(':data' => serialize($filepath));
+	$params = array(':data' => serialize($queue_item));
 	$queue_id = db_query($sql, $params)->fetchField();
 	
 	if ($queue_id) {
+	  dsm("found me in the queue");
 	  continue;
 	}
 	//add the file to queue
-	$transfer_queue->createItem($filepath);
+	$transfer_queue->createItem($queue_item);
 	//update the file status to queued if this is the first attempt
 	if ($status != ARCHIVE_FAILED) {
 	  $sql =
 	    "INSERT into {internet_archive} " .
-	    "(nid, in_path, filename, filesize, status, " .
-	    "attempts, transfer_initiated, date) " .
-	    "VALUES (:nid, :in_path, :filename, :size, :status, 0,0,0)";
-	  $params = array(':nid' => $archive_info['nid'],
-			  ':in_path' => $archive_info['in_path'],
-			  ':filename' => $archive_info['filename'],
-			  ':size' => $archive_info['filesize'],
-			  ':status' => $archive_info['status'],
+	    "(nid, in_path, file_name, field_name, file_location, " .
+	    "file_size, status, attempts, transfer_initiated, date) " .
+	    "VALUES (:nid, :in_path, :file_name, :field_name, ".
+	    ":file_location, :size, :status, 0,0,0)";
+	  $params = array(':nid' => $archive_data['nid'],
+			  ':in_path' => $archive_data['in_path'],
+			  ':file_name' => $archive_data['file_name'],
+			  ':field_name' => $archive_data['field_name'],
+			  ':file_location' => $archive_data['file_location'],
+			  ':size' => $file_size,
+			  ':status' => $archive_data['status'],
 			  );
-	  
+	  dsm($params, 'params');
+	  dsm('hi mom');
 	  db_query($sql, $params);
+	  dsm('hi mom2');
 	}
-	if (isset($archive_info)) {
-	  unset($archive_info);
+	if (isset($archive_data)) {
+	  unset($archive_data);
 	}
-	$archive_info = internet_archive_load_data($filepath);
-	internet_archive_invoke_internet_archive($archive_info, 'queued');
+	$archive_data =
+	  internet_archive_load_data($filepath, $archive_data['field_name']);
+	
+	internet_archive_invoke_internet_archive($archive_data, 'queued');
       }
     }
   }
@@ -875,36 +952,6 @@ function internet_archive_harvest_files() {
   //All done, reset our user session if necessary
   if ($cron_user) {
     $user = $original_user;
-  }
-}
-
-/**
- * Takes a filepath and adds it to the internet_archive_send_file queue
- *
- * @param $filepath
- *   a string containing a path to a file.
- * @return
- *   TRUE if the file is added to the queue, FALSE if not.
- */
-function internet_archive_add_to_queue($filepath) {
-  dsm('internet_archive_add_to_queue');
-  drupal_queue_include();
-  $transfer_queue = DrupalQueue::get('internet_archive_send_file');
-
-  $status = internet_archive_get_status($filepath);
-  if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING && $status != ARCHIVE_TRANSFERRED) {
-    //add the file to queue
-    $transfer_queue->createItem($filepath);
-
-    //update the file status to queued
-    // TODO Please convert this statement to the D7 database API syntax.
-    /* db_query("INSERT into {internet_archive} (in_path, status) VALUES ('%s', '%s')", $filepath, ARCHIVE_QUEUED) */
-    NULL;
-
-    return TRUE;
-  }
-  else {
-    return FALSE;
   }
 }
 
@@ -960,29 +1007,6 @@ function internet_archive_day_check() {
 
   if (empty($allowed_days) || in_array($current_day, $allowed_days)) {
     return TRUE;
-  }
-  else {
-    return FALSE;
-  }
-}
-
-/**
- * Checks the current archive.org status of a file
- *
- * @param $filepath
- *   String containing a relative filepath.
- * @return $status
- *   Returns current status if available, FALSE if not
- */
-function internet_archive_get_status($filepath) {
-  $s3_data = internet_archive_load_data($filepath);
-  if ($s3_data) {
-    if ($status = $s3_data['status']) {
-      return $status;
-    }
-    else {
-      return FALSE;
-    }
   }
   else {
     return FALSE;
@@ -1073,15 +1097,21 @@ function internet_archive_validate_action_settings($element, &$form_state) {
  *   A string containing a relative filepath.
  *
  * @return $path
- *   A string containing the itemname/filename
+ *   A string containing the itemname/file_name
  */
-function internet_archive_send($config, $filepath) {
+function internet_archive_send($config, $file_info) {
   dsm('internet_archive_send');
-  //grab any existing information available for this filepath
-  $ia_data = internet_archive_load_data($filepath);
-  dsm($ia_data, 'did we find data in the internet archive for '.$filepath);
+  $file_name = $file_info['file_name'];
+  $field_name = $file_info['field_name'];
+  $file_location = $file_info['file_location'];
+ 
+  //grab any existing information available for this file_name
+  $archive_data = internet_archive_load_data($file_name, $field_name);
+
+  dsm($archive_data, 'archive data for '.$file_name);
+
   if (variable_get('internet_archive_debug', FALSE)) {
-    watchdog('internet_archive', 'Sending file: ' . $filepath, NULL,
+    watchdog('internet_archive', 'Sending file: ' . $file_name, NULL,
 	     WATCHDOG_NOTICE);
   }
 
@@ -1090,19 +1120,19 @@ function internet_archive_send($config, $filepath) {
     return FALSE;
   }
 
-  $s3->setTransferId($ia_data['tid']);
+  $s3->setTransferId($archive_data['tid']);
 
   // can we read the file?
-  if (! is_readable($filepath)) {
-    watchdog('internet_archive', 'File is not readable: ' . $filepath .
+  if ($file_location == 'local' && !is_readable($file_name)) {
+    watchdog('internet_archive', 'File is not readable: ' . $file_name .
 	     ', please check that this file exists and the web user has ' .
 	     'read permissions to it.', NULL, WATCHDOG_ERROR);
-    return;
+    return FALSE;
   }
 
   //grab metadata if it is available
   $metadata = array();
-  $metadata = internet_archive_get_metadata($filepath);
+  $metadata = internet_archive_get_metadata($file_name);
   dsm($metadata, "back from internet_archive_get_metadata");
   //TODO: add some sort of backup in case there is no title/pattern...
 
@@ -1120,7 +1150,7 @@ function internet_archive_send($config, $filepath) {
     dsm($name, 'name 0');
   }
   else if ($itempattern = variable_get('internet_archive_itemname', NULL)) {
-    $token_node = internet_archive_get_node_from_filepath($filepath);
+    $token_node = internet_archive_get_node_from_filepath($file_name);
     dsm($token_node, 'got my node');
     $name = token_replace($itempattern, $type = 'node', $object = $token_node,
 			  $leading = '[', $trailing = ']', $options = array());
@@ -1143,8 +1173,8 @@ function internet_archive_send($config, $filepath) {
   }
 
   if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-    if ($ia_data['status'] == ARCHIVE_FAILED) {
-      $name = $ia_data['item'];
+    if ($archive_data['status'] == ARCHIVE_FAILED) {
+      $name = $archive_data['item'];
     }
   }
   dsm($name, 'name4');
@@ -1158,7 +1188,6 @@ function internet_archive_send($config, $filepath) {
   dsm('putting bucket up');
   dsm($config, 'config');
   dsm($headers, 'headers');
-
   
   $status =
     $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
@@ -1168,43 +1197,45 @@ function internet_archive_send($config, $filepath) {
     return FALSE;
   }
 
-  // We need to set the filename based on the setting in this configuration
-  // Sometimes it is a good idea to save the full $filepath as the filename
+  // We need to set the file_name based on the setting in this configuration
+  // Sometimes it is a good idea to save the full $file_name as the file_name
   if (! $config['internet_archive_drupal_file_path']) {
-    $s3_filename = basename($filepath);
-    dsm($s3_filename, 'basenaming it');
+    $s3_file_name = basename($file_name);
+    dsm($s3_file_name, 'basenaming it');
   }
   else {
-    $s3_filename = $filepath;
+    $s3_file_name = $file_name;
   }
-  dsm($s3_filename, 's3');
+  dsm($s3_file_name, 's3');
 
   // Put file on archive
-  $mimetype = file_get_mimetype($filepath);
-
+  $mimetype = file_get_mimetype($file_name);
+  dsm($mimetype, 'mimetype');
   //HACK for DOM, need to find a more general solution
-  $pathinfo = pathinfo($filepath);
+  $pathinfo = pathinfo($file_name);
   if ($pathinfo['extension'] == 'mp2') {
     $mimetype = 'video/mpeg';
   }
   dsm($pathinfo, 'path info');
-  //Log start of transfer time
+
+  //Log start of transfer time if we already have row in internet_archive
   $transfer_initiated = REQUEST_TIME;
-  if (is_numeric($ia_data['tid'])) {
+  if (is_numeric($archive_data['tid'])) {
     db_update('internet_archive')
       ->fields(array(
 		     'transfer_initiated' => $transfer_initiated,
 		     ))
-      ->condition('tid', $ia_data['tid'])
+      ->condition('tid', $archive_data['tid'])
       ->execute();
   }
 
   //TODO: build this into the return value of put_object so that
   //it works with remote servers as well.
-  if (!$filesize = internet_archive_filesize($filepath)) {
-    $filesize = 0;
+  if ($file_location == 'local' &&
+      !$file_size = internet_archive_file_size($file_name)) {
+    $file_size = 0;
   }
-  dsm($filesize, 'filesize');
+  dsm($file_size, 'file_size');
   dsm($config, 'config');
 
   //SET VARIABLES FOR THE WAIT LOOP ON BUCKET CREATTION
@@ -1234,55 +1265,60 @@ function internet_archive_send($config, $filepath) {
   }
 
   if (!$bucket_exists) {
-    $msg = t("Error Code #23244 Bucket could not be found for !filepath, ".
+    $msg = t("Error Code #23244 Bucket could not be found for !file_name, ".
 	     "maybe bump up execution time from !max.",
-	     array('!filepath' => $filepath,
+	     array('!file_name' => $file_name,
 		   '!max' => $max_run_time));
     
     watchdog('internet_archive', $msg, NULL, WATCHDOG_ERROR);
     drupal_set_message($msg, 'error');
     return FALSE;
   }
-	 
-  //TODO: better error checking if the putobject fails
-  if (variable_get('internet_archive_remote', FALSE)) {
-    internet_archive_remote_put_object($filepath,
-				       $config['internet_archive_bucket'],
-				       $s3_filename, $headers, $mimetype);
+
+  if (module_exists('internet_archive_remote') &&
+      $file_location == 'remote') {
+    dsm("trying remote put");
+    $status =
+      internet_archive_remote_put_object($file_name,
+					 $config['internet_archive_bucket'],
+					 $s3_file_name, $headers, $mimetype);
+    dsm($status, 'status after remote put');
   }
   else {
     dsm('putting local file to bucket');
-    if (!$s3->putObjectFile($filepath, $config['internet_archive_bucket'],
-			    $s3_filename, $headers, $mimetype)) {
+    return FALSE;
+    if (!$s3->putObjectFile($file_name, $config['internet_archive_bucket'],
+			    $s3_file_name, $headers, $mimetype)) {
       dsm("error!");
-      $ia_data['status'] = ARCHIVE_FAILED;
-      $ia_data['attempts'] = $ia_data['attempts'] + 1;
-      $ia_data['item'] = $config['internet_archive_bucket'];
-      $ia_data['error'] =
+      $archive_data['status'] = ARCHIVE_FAILED;
+      $archive_data['attempts'] = $archive_data['attempts'] + 1;
+      $archive_data['item'] = $config['internet_archive_bucket'];
+      $archive_data['error'] =
 	t('File transfer to Archive.org failed, transfer marked as failed.');
 
-      watchdog('internet_archive', $ia_data['error'], NULL, WATCHDOG_ERROR);
+      watchdog('internet_archive', $archive_data['error'], NULL,
+	       WATCHDOG_ERROR);
 
       db_update('internet_archive')
 	->fields(array(
-		       'status' => $ia_data['status'],
-		       'attempts' => $ia_data['attempts'],
-		       'item' => $ia_data['item'],
+		       'status' => $archive_data['status'],
+		       'attempts' => $archive_data['attempts'],
+		       'item' => $archive_data['item'],
 		       ))
-	->condition('in_path', $filepath)
+	->condition('in_path', $file_name)
 	->execute();
-      internet_archive_invoke_internet_archive($ia_data, 'failed');
+      internet_archive_invoke_internet_archive($archive_data, 'failed');
       return FALSE;
     }
   }
 
-  // Create the return filepath. We add the bucket file path if
+  // Create the return file_name. We add the bucket file path if
   // the a custom domain is not being used
   if (! $config['internet_archive_drupal_file_path']) {
-    $s3_filename = $config['internet_archive_bucket'] . '/' . $s3_filename;
+    $s3_file_name = $config['internet_archive_bucket'] . '/' . $s3_file_name;
   }
 
-  $path = $config['internet_archive_server_url'] . $s3_filename;
+  $path = $config['internet_archive_server_url'] . $s3_file_name;
 
   // Check to see if the host bucket is the standard AWS or
   // a bucket domain
@@ -1290,60 +1326,60 @@ function internet_archive_send($config, $filepath) {
   $hostbucket = preg_match($pattern, $path);
 
   // Add the file information to our custom table
-  if ($filepath) {
-    $node = internet_archive_get_node_from_filepath($filepath);
+  if ($file_name) {
+    $node = internet_archive_get_node_from_filepath($file_name);
     $info = array(
       'item' => $config['internet_archive_bucket'],
-      'in_path' => $filepath,
-      'filename' => basename($filepath),
-      'filesize' => $filesize,
+      'in_path' => $file_name,
+      'file_name' => basename($file_name),
+      'file_size' => $file_size,
       'status' => ARCHIVE_TRANSFERRED,
       'attempts' => 1,
       'transfer_initiated' => $transfer_initiated,
-      'md5' => md5_file($filepath),
+      'md5' => md5_file($file_name),
       'date' => REQUEST_TIME,
       'archive_url' => 'http://www.archive.org/download/' .
-      $config['internet_archive_bucket'] . '/' . basename($filepath),
+      $config['internet_archive_bucket'] . '/' . basename($file_name),
       'nid' => $node->nid,
     );
 
     //check if entry already exists from queue
-    $s3_data = internet_archive_load_data($filepath);
+    $s3_data = internet_archive_load_data($file_name, $field_name);
     if ($s3_data['tid']) {
       if ($s3_data['attempts'] != 0) {
         $info['attempts'] = $s3_data['attempts'] + 1;
       }
 
       db_update('internet_archive')
-  ->fields(array(
-        'item' => $info['item'],
-        'in_path' => $info['in_path'],
-        'filename' => $info['filename'],
-        'filesize' => $info['filesize'],
-        'status' => $info['status'],
-        'attempts' => $info['attempts'],
-        'transfer_initiated' => $info['transfer_initiated'],
-        'md5' => $info['md5'],
-        'date' => $info['date'],
-        'archive_url' => $info['archive_url'],
-        'nid' => $info['nid'],
-      ))
-  ->condition('tid', $s3_data['tid'])
-  ->execute();
+	->fields(array(
+		       'item' => $info['item'],
+		       'in_path' => $info['in_path'],
+		       'file_name' => $info['file_name'],
+		       'file_size' => $info['file_size'],
+		       'status' => $info['status'],
+		       'attempts' => $info['attempts'],
+		       'transfer_initiated' => $info['transfer_initiated'],
+		       'md5' => $info['md5'],
+		       'date' => $info['date'],
+		       'archive_url' => $info['archive_url'],
+		       'nid' => $info['nid'],
+		       ))
+	->condition('tid', $s3_data['tid'])
+	->execute();
     }
     else {
       $sql =
 	"INSERT into {internet_archive} ".
-	"(item, in_path, filename, filesize, status, attempts, ".
-	" transfer_initiated, md5, date, archive_url, nid) " .
-	"VALUES (:item, :in_path, :filename, :filesize, :status, " .
-	"        :attempts, :transfer_initiated, :md5, :date, :archive_url, " .
-	"        :nid)";
+	"(item, in_path, file_name, file_size, field_name, file_location, " .
+	"status, attempts, transfer_initiated, md5, date, archive_url, nid) " .
+	"VALUES (:item, :in_path, :file_name, :file_size, :field_name, " .
+	"        :file_location :status, :attempts, :transfer_initiated, " .
+	"        :md5, :date, :archive_url, :nid)";
 
       $args = array(':item' => $info['item'],
 		    ':in_path' => $info['in_path'],
-		    ':filename' => $info['filename'],
-		    ':filesize' => $info['filesize'],
+		    ':file_name' => $info['file_name'],
+		    ':file_size' => $info['file_size'],
 		    ':status' => $info['status'],
 		    ':attempts' => $info['attempts'],
 		    ':transfer_initiated' => $info['transfer_initiated'],
@@ -1351,20 +1387,17 @@ function internet_archive_send($config, $filepath) {
 		    ':date' => $info['date'],
 		    ':archive_url' => $info['archive_url'],
 		    ':nid' => $info['nid']);
-      dsm($args, 'args');
       db_query($sql, $args);
     }
 
-    $final_data = internet_archive_load_data($info['in_path']);
-    dsm($final_data, 'final data');
-    internet_archive_invoke_internet_archive($final_data, 'transferred');
+    internet_archive_invoke_internet_archive($info, 'transferred');
     dsm('done with invoking internet_archive_invoke_internet_archive');
   }
   else {
     $log_entry = array(
-      'tid' => $ia_data['tid'],
-      'message' => t('No filepath available after upload attempt!'),
-      'message_data' => $ia_data,
+      'tid' => $archive_data['tid'],
+      'message' => t('No file_name available after upload attempt!'),
+      'message_data' => $archive_data,
       'type' => ARCHIVE_LOG_ERROR,
     );
     internet_archive_log($log_entry);
@@ -1400,9 +1433,8 @@ function internet_archive_node_files($nid) {
  * @param $filepath
  *   A source filepath of a file transferred to archive.org
  */
-function internet_archive_update_item($filepath) {
+function internet_archive_update_item($archive_data) {
   dsm('internet_archive_update_item');
-  $archive_data = internet_archive_load_data($filepath);
 
   //grab all the necessary information
   $config = internet_archive_default_config();
@@ -1421,7 +1453,7 @@ function internet_archive_update_item($filepath) {
   dsm($archive_data, 'archive data for node');
   //grab metadata if it is available
   $metadata = array();
-  $metadata = internet_archive_get_metadata($filepath);
+  $metadata = internet_archive_get_metadata($archive_data['file_name']);
 
   $headers = internet_archive_process_metadata($metadata);
 
@@ -1468,7 +1500,7 @@ function internet_archive_delete_item($archive_data) {
   $s3->bucket = $config['internet_archive_bucket'];
 
   $s3->deleteObject($config['internet_archive_bucket'],
-		    $archive_data['filename']);
+		    $archive_data['file_name']);
 }
 
 
@@ -1494,7 +1526,7 @@ function internet_archive_delete_files($archive_data) {
   $s3->bucket = $config['internet_archive_bucket'];
 
   $s3->deleteFiles($config['internet_archive_bucket'],
-		   $archive_data['filename']);
+		   $archive_data['file_name']);
 }
 
 /**
@@ -1616,33 +1648,33 @@ function internet_archive_validate_transfers($nid = null) {
 			     ':failed' => ARCHIVE_FAILED,
 			     ':attempts' => $attempts));
   }
-  while ($archive_info = $result->fetchAssoc()) {
-    dsm($archive_info, 'ai');
-    $valid = internet_archive_validate_transfer($archive_info['tid']);
+  while ($archive_data = $result->fetchAssoc()) {
+    dsm($archive_data, 'ai');
+    $valid = internet_archive_validate_transfer($archive_data['tid']);
     dsm($valid, 'valid');
-    if (!$valid && (REQUEST_TIME - $archive_info['date']) > (8*60*60)) {
+    if (!$valid && (REQUEST_TIME - $archive_data['date']) > (8*60*60)) {
       db_update('internet_archive')
 	->fields(array(
 		       'status' => ARCHIVE_FAILED,
 		       ))
-	->condition('tid', $archive_info['tid'])
+	->condition('tid', $archive_data['tid'])
 	->execute();
-      $archive_info['status'] = ARCHIVE_FAILED;
-      $archive_info['error'] = 
+      $archive_data['status'] = ARCHIVE_FAILED;
+      $archive_data['error'] = 
 	t('Validation failed, source file does not exist at Archive.org ' .
 	 'after 8 hours. Marked as failed.');
 
-      internet_archive_invoke_internet_archive($archive_info, 'failed');
+      internet_archive_invoke_internet_archive($archive_data, 'failed');
     }
     elseif ($valid) {
       db_update('internet_archive')
 	->fields(array(
 		       'status' => ARCHIVE_VALIDATED,
 		       ))
-	->condition('tid', $archive_info['tid'])
+	->condition('tid', $archive_data['tid'])
 	->execute();
-      $archive_info['status'] = ARCHIVE_VALIDATED;
-      internet_archive_invoke_internet_archive($archive_info, 'validated');
+      $archive_data['status'] = ARCHIVE_VALIDATED;
+      internet_archive_invoke_internet_archive($archive_data, 'validated');
     }
   }
 }
@@ -1659,13 +1691,13 @@ function internet_archive_validate_transfers($nid = null) {
  */
 function internet_archive_validate_transfer($tid) {
   dsm('internet_archive_validate_transfer');
-  $data = internet_archive_load_data_tid($tid);
+  $archive_data = internet_archive_load_data_tid($tid);
 
-  if (!$data) {
+  if (!$archive_data) {
     return FALSE;
   }
 
-  $derivatives = internet_archive_get_derivatives($data['item']);
+  $derivatives = internet_archive_get_derivatives($archive_data);
   dsm($derivatives, 'derivs');
   if (!$derivatives) {
     return FALSE;
@@ -1694,48 +1726,13 @@ function internet_archive_simple_derivative($nid, $ext) {
   $archive = db_query("SELECT * FROM {internet_archive} WHERE nid = :nid",
 		      array(':nid' => $nid))->fetchAssoc();
   if ($archive['status'] == ARCHIVE_TRANSFERRED) {
-    $pathinfo = pathinfo($archive['filename']);
+    $pathinfo = pathinfo($archive['file_name']);
     return 'http://www.archive.org/download/' . $archive['item'] . '/' .
-      $pathinfo['filename'] . '.' . $ext;
+      $pathinfo['file_name'] . '.' . $ext;
   }
   else {
     return FALSE;
   }
-}
-
-/**
- * Creates a URL to a derivative file by running an S3 call to archive.org
- *
- * Use internet_archive_simple_derivative if you would like a faster, but less
- * accurate solution
- *
- * @param $item_name
- *   An archive.org item/bucket name
- * @param @extension
- *   The extension of the derivative you want ex. ogv
- *
- * @return an array of all derivative paths found matching the extension
- */
-function internet_archive_derivative($item_name, $extension) {
-  $s3 = internet_archive_new_s3();
-  $archive_info = internet_archive_load_data_item($item_name);
-  $s3->setTransferId($archive_info['tid']);
-
-  $bucket_info = $s3->getBucket($item_name);
-
-  $derivative_paths = array();
-
-  if ($bucket_info) {
-    foreach ($bucket_info as $filename => $fileinfo) {
-      $pathinfo = pathinfo($filename);
-      if ($pathinfo['extension'] == $extension) {
-        $derivative_paths[$filename] = 'http://www.archive.org/download/' .
-	  $item_name . '/' . $filename;
-      }
-    }
-  }
-
-  return $derivative_paths;
 }
 
 /**
@@ -1787,20 +1784,20 @@ function internet_archive_buckets() {
  * @return
  *   An object containing all of the derivatives for an item.
  */
-function internet_archive_get_derivatives($item_name, $extension = NULL) {
+function internet_archive_get_derivatives($archive_data, $extension = NULL) {
   dsm('internet_archive_get_derivatives');
   $s3 = internet_archive_new_s3();
-  $archive_info = internet_archive_load_data_item($item_name);
-  $s3->setTransferId($archive_info['tid']);
+
+  $s3->setTransferId($archive_data['tid']);
 
   //NEED TO ADD HERE..
-  $bucket_info = $s3->getBucket($item_name);
+  $bucket_info = $s3->getBucket($archive_data['item']);
   dsm($bucket_info, 'bucket info');
   if ($bucket_info) {
     if ($extension) {
       dsm($extension, 'extension');
-      foreach ($bucket_info as $filename => $fileinfo) {
-        $pathinfo = pathinfo($filename);
+      foreach ($bucket_info as $file_name => $fileinfo) {
+        $pathinfo = pathinfo($file_name);
         if ($pathinfo['extension'] == $extension) {
           return $fileinfo;
         }
@@ -1820,11 +1817,11 @@ function internet_archive_get_derivatives($item_name, $extension = NULL) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_is_archive_format($filename) {
+function internet_archive_is_archive_format($file_name) {
   //formats derived by archive.org
   //TODO: add more formats for audio, etc.
   $archive_formats = array('mpeg', 'ogv', 'mp4');
-  $pathinfo = pathinfo($filename);
+  $pathinfo = pathinfo($file_name);
   if (in_array($pathinfo['extension'], $archive_formats)) {
     return TRUE;
   }
@@ -1873,44 +1870,44 @@ function internet_archive_store_derivatives($nid, $limit = 25) {
 
   $results = db_query_range($sql, 0, $limit, $args);
   
-  while ($item = $results->fetchAssoc()) {
+  while ($archive_data = $results->fetchAssoc()) {
     //+1 to account for the original file
     $expected_derivatives =
       variable_get('internet_archive_derivatives', 3) + 1;
 
     //if we are uploading a file in a format archive.org derives it will not
     //re-derive it therefore we need to decrement the expected derivatives by 1
-    if (internet_archive_is_archive_format($item['filename'])) {
+    if (internet_archive_is_archive_format($archive_data['file_name'])) {
       $expected_derivatives = $expected_derivatives - 1;
     }
 
     unset($derivatives);
-    $derivatives = internet_archive_get_derivatives($item['item']);
+    $derivatives = internet_archive_get_derivatives($archive_data);
     dsm($derivatives, 'found derivatives');
     if ($derivatives && (count($derivatives) >= $expected_derivatives)) {
       db_update('internet_archive')
 	->fields(array(
 		       'status' => ARCHIVE_DERIVED,
 		       ))
-	->condition('item', $item['item'])
+	->condition('item', $archive_data['item'])
 	->execute();
       
-      $item['derivatives'] = serialize($derivatives);
-      internet_archive_invoke_internet_archive($item, 'derived');
+      $archive_data['derivatives'] = serialize($derivatives);
+      internet_archive_invoke_internet_archive($archive_data, 'derived');
     }
-    elseif ((REQUEST_TIME - $item['date']) > 172800) {
+    elseif ((REQUEST_TIME - $archive_data['date']) > 172800) {
       // if derivatives are not completed after 2 days, check to see if
       //transfer validates
-      $valid = internet_archive_validate_transfer($item['tid']);
+      $valid = internet_archive_validate_transfer($archive_data['tid']);
       if (!$valid) {
         // if it doesn't validate, mark as failed for reprocessing
         db_update('internet_archive')
 	  ->fields(array(
 			 'status' => ARCHIVE_FAILED,
 			 ))
-	  ->condition('tid', $item['tid'])
+	  ->condition('tid', $archive_data['tid'])
 	  ->execute();
-        internet_archive_invoke_internet_archive($item, 'failed');
+        internet_archive_invoke_internet_archive($archive_data, 'failed');
       }
       else {
         // if it does validate, mark derivatives as failed
@@ -1918,9 +1915,9 @@ function internet_archive_store_derivatives($nid, $limit = 25) {
 	  ->fields(array(
 			 'derivatives' => 'failed',
 			 ))
-	  ->condition('item', $item['item'])
+	  ->condition('item', $archive_data['item'])
 	  ->execute();
-        internet_archive_invoke_internet_archive($item, 'derivativefailed');
+        internet_archive_invoke_internet_archive($archive_data, 'derivativefailed');
       }
     }
 
@@ -1929,7 +1926,7 @@ function internet_archive_store_derivatives($nid, $limit = 25) {
 	->fields(array(
 		       'derivatives' => serialize($derivatives),
 		       ))
-	->condition('item', $item['item'])
+	->condition('item', $archive_data['item'])
 	->execute();
     }
   }
@@ -1988,11 +1985,20 @@ function internet_archive_transfer_confirm($form, $drupal_form, $filepath) {
     '#type' => 'value',
     '#value' => $filepath,
   );
+  
+  $form['field_name'] = array(
+    '#type' => 'value',
+    '#value' => filter_input(INPUT_GET, 'field_name'),
+  );
+  $form['file_location'] = array(
+    '#type' => 'value',
+    '#value' => filter_input(INPUT_GET, 'file_location'),
+  );
   $form['original_referrer'] = array(
     '#type' => 'value',
     '#value' => $_SERVER['HTTP_REFERER'],
   );
-
+  dsm($form, 'form');
   return confirm_form($form, t('Are you sure you want to transfer this file?'),
 		      NULL, $description = '', t('Transfer'), t('Cancel'));
 }
@@ -2006,10 +2012,13 @@ function internet_archive_transfer_confirm($form, $drupal_form, $filepath) {
  */
 function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
   dsm('internet_archive_transfer_confirm_submit');
-  dsm($form_state, 'fs');
-  
-  $status = internet_archive_default_send($form_state['values']['filepath']);
 
+  $status =
+    internet_archive_default_send($form_state['values']['filepath'],
+				  $form_state['values']['field_name'],
+				  $form_state['values']['file_location']);
+
+  
   if ($status) {
     drupal_set_message('File transferred successfully, please note there ' .
 		       'may be a short delay before the file is available ' .
@@ -2038,13 +2047,18 @@ function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
  *
  * @return
  */
-function internet_archive_default_send($filepath) {
+function internet_archive_default_send($filepath, $field_name,
+				       $file_location) {
   dsm('internet_archive_default_send');
   //grab all the necessary information
   $config = internet_archive_default_config();
 
   //send the file
-  $status = internet_archive_send($config, $filepath);
+  $file_info = array('file_name' => $filepath,
+		     'field_name' => $field_name,
+		     'file_location' => $file_location,
+		     );
+  $status = internet_archive_send($config, $file_info);
 
   return $status;
 }
@@ -2234,7 +2248,7 @@ function internet_archive_reports_statistics() {
   
   $file_table = theme('table',array('header'=> $header, 'rows' => $file_rows));
 
-  $total = db_query("SELECT sum(filesize) FROM {internet_archive} ".
+  $total = db_query("SELECT sum(file_size) FROM {internet_archive} ".
 		    "WHERE status = :status OR status = :status",
 		    array(':status' => 'validated',
 			  ':status' => 'derived'))->fetchField();
@@ -2262,13 +2276,13 @@ function internet_archive_reports_statistics() {
 			     ' min/file');
   }
 
-  $val_plus_derived = db_query("SELECT avg(filesize) " .
+  $val_plus_derived = db_query("SELECT avg(file_size) " .
 			       "FROM {internet_archive} " .
 			       "WHERE status = :status OR status = :status",
 			       array(':status' => 'validated',
 				     ':status' => 'derived'))->fetchField();
   
-  $transfer_rows[] = array('Average Filesize',
+  $transfer_rows[] = array('Average File Size',
 			   round($val_plus_derived / 1024 / 1024, 4) . ' MB');
 
   $transfer_table = theme('table', array('header' => $header,
@@ -2299,8 +2313,8 @@ function internet_archive_reports_statistics() {
 }
 
 /**
- * Produces the upload report at admin/reports/internet_archive showing a summary
- * of recent file uploads
+ * Produces the upload report at admin/reports/internet_archive showing a 
+ * summary of recent file uploads
  */
 function internet_archive_reports_log() {
   $output .= 'Typical file status process is: Queued -> Transferring -> '.
@@ -2315,8 +2329,8 @@ function internet_archive_reports_log() {
 }
 
 /**
- * Produces the system messages report at admin/reports/internet_archive/log showing
- * a listing of all system log messages sorted by date.
+ * Produces the system messages report at admin/reports/internet_archive/log 
+ * showing a listing of all system log messages sorted by date.
  */
 function internet_archive_reports_system_messages() {
   if (arg(4) == 'all') {
@@ -2358,8 +2372,8 @@ function internet_archive_uploads() {
 			  "ORDER BY transfer_initiated DESC",
 			  $min, $results_per_page);
   
-  $header = array('ID', 'Node', 'Filename', 'Filesize (MB)', 'Start', 'Finish',
-		  'Time(min)<br />Rate(Mb/sec)', 'Status', 'Log');
+  $header = array('ID', 'Node', 'File Name', 'File Size (MB)', 'Start',
+		  'Finish', 'Time(min)<br />Rate(Mb/sec)', 'Status', 'Log');
   
   $rows = array();
 
@@ -2369,9 +2383,9 @@ function internet_archive_uploads() {
     $count ++;
     $has_results = TRUE;
     unset($transfer_time);
-    unset($filesize);
+    unset($file_size);
     unset($transfer_rate);
-    unset($filename);
+    unset($file_name);
 
     if ($archive_data['date'] > 0 && $archive_data['transfer_initiated'] > 0) {
       $transfer_time =
@@ -2382,17 +2396,17 @@ function internet_archive_uploads() {
       $transfer_time = 'N/A';
     }
 
-    if ($archive_data['filesize'] > 0) {
-      $filesize = round(($archive_data['filesize'] / 1024 / 1024), 2);
+    if ($archive_data['file_size'] > 0) {
+      $file_size = round(($archive_data['file_size'] / 1024 / 1024), 2);
     }
     else {
-      $filesize = 'N/A';
+      $file_size = 'N/A';
     }
 
-    if ($archive_data['filesize'] > 0 && $archive_data['date'] > 0 &&
+    if ($archive_data['file_size'] > 0 && $archive_data['date'] > 0 &&
 	$archive_data['transfer_initiated'] > 0) {
 
-      $transfer_rate = $archive_data['filesize'] * 8 / 1000 / 1000;
+      $transfer_rate = $archive_data['file_size'] * 8 / 1000 / 1000;
 
       $transfer_rate = $transfer_rate /
 	($archive_data['date'] - $archive_data['transfer_initiated']);
@@ -2403,18 +2417,18 @@ function internet_archive_uploads() {
       $transfer_rate = 'N/A';
     }
 
-    if (strlen($archive_data['filename']) > 40) {
-      $filename = substr($archive_data['filename'], 0, 40) . '...';
+    if (strlen($archive_data['file_name']) > 40) {
+      $file_name = substr($archive_data['file_name'], 0, 40) . '...';
     }
     else {
-      $filename = $archive_data['filename'];
+      $file_name = $archive_data['file_name'];
     }
 
     $rows[] =
       array(l($archive_data['tid'], 'http://www.archive.org/details/' .
 	      $archive_data['item']),
 	    l($archive_data['nid'], 'node/' . $archive_data['nid']),
-	    $filename, $filesize, $archive_data['transfer_initiated'],
+	    $file_name, $file_size, $archive_data['transfer_initiated'],
 	    $archive_data['date'],
 	    $transfer_time . '<br />' . $transfer_rate,
 	    $archive_data['status'],
@@ -2488,7 +2502,8 @@ function internet_archive_format_dates($rows) {
  *   The method of calculation, either rate or time.
  *
  * @return
- *   A rounded decimal containing either the rate in mbits/sec or total time in minutes.
+ *   A rounded decimal containing either the rate in mbits/sec or total time 
+ *   in minutes.
  */
 function internet_archive_transfer_rate($limit = 0, $format = 'rate') {
   $total_seconds = 0;
@@ -2503,9 +2518,9 @@ function internet_archive_transfer_rate($limit = 0, $format = 'rate') {
   
   while ($archive_data = $result->fetchAssoc() ) {
     if ($archive_data['transfer_initiated'] != 0 &&
-	$archive_data['date'] != 0 && $archive_data['filesize'] != 0) {
+	$archive_data['date'] != 0 && $archive_data['file_size'] != 0) {
 
-      $total_bytes = $total_bytes + $archive_data['filesize'];
+      $total_bytes = $total_bytes + $archive_data['file_size'];
       $total_seconds = $total_seconds + ($archive_data['date'] -
 					 $archive_data['transfer_initiated']);
       $counter++;
@@ -2564,13 +2579,15 @@ function theme_queue_items() {
   foreach ($items as &$item) {
     //grab file information
     $filepath = unserialize($item['data']);
-    $filesize = internet_archive_filesize($filepath);
+    $file_size = internet_archive_file_size($filepath);
     $node = internet_archive_get_node_from_filepath($filepath);
 
-    array_unshift($item, $filepath, $filesize, l($node->nid, 'node/' . $node->nid));
+    array_unshift($item, $filepath, $file_size, l($node->nid, 'node/' .
+						  $node->nid));
 
     if ($item['expire'] > 0) {
-      $item['expire'] = t("Claimed: expires %expire", array('%expire' => date('r', $item['expire'])));
+      $item['expire'] = t("Claimed: expires %expire",
+			  array('%expire' => date('r', $item['expire'])));
     }
     else {
       $item['expire'] = t('Unclaimed');
@@ -2580,7 +2597,8 @@ function theme_queue_items() {
     $rows[] = $item;
   }
   if (!empty($rows)) {
-    $header = array(t('Filename'), t('Filesize'), t('Node'), t('Queue Item ID'), t('Claimed/Expiration'), t('Created'));
+    $header = array(t('File Name'), t('File Size'), t('Node'),
+		    t('Queue Item ID'), t('Claimed/Expiration'), t('Created'));
     $output = theme('table', array('header' => $header, 'rows' => $rows));
     return $output;
   }
@@ -2807,7 +2825,7 @@ function internet_archive_get_metadata($filepath) {
     $metadata['title'] = $node->title;
   }
   elseif (!$metadata['title']) {
-    //finally if no title has been provided, use the filename.
+    //finally if no title has been provided, use the file_name.
     $metadata['title'] = basename($filepath);
   }
 
@@ -2883,7 +2901,8 @@ function internet_archive_clean_text($string) {
  * @return $node
  *   Drupal node object, or FALSE if nothing is found.
  */
-function internet_archive_get_node_from_filepath($filepath) {
+function internet_archive_get_node_from_filepath($filepath,
+						 $field_name = '') {
   dsm('internet_archive_get_node_from_filepath');
   $tables = internet_archive_get_field_tables();
   dsm($filepath, 'fp');
@@ -2917,6 +2936,7 @@ function internet_archive_get_node_from_filepath($filepath) {
 	dsm($node, "found node from text field filepath: $filepath");
 	return $node;
       }
+
       break;
     default:
       drupal_set_message('Only the file field type is defined at this time.',
@@ -2930,66 +2950,23 @@ function internet_archive_get_node_from_filepath($filepath) {
 }
 
 /**
- * Gets field and node info from a filepath
- *
- * @param $filepath
- *   string, complete filepath
- * @return array
- *   an array containing a field_info array, and nid, or FALSE if nothing found
- */
-function internet_archive_filepath_field_info($filepath) {
-  dsm('internet_archive_filepath_field_info');
-  $tables = internet_archive_get_field_tables();
-
-  foreach ($tables as $key => $table_info) {
-
-    switch ($table_info['type']) {
-      case 'filefield':
-        $query = "SELECT nid FROM {" . $table_info['name'] . "} JOIN {files} on " . $table_info['name'] . "." . $table_info['value_column'] . "=files.fid WHERE files.filepath='%s'";
-        // TODO Please convert this statement to the D7 database API syntax.
-        $nid = db_query($query, $filepath)->fetchField();
-        if ($nid) {
-          $info = array();
-          $info['table_info'] = $table_info;
-          $info['nid'] = $nid;
-          return $info;
-        }
-        break;
-      case 'text':
-      case 'emvideo':
-        $query = "SELECT nid FROM {" . $table_info['name'] . "} WHERE " . $table_info['name'] . "." . $table_info['value_column'] . "='%s'";
-        // TODO Please convert this statement to the D7 database API syntax.
-        $nid = db_query($query, $filepath)->fetchField();
-        if ($nid) {
-          $info = array();
-          $info['table_info'] = $table_info;
-          $info['nid'] = $nid;
-          return $info;
-        }
-        break;
-    }
-  }
-
-  return FALSE;
-}
-
-/**
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_thumb_from_filepath($key) {
-  $data = internet_archive_load_data($key);
+function internet_archive_thumb_from_filepath($field_name, $field_name) {
+  $data = internet_archive_load_data($field_name,
+				     $field_name);
 
   if ((!$item = $data['item']) || $data['status'] != 'derived') {
     return FALSE;
   }
 
   $pathinfo = pathinfo($data['archive_url']);
-  $filename = $pathinfo['filename'] . '_000001.jpg';
+  $file_name = $pathinfo['file_name'] . '_000001.jpg';
 
   $link = 'http://www.archive.org/download/';
   $link .= $item . '/' . $item . '.thumbs/';
-  $link .= $filename;
+  $link .= $file_name;
   return $link;
 }
 
@@ -2997,19 +2974,21 @@ function internet_archive_thumb_from_filepath($key) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_animated_thumb_from_filepath($key) {
-  $data = internet_archive_load_data($key);
+function internet_archive_animated_thumb_from_filepath($field_name,
+						       $field_name) {
+
+  $data = internet_archive_load_data($field_name, $field_name);
 
   if ((!$item = $data['item']) || $data['status'] != 'derived') {
     return FALSE;
   }
 
   $pathinfo = pathinfo($data['archive_url']);
-  $filename = $pathinfo['filename'] . '.gif';
+  $file_name = $pathinfo['file_name'] . '.gif';
 
   $link = 'http://www.archive.org/download/';
   $link .= $item . '/';
-  $link .= $filename;
+  $link .= $file_name;
   return $link;
 }
 
@@ -3017,9 +2996,11 @@ function internet_archive_animated_thumb_from_filepath($key) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_embed($key, $width = 470, $height = 371) {
-  $data = internet_archive_load_data($key);
-  $url = internet_archive_derivative_url($data, 'mp4');
+function internet_archive_embed($tid ,$field_name,
+				$width = 470, $height = 371) {
+  
+  $archive_data = internet_archive_load_data_tid($tid);
+  $url = internet_archive_derivative_url($archive_data, 'mp4');
 
   if ($url) {
     $embed = internet_archive_create_embed($url, $width, $height);
@@ -3041,13 +3022,14 @@ function internet_archive_derivative_url($item, $extension) {
     foreach ($derivatives as $key => $info) {
       $pathinfo = pathinfo($key);
       if ($pathinfo['extension'] == $extension) {
-        $filename = $key;
+        $file_name = $key;
       }
     }
   }
 
-  if ($filename) {
-    $url = 'http://www.archive.org/download/' . $item['item'] . '/' . $filename;
+  if ($file_name) {
+    $url = 'http://www.archive.org/download/' . $item['item'] . '/' .
+      $file_name;
     return $url;
   }
   else {
@@ -3063,7 +3045,7 @@ function internet_archive_create_embed($url, $width = 470, $height = 371) {
   $embed = '';
   $pathinfo = pathinfo($url);
   $base_url = $pathinfo['dirname'] . '/';
-  $filename = $pathinfo['basename'];
+  $file_name = $pathinfo['basename'];
 
   //$embed = '<object width="'.$width.'" height="'.$height.'"
   //classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000">';
@@ -3075,9 +3057,9 @@ function internet_archive_create_embed($url, $width = 470, $height = 371) {
   $embed .= '<param name="movie" ' .
     'value="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" />';
 
-  $embed .= "<param value=\"config={'key':'#\$aa4baff94a9bdcafce8','playlist':['format=Thumbnail?.jpg',{'autoPlay':false,'url':'" . $filename . "'}],'clip':{'autoPlay':true,'baseUrl':'" . $base_url . "','scaling':'fit','provider':'h264streaming'},'canvas':{'backgroundColor':'#000000','backgroundGradient':'none'},'plugins':{'controls':{'playlist':false,'fullscreen':true,'height':26,'backgroundColor':'#000000','autoHide':{'fullscreenOnly':true}},'h264streaming':{'url':'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf'}, 'sharing':{'url':'http://www.denveropenmedia.org/sites/all/plugins/flowplayer/flowplayer.sharing-3.2.1.swf'}},'contextMenu':[{},'-','Flowplayer v3.2.1']}\" name=\"flashvars\"/>";
+  $embed .= "<param value=\"config={'key':'#\$aa4baff94a9bdcafce8','playlist':['format=Thumbnail?.jpg',{'autoPlay':false,'url':'" . $file_name . "'}],'clip':{'autoPlay':true,'baseUrl':'" . $base_url . "','scaling':'fit','provider':'h264streaming'},'canvas':{'backgroundColor':'#000000','backgroundGradient':'none'},'plugins':{'controls':{'playlist':false,'fullscreen':true,'height':26,'backgroundColor':'#000000','autoHide':{'fullscreenOnly':true}},'h264streaming':{'url':'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf'}, 'sharing':{'url':'http://www.denveropenmedia.org/sites/all/plugins/flowplayer/flowplayer.sharing-3.2.1.swf'}},'contextMenu':[{},'-','Flowplayer v3.2.1']}\" name=\"flashvars\"/>";
 
-  $embed .= '<embed src="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" type="application/x-shockwave-flash" width="' . $width . '" height="' . $height . '" allowfullscreen="true" allowscriptaccess="always" cachebusting="true" bgcolor="#000000" quality="high" flashvars="config={\'key\':\'#$aa4baff94a9bdcafce8\',\'playlist\':[\'format=Thumbnail?.jpg\',{\'autoPlay\':false,\'url\':\'' . $filename . '\'}],\'clip\':{\'autoPlay\':true,\'baseUrl\':\'' . $base_url . '\',\'scaling\':\'fit\',\'provider\':\'h264streaming\'},\'canvas\':{\'backgroundColor\':\'#000000\',\'backgroundGradient\':\'none\'},\'plugins\':{\'controls\':{\'playlist\':false,\'fullscreen\':true,\'height\':26,\'backgroundColor\':\'#000000\',\'autoHide\':{\'fullscreenOnly\':true}},\'h264streaming\':{\'url\':\'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf\'}},\'contextMenu\':[{},\'-\',\'Flowplayer v3.2.1\']}"></embed>';
+  $embed .= '<embed src="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" type="application/x-shockwave-flash" width="' . $width . '" height="' . $height . '" allowfullscreen="true" allowscriptaccess="always" cachebusting="true" bgcolor="#000000" quality="high" flashvars="config={\'key\':\'#$aa4baff94a9bdcafce8\',\'playlist\':[\'format=Thumbnail?.jpg\',{\'autoPlay\':false,\'url\':\'' . $file_name . '\'}],\'clip\':{\'autoPlay\':true,\'baseUrl\':\'' . $base_url . '\',\'scaling\':\'fit\',\'provider\':\'h264streaming\'},\'canvas\':{\'backgroundColor\':\'#000000\',\'backgroundGradient\':\'none\'},\'plugins\':{\'controls\':{\'playlist\':false,\'fullscreen\':true,\'height\':26,\'backgroundColor\':\'#000000\',\'autoHide\':{\'fullscreenOnly\':true}},\'h264streaming\':{\'url\':\'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf\'}},\'contextMenu\':[{},\'-\',\'Flowplayer v3.2.1\']}"></embed>';
   //$embed .= '</object>';
 
   return $embed;
@@ -3128,7 +3110,6 @@ function internet_archive_get_field_tables() {
 
 /**
  * Creates a safe bucket/item name from plain text.
- * TODO: I'm probably too greedy with the regex below, can preserve underscores and a few other chars.
  * @param $text
  *   A string containing text to make into an item name.
  *
@@ -3142,37 +3123,34 @@ function internet_archive_create_item_name($text) {
 }
 
 /**
- * Fetches all data from the internet_archive table for a filepath
- *
- * @param $key
- *   A nid, or a string to original file path.
- *
- * @return $data
- *   An array of internet archive data, or FALSE if not found.
- */
-function internet_archive_load_data($key) {
-  if (is_numeric($key)) {
-    $data = db_query("SELECT * from {internet_archive} WHERE tid = :tid",
-		     array(':tid' => $key))->fetchAssoc();
-    return $data;
-  }
-  else {
-    $data=db_query("SELECT * from {internet_archive} WHERE in_path = :in_path",
-		   array(':in_path' => $key))->fetchAssoc();
-    return $data;
-  }
-
-  return FALSE;
-}
-
-/**
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_load_data_item($item) {
-  $data = db_query("SELECT * FROM {internet_archive} WHERE item = :item",
-		   array(':item' => $item))->fetchAssoc();
-  return $data;
+function internet_archive_load_data($file_name,
+				    $field_name = '') {
+  
+  $sql =
+    "SELECT * FROM {internet_archive} ".
+    "WHERE (item = :file_name  OR in_path = :file_name)";
+  $args = array(':file_name' => $file_name);
+
+  if ($field_name) {
+    $sql .= "AND field_name = :field_name ";
+    $args[':field_name'] = $field_name;
+  }
+  if ($file_location) {
+    $sql .= "AND file_location = :file_location ";
+    $args[':file_location'] = $file_location;
+  }
+  $archive_data = db_query($sql, $args)->fetchAssoc();
+  dsm("Archive Data File Name: $file_name");
+  dsm("Archive Data Field Name: $field_name");
+  if ($archive_data) {
+    dsm($archive_data, 'just found archive_data');
+  }
+  dsm('here is my backtrace in load data');
+  dsm(debug_backtrace());
+  return $archive_data;
 }
 
 /**
@@ -3181,8 +3159,9 @@ function internet_archive_load_data_item($item) {
  */
 function internet_archive_load_data_tid($tid) {
   if (is_numeric($tid)) {
-    $data = db_query("SELECT * from {internet_archive} WHERE tid = :tid", array(':tid' => $tid))->fetchAssoc();
-    return $data;
+    $archive_data = db_query("SELECT * from {internet_archive} ".
+		     "WHERE tid = :tid", array(':tid' => $tid))->fetchAssoc();
+    return $archive_data;
   }
 
   return FALSE;
@@ -3218,7 +3197,12 @@ function internet_archive_validate_url($url) {
  * @return $possible_fields
  *   All fields that fit the specified field types.
  */
-function internet_archive_field_select_options($field_types = array('filefield', 'text', 'emvideo', 'file', 'media')) {
+function internet_archive_field_select_options($field_types =
+					       array('filefield',
+						     'text',
+						     'emvideo',
+						     'file',
+						     'media')) {
   $fields = field_info_fields();
  
   $possible_fields = array();
@@ -3301,7 +3285,8 @@ function internet_archive_views_data() {
 
   $data['internet_archive']['tid'] = array(
     'title' => t('Transfer ID'),
-    'help' => t('Numeric ID unique to each archive.org transfer'), // The help that appears on the UI,
+    // The help that appears on the UI,
+    'help' => t('Numeric ID unique to each archive.org transfer'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field_numeric',
@@ -3316,7 +3301,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['nid'] = array(
     'title' => t('Node ID'),
-    'help' => t('Origin node of the file'), // The help that appears on the UI,
+    'help' => t('Origin node of the file'), 
     // Information for displaying the nid
     'relationship' => array(
       'label' => t('Node'),
@@ -3336,7 +3321,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['in_path'] = array(
     'title' => t('Source Path'),
-    'help' => t('Path to file transferred to archive.org'), // The help that appears on the UI,
+    'help' => t('Path to file transferred to archive.org'), 
     'relationship' => array(
       'label' => t('Files'),
       'base' => 'files',
@@ -3356,7 +3341,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['archive_url'] = array(
     'title' => t('Archive.org URL'),
-    'help' => t('URL to file on Archive.org'), // The help that appears on the UI,
+    'help' => t('URL to file on Archive.org'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field_url',
@@ -3369,9 +3354,9 @@ function internet_archive_views_data() {
       'handler' => 'views_handler_filter_string',
     ),
   );
-  $data['internet_archive']['filename'] = array(
-    'title' => t('Filename'),
-    'help' => t('Source filename'), // The help that appears on the UI,
+  $data['internet_archive']['file_name'] = array(
+    'title' => t('File Name'),
+    'help' => t('Source file_name'), // The help that appears on the UI,
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field',
@@ -3386,7 +3371,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['md5'] = array(
     'title' => t('MD5 Hash'),
-    'help' => t('MD5 Hash of the file sent to Archive.org'), // The help that appears on the UI,
+    'help' => t('MD5 Hash of the file sent to Archive.org'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field',
@@ -3401,7 +3386,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['item'] = array(
     'title' => t('Item Identifier'),
-    'help' => t('Item/Bucket name of the resource on archive.org'), // The help that appears on the UI,
+    'help' => t('Item/Bucket name of the resource on archive.org'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field',
@@ -3416,7 +3401,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['status'] = array(
     'title' => t('Transfer Status'),
-    'help' => t('Status of the transfer to archive.org'), // The help that appears on the UI,
+    'help' => t('Status of the transfer to archive.org'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field',
@@ -3431,7 +3416,7 @@ function internet_archive_views_data() {
   );
   $data['internet_archive']['date'] = array(
     'title' => t('Date Archived'),
-    'help' => t('Date the transfer was initiated to archive.org'), // The help that appears on the UI,
+    'help' => t('Date the transfer was initiated to archive.org'), 
     // Information for displaying the nid
     'field' => array(
       'handler' => 'views_handler_field_date',
@@ -3447,29 +3432,33 @@ function internet_archive_views_data() {
   return $data;
 }
 
-/** utility function, checks validated files to see if they have any derivatives, if not sets to failed **/
+/** 
+ * utility function, checks validated files to see if they have any 
+ * derivatives, if not sets to failed 
+**/
 function internet_archive_repair_validated() {
-  $result = db_query("SELECT * FROM {internet_archive} WHERE status = :status", array(':status' => ARCHIVE_VALIDATED));
+  $result = db_query("SELECT * FROM {internet_archive} ".
+		     "WHERE status = :status",
+		     array(':status' => ARCHIVE_VALIDATED));
   $total = 0;
   $failed_count = 0;
-  while ($data = $result->fetchAssoc()) {
-    $derivatives = internet_archive_get_derivatives($data['item']);
+  while ($archive_data = $result->fetchAssoc()) {
+    $derivatives = internet_archive_get_derivatives($archive_data);
     if (!$derivatives) {
-      // TODO Please review the conversion of this statement to the D7 database API syntax.
-      /* db_query("UPDATE {internet_archive} SET status='%s', derivatives = null WHERE tid=%d", ARCHIVE_FAILED, $data['tid']) */
       db_update('internet_archive')
-  ->fields(array(
-        'status' => ARCHIVE_FAILED,
-        'derivatives' => null,
-      ))
-  ->condition('tid', $data['tid'])
-  ->execute();
+	->fields(array(
+		       'status' => ARCHIVE_FAILED,
+		       'derivatives' => null,
+		       ))
+	->condition('tid', $archive_data['tid'])
+	->execute();
       $failed_count++;
     }
     $total++;
   }
 
-  drupal_set_message($failed_count . ' / ' . $total . ' have been marked as failed, with no derivatives available');
+  drupal_set_message($failed_count . ' / ' . $total . ' have been marked ' .
+		     'as failed, with no derivatives available');
 }
 
 /**
@@ -3477,11 +3466,12 @@ function internet_archive_repair_validated() {
  * @see http://drupal.org/node/1354
  */
 function internet_archive_derivative_extensions() {
-  $result = db_query("SELECT * FROM {internet_archive} ORDER BY tid DESC LIMIT 50");
+  $result =
+    db_query("SELECT * FROM {internet_archive} ORDER BY tid DESC LIMIT 50");
 
   $extensions = array();
-  while ($archive_info = $result->fetchAssoc()) {
-    $derivatives = unserialize($archive_info['derivatives']);
+  while ($archive_data = $result->fetchAssoc()) {
+    $derivatives = unserialize($archive_data['derivatives']);
     foreach ($derivatives as $key => $info) {
       $pathinfo = pathinfo($key);
       if (!$extensions[$pathinfo['extension']]) {
@@ -3499,7 +3489,9 @@ function internet_archive_derivative_extensions() {
  */
 function internet_archive_tab_permission($node) {
   global $user;
-  if (user_access('access all internet_archive node tabs') || (user_access('access own internet_archive node tabs') && $user->uid == $node->uid)) {
+  if (user_access('access all internet_archive node tabs') ||
+      (user_access('access own internet_archive node tabs') &&
+       $user->uid == $node->uid)) {
     if ($node_fields = internet_archive_node_fields($node)) {
       return TRUE;
     }
@@ -3551,7 +3543,8 @@ function internet_archive_node_status($node) {
   }
 
   if (!$output) {
-    $output .= 'There is currently no data stored at archive.org for this node.';
+    $output .=
+      'There is currently no data stored at archive.org for this node.';
   }
 
   return $output;
@@ -3566,39 +3559,46 @@ function internet_archive_node_files_table($node) {
   $files = internet_archive_node_files($node->nid);
 
   if (count($files >= 1)) {
-    $header = array(t('Filename'), t('Archive Page'), t('Status'));
-    if (user_access('delete all internet_archive files') || (user_access('delete own internet_archive files') && $user->uid == $node->uid)) {
+    $header = array(t('File Name'), t('Archive Page'), t('Status'));
+    if (user_access('delete all internet_archive files') ||
+	(user_access('delete own internet_archive files') &&
+	 $user->uid == $node->uid)) {
       $header[] = t('Delete files at Archive.org');
     }
     if (user_access('access internet_archive logs')) {
       $header[] = t('View log');
     }
-    if (module_exists('internet_archive_download') && user_access('administer internet_archive')) {
+    if (module_exists('internet_archive_download') &&
+	user_access('administer internet_archive')) {
       $header[] = t('Re-Queue Download');
     }
 
-    foreach ($files as $key => $archive_info) {
+    foreach ($files as $key => $archive_data) {
       unset($row);
-      if (strlen($archive_info['filename']) > 20) {
-        $filename = substr($archive_info['filename'], 0, 20) . '...';
+      if (strlen($archive_data['file_name']) > 20) {
+        $file_name = substr($archive_data['file_name'], 0, 20) . '...';
       }
       else {
-        $filename = $archive_info['filename'];
+        $file_name = $archive_data['file_name'];
       }
       $row = array(
-        $filename,
-        l('Visit', 'http://www.archive.org/details/' . $archive_info['item']),
-        $archive_info['status'],
+        $file_name,
+        l('Visit', 'http://www.archive.org/details/' . $archive_data['item']),
+        $archive_data['status'],
       );
-      if (user_access('delete all internet_archive files') || (user_access('delete own internet_archive files') && $user->uid == $node->uid)) {
-        $row[] = l('Delete', 'node/' . $node->nid . '/ia/delete-files/' . $archive_info['tid']);
+      if (user_access('delete all internet_archive files') ||
+	  (user_access('delete own internet_archive files') &&
+	   $user->uid == $node->uid)) {
+        $row[] = l('Delete', 'node/' . $node->nid . '/ia/delete-files/' .
+		   $archive_data['tid']);
       }
       if (user_access('access internet_archive logs')) {
-        $row[] = l('Log', 'ia/log/' . $archive_info['tid']);
+        $row[] = l('Log', 'ia/log/' . $archive_data['tid']);
       }
-      if (module_exists('internet_archive_download') && user_access('administer internet_archive')) {
-        if ($archive_info['status'] == 'derived') {
-          $row[] = l('Queue', 'ia/queue-download/' . $archive_info['tid']);
+      if (module_exists('internet_archive_download') &&
+	  user_access('administer internet_archive')) {
+        if ($archive_data['status'] == 'derived') {
+          $row[] = l('Queue', 'ia/queue-download/' . $archive_data['tid']);
         }
       }
 
@@ -3684,7 +3684,9 @@ function internet_archive_node_field_files($node) {
  */
 function internet_archive_update_node_metadata_permission($node) {
   global $user;
-  if (user_access('update all internet_archive metadata') || (user_access('update own internet_archive metadata') && $user->uid == $node->uid)) {
+  if (user_access('update all internet_archive metadata') ||
+      (user_access('update own internet_archive metadata') &&
+       $user->uid == $node->uid)) {
     if ($files = internet_archive_node_files($node->nid)) {
       return TRUE;
     }
@@ -3701,9 +3703,11 @@ function internet_archive_update_node_metadata_permission($node) {
 function internet_archive_update_node_metadata($node) {
   if ($files = internet_archive_node_files($node->nid)) {
     foreach ($files as $key => $archive_data) {
-      internet_archive_update_item($archive_data['in_path']);
+      internet_archive_update_item($archive_data);
     }
-    drupal_set_message('Metadata at Archive.org updated. <strong>Note that it may take some time for this update to be visible at Archive.org!</strong>');
+    drupal_set_message('Metadata at Archive.org updated. <strong>Note '.
+		       'that it may take some time for this update to be '.
+		       'visible at Archive.org!</strong>');
     drupal_goto('node/' . $node->nid . '/ia');
   }
   else {
@@ -3718,7 +3722,9 @@ function internet_archive_update_node_metadata($node) {
  */
 function internet_archive_delete_node_files_permission($node) {
   global $user;
-  if (user_access('delete all internet_archive files') || (user_access('delete own internet_archive files') && $user->uid == $node->uid)) {
+  if (user_access('delete all internet_archive files') ||
+      (user_access('delete own internet_archive files') &&
+       $user->uid == $node->uid)) {
     if ($files = internet_archive_node_files($node->nid)) {
       return TRUE;
     }
@@ -3772,17 +3778,15 @@ function internet_archive_delete_node_files($node, $tid) {
 function internet_archive_log($data) {
   dsm($data, "Log entry!!!!!!!!!!!!!!!!!!!!!!!!!");
   if ($data['tid'] && $data['message'] && $data['type']) {
-    // TODO Please review the conversion of this statement to the D7 database API syntax.
-    /* db_query("INSERT INTO {internet_archive_log} (tid, message, message_data, type, date) VALUES (%d, '%s', '%s', %d, %d)", $data['tid'], $data['message'], serialize($data['message_data']), $data['type'], REQUEST_TIME) */
     $id = db_insert('internet_archive_log')
-  ->fields(array(
-      'tid' => $data['tid'],
-      'message' => $data['message'],
-      'message_data' => serialize($data['message_data']),
-      'type' => $data['type'],
-      'date' => REQUEST_TIME,
-    ))
-  ->execute();
+      ->fields(array(
+		     'tid' => $data['tid'],
+		     'message' => $data['message'],
+		     'message_data' => serialize($data['message_data']),
+		     'type' => $data['type'],
+		     'date' => REQUEST_TIME,
+		     ))
+      ->execute();
   }
 }
 
@@ -3954,15 +3958,16 @@ function internet_archive_log_view($type = 'tid', $identifier = NULL) {
 }
 
 /**
- * Workaround for PHPs lame 2GB/4GB filesize issues
+ * Workaround for PHPs lame 2GB/4GB file_size issues
  * Created with help from Ray Tiley, http://groups.drupal.org/user/81206
  */
-function internet_archive_filesize($file) {
-  $size = filesize($file);
+function internet_archive_file_size($file) {
+  $size = file_size($file);
 
-  //Try to accomodate 32bit environments that allow shell command execution and have ls
-  //Theoretically PHP will always return a negative or 0 value if it cannot handle the large filesize
-  //Who knows what Windows does.
+  //Try to accomodate 32bit environments that allow shell command execution
+  //and have ls
+  //Theoretically PHP will always return a negative or 0 value if it cannot
+  //handle the large file_size 
   if ($size < 0 || $size == 0) {
     $cmd = "ls -l " . escapeshellarg($file) . " | awk '{print $5}'";
     $ls_size = $cmd;

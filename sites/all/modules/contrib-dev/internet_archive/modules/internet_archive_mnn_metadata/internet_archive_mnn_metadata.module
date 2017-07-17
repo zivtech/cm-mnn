@@ -58,10 +58,11 @@ function internet_archive_mnn_metadata_internet_archive_metadata($node = NULL,
 	  $metadata['description'] = $short_desc;
 	}
       }
-    } 
+    }
+    $metadata['date'] = date("Y-m-d", $node->created);
   }
 
-  $metadata['date'] = date("Y-m-d", $node->created);
+  
 
   //grab all the cm_show specific metadata fields
   if ($node->type == 'cm_show') {

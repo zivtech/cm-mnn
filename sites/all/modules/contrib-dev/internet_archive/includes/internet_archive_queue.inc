@@ -213,10 +213,8 @@ function internet_archive_queue_add_remove_form($form, &$form_state) {
 
   $rows = array();
   foreach($items as $item) {
-    
-
-
-    $file_name = unserialize($item['data']);
+    $data = unserialize($item['data']);
+    $file_name = $data['file_name'];
     $node = internet_archive_get_node_from_filepath($file_name);
     $node_link = $node ? l($node->title, "node/".$node->nid) : 'NA';
     
@@ -418,14 +416,14 @@ function internet_archive_queue_drupal_queue_cron_run() {
   $queue = DrupalQueue::get($queue_name);
   while (REQUEST_TIME < $end && ($item = $queue->claimItem($lease))) {
     dsm('hi mom');
-    $archive_info = internet_archive_load_data($item->data);
-    $status = $archive_info['status'];
+    $archive_data = internet_archive_load_data($item->data);
+    $status = $archive_data['status'];
     dsm($status, 'found new status');
     if ($status != ARCHIVE_TRANSFERRING) {
       $transfer_status = internet_archive_transfer_file_worker($item->data);
       if (!$transfer_status) {
 	$msg =t("!filename could not be transferred and remains in the queue.",
-		array('!filename' => $archive_info['filename']));
+		array('!filename' => $archive_data['filename']));
 	drupal_set_message($msg, 'error');
 	continue;
       }
@@ -438,8 +436,8 @@ function internet_archive_queue_drupal_queue_cron_run() {
 		       ))
 	->condition('in_path', $item->data)
 	->execute();
-      $archive_info['status'] = ARCHIVE_TRANSFERRING;
-      internet_archive_invoke_internet_archive($archive_info, 'transferring');
+      $archive_data['status'] = ARCHIVE_TRANSFERRING;
+      internet_archive_invoke_internet_archive($archive_data, 'transferring');
 
       $queue->deleteItem($item);
     }
