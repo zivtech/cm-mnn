@@ -421,7 +421,7 @@ class S3 {
       trigger_error('S3::inputFile(): Unable to open input file: '.$file, E_USER_WARNING);
       return false;
     }
-    return array('file' => $file, 'size' => internet_archive_filesize($file),
+    return array('file' => $file, 'size' => internet_archive_file_size($file),
     'md5sum' => $md5sum !== false ? (is_string($md5sum) ? $md5sum :
     base64_encode(md5_file($file, true))) : '');
   }
@@ -490,7 +490,7 @@ class S3 {
     }
     else {
       if (isset($input['file'])) {
-        $rest->size = internet_archive_filesize($input['file']);
+        $rest->size = internet_archive_file_size($input['file']);
       }
       elseif (isset($input['data'])) {
         $rest->size = strlen($input['data']);
@@ -520,7 +520,7 @@ class S3 {
         $input['type'] = 'application/octet-stream';
       }
     }
-    dsm($rest, 'rest object before response check');
+
     // We need to post with Content-Length and Content-Type, MD5 is optional
     if ($rest->size >= 0 && ($rest->fp !== false || $rest->data !== false)) {
       $rest->setHeader('Content-Type', $input['type']);
@@ -531,12 +531,11 @@ class S3 {
       foreach ($metaHeaders as $h => $v) {
 	$rest->setAmzHeader($h, $v);
       }
-          dsm($rest, 'rest object before response');
+
       $rest = $rest->getResponse();
       dsm($rest, 'rest after response');
     } 
     else {
-      dsm("errror!");
       watchdog('internet_archive', 'Unable to put file: '.$uri.
 	       ', missing input parameters.',NULL, WATCHDOG_ERROR); 
       if(!$rest->size >= 0) {
@@ -985,7 +984,7 @@ final class S3Request {
     //BRIAN CHANGED LINE BELOW
     $url = 'http://'.$this->headers['Host'].$this->uri;
     //var_dump($this->bucket, $this->uri, $this->resource, $url);
-    dsm($url, 'url in archive.php');
+
     // Basic setup
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_USERAGENT, 'S3/php');
