@@ -16,6 +16,8 @@ define('ARCHIVE_DERIVED', 'derived');
 define('ARCHIVE_DELETED', 'deleted');
 define('ARCHIVE_FAILED', 'failed');
 
+define('ARCHIVE_FILE_LOCATION_REMOTE','remote');
+define('ARCHIVE_FILE_LOCATION_LOCAL','local');
 
 /**
  * Log table status levels
@@ -296,8 +298,8 @@ function internet_archive_fields() {
   global $internet_archive_fields_info;
 
   $internet_archive_fields_info = array();
-  $internet_archive_fields_info['local'] = array();
-  $internet_archive_fields_info['remote'] = array();
+  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL] = array();
+  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE] = array();
   
   $fields = array();
   $field_info = field_info_field_map();
@@ -305,7 +307,7 @@ function internet_archive_fields() {
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
-      $internet_archive_fields_info['local'][$field_name] =
+      $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL][$field_name] =
 	$field_info[$field_name];
     }
   }
@@ -313,7 +315,7 @@ function internet_archive_fields() {
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
-      $internet_archive_fields_info['remote'][$field_name] =
+      $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE][$field_name] =
 	$field_info[$field_name];
     }
   }
@@ -375,8 +377,10 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
       //we haven't started the transfer yet, so offer a link to do so
       else {
 	global $internet_archive_fields_info;
-	$file_location = $internet_archive_fields_info['remote'][$field_name] ?
-	  'remote' : 'local';
+	$file_location =
+	  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
+	  [$field_name] ?
+	  ARCHIVE_FILE_LOCATION_REMOTE : ARCHIVE_FILE_LOCATION_LOCAL;
 
 	$uri = $file_info[$value_key];
 	$uri = urlencode(str_replace('/', '!-!', $uri)); 
@@ -706,7 +710,8 @@ function internet_archive_file_views() {
 }
 
 /**
- * Builds an array of file_names from views chosen on the general settings page.
+ * Builds an array of file_names from views chosen on the general 
+ * settings page.
  *
  * @return $unarchived_files
  *   An associated array of field info and their value file_names.
@@ -767,13 +772,15 @@ function internet_archive_harvest_file_names_from_views() {
 	    //WE HAVE A VALUE FOR OUR FIELD
 	    if ($field_value) {
 	      $file_location =
-		$internet_archive_fields_info['remote'][$field_name] ?
-		'remote' : 'local';
+		$internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
+		[$field_name] ? ARCHIVE_FILE_LOCATION_REMOTE :
+		ARCHIVE_FILE_LOCATION_LOCAL;
 	      
 	      //IF WE HAVE A 'file' FIELD
 	      if ($field_type == 'file') {
 		$uri = $field_value[0]['raw']['uri'];
-		if (file_exists($uri) || ($file_location == 'remote')) {
+		if (file_exists($uri) ||
+		    ($file_location == ARCHIVE_FILE_LOCATION_REMOTE)) {
 		  $file_names[$uri] = array('field_name' => $field_name,
 					   'file_location' => $file_location);
 		}
@@ -830,8 +837,8 @@ function internet_archive_cron() {
 }
 
 /**
- * Primary file harvest function, grabs candidates from views based on administrative
- * settings and adds them to a drupal queue for later transfer.
+ * Primary file harvest function, grabs candidates from views based on 
+ * administrative settings and adds them to a drupal queue for later transfer.
  */
 function internet_archive_harvest_files() {
   //Check to see if we should authenticate
@@ -878,7 +885,7 @@ function internet_archive_harvest_files() {
 	$node = internet_archive_get_node_from_file_name($file_name,
 							 $field_name);
 	
-	if ($file_info['file_location'] == 'local' &&
+	if ($file_info['file_location'] == ARCHIVE_FILE_LOCATION_LOCAL &&
 	    is_readable($file_name)) {
 	  $file_size = internet_archive_file_size($file_name);
 	}
@@ -886,19 +893,22 @@ function internet_archive_harvest_files() {
 	  $file_size = 0;
 	}
 
-	$archive_data = array(
-			      'nid' => $node->nid,
-			      'in_path' => $file_name,
-			      'file_name' => basename($file_name),
-			      'file_size' => $file_size,
-			      'status' => ARCHIVE_QUEUED,
-			      'field_name' => $file_info['field_name'],
-			      'file_location' => $file_info['file_location'],
-			      'transfer_initiated' => 0,
-			      'attempts' => 0,
-			      'date' => REQUEST_TIME,
-			      'item' => '',
-			      );
+	$archive_data =
+	  array(
+		'nid' => $node->nid,
+		'in_path' => $file_name,
+		'file_name' => basename($file_name),
+		'file_size' => $file_size,
+		'status' => ARCHIVE_QUEUED,
+		'field_name' => $file_info['field_name'],
+		'file_location' => $file_info['file_location'],
+		'md5' => internet_archive_get_md5_for_file($file_name,
+							   $file_location),
+		'transfer_initiated' => 0,
+		'attempts' => 0,
+		'date' => REQUEST_TIME,
+		'item' => '',
+		);
 	internet_archive_invoke_internet_archive($archive_data, 'harvested');
 
 	//PREPARE QUEUE ITEM
@@ -1016,51 +1026,31 @@ function internet_archive_transfer_file_worker($queue_item) {
  */
 function internet_archive_admin_validate($element, &$form_state) {
   // only validate if we have both values
-  if ($form_state['values']['internet_archive_key'] && $form_state['values']['internet_archive_skey']) {
+  if ($form_state['values']['internet_archive_key'] &&
+      $form_state['values']['internet_archive_skey']) {
 
-    $s3 = internet_archive_new_s3($form_state['values']['internet_archive_key'], $form_state['values']['internet_archive_skey']);
+    $s3 =internet_archive_new_s3($form_state['values']['internet_archive_key'],
+				 $form_state['values']['internet_archive_skey']
+				 );
 
-    // To test the configuration credentials, we attempt to create the default bucket.
-    if (! $s3->putBucket($form_state['values']['internet_archive_bucket'], NULL, $form_state['values']['internet_archive_default_perm'])) {
-      form_error($element, t('Could not create your default item on the Archive servers. This most likely means that either:') . '<br />' . t('1) your default item name conflicts with one that already exists, or') . '<br />' . t('2) the access or secret key provided is incorrect.'));
+    // To test the configuration credentials, attempt to create default bucket.
+    if (! $s3->putBucket($form_state['values']['internet_archive_bucket'],NULL,
+		     $form_state['values']['internet_archive_default_perm'])) {
+      $msg =
+	t('Could not create your default item on the Archive servers. '.
+	       'This most likely means that either:') . '<br />' .
+	t('1) your default item name conflicts with one that already exists, '.
+	  'or') . '<br />' .
+	t('2) the access or secret key provided is incorrect.');
+      form_error($element, $msg);
     }
     else {
-      drupal_set_message('Connection to Archive.org tested successfully with the credentials provided below.');
+      $msg = t('Connection to Archive.org tested successfully with the ' .
+	       'credentials provided below.');
+      drupal_set_message($msg);
     }
   }
 }
-
-
-
-
-/**
- * Validatation for the internet_archive_config() form.
- * TODO: rewrite this function, leftover from mm_s3
- *
- * @param $element
- * @param &$form_state
- *
- * @ingroup forms
- */
-function internet_archive_validate_action_settings($element, &$form_state) {
-  // @TODO these validation steps need to be checked
-  return;
-  // Media Mover API will extract the corect data for this since all
-  // the form elements are prefixed by media mover when the are displayed
-  if ($values = internet_archive_validate_form_data_extract($element)) {
-    // buckets must be lower case
-    if ($values['internet_archive_bucket'] != drupal_strtolower($values['internet_archive_bucket'])) {
-      form_error($element, t('Your bucket name must be lower case.'));
-    }
-    // alert on delete
-    if ($values['internet_archive_delete_source']) {
-      drupal_set_message(t('You have choosen to delete your source material.
-        Please be aware that this will remove files from your server\'s file system')
-      );
-    }
-  }
-}
-
 
 /**
  * Sends a file to archive.org
@@ -1117,6 +1107,7 @@ function internet_archive_send($config, $file_info) {
       'attempts' => 1,
       'field_name' => $field_name,
       'file_location' => $file_location,
+      'md5' => internet_archive_get_md5_for_file($file_name, $file_location),
       'date' => REQUEST_TIME,
       'archive_url' => 'http://www.archive.org/download/' .
       $config['internet_archive_bucket'] . '/' . basename($file_name),
@@ -1126,14 +1117,15 @@ function internet_archive_send($config, $file_info) {
   }
 
   // IF THE FILE IS LOCAL AND WE CANT READ IT RETURN FALSE
-  if ($file_location == 'local' && !is_readable($file_name)) {
+  if ($file_location == ARCHIVE_FILE_LOCATION_LOCAL &&
+      !is_readable($file_name)) {
     watchdog('internet_archive', 'File is not readable: ' . $file_name .
 	     ', please check that this file exists and the web user has ' .
 	     'read permissions to it.', NULL, WATCHDOG_ERROR);
     return FALSE;
   }
   // IF WE ARE LOCAL GET FILE SIZE
-  else if ($file_location == 'local') {
+  else if ($file_location == ARCHIVE_FILE_LOCATION_LOCAL) {
     $file_size = internet_archive_file_size($file_name); 
   }
   else {
@@ -1251,7 +1243,7 @@ function internet_archive_send($config, $file_info) {
   //WE FOUND OUR BUCKET SO NOW ITS TIME TO UPLOAD FILE, EITHER FROM A LOCAL
   //SOURCE OR A REMOTE ONE.
   if (module_exists('internet_archive_remote') &&
-      $file_location == 'remote') {
+      $file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
     dsm("pushing remote file");
     $status =
       internet_archive_remote_put_object($file_name,
@@ -1357,6 +1349,7 @@ function internet_archive_insert_archive_data($archive_data) {
 		':date' => $archive_data['date'],
 		':archive_url' => $archive_data['archive_url'],
 		':nid' => $archive_data['nid']);
+  dsm($args, 'my args');
   db_query($sql, $args);
 }
 /**
@@ -2643,7 +2636,7 @@ function theme_internet_archive_formatter_animated_thumbnail($variables) {
   }
 
   return empty($file_name) ? '' : '<img src="' .
-    internet_archive_animated_thumb_from_file_name(file_create_path($file_name))
+   internet_archive_animated_thumb_from_file_name(file_create_path($file_name))
     . '" />';
 }
 
@@ -3038,17 +3031,17 @@ function internet_archive_load_data($file_name,
     $args[':field_name'] = $field_name;
   }
 
-  dsm("Archive Data File Name: $file_name");
-  dsm("Archive Data Field Name: $field_name");
+  //dsm("Archive Data File Name: $file_name");
+  //dsm("Archive Data Field Name: $field_name");
 
   $archive_data = db_query($sql, $args)->fetchAssoc();
 
   if ($archive_data) {
-    dsm('found archive data');
+    //dsm('found archive data');
     //dsm($archive_data, 'Archive Data from DB');
   }
   else {
-    dsm('didnt find archive data');
+    //dsm('didnt find archive data');
   }
 
   //dsm(debug_backtrace(), 'Load Archive Data Backtrace');
@@ -3677,7 +3670,7 @@ function internet_archive_delete_node_files($node, $tid) {
  * Log function used to record all updates associated with file transfers
  */
 function internet_archive_log($data) {
-  dsm($data, "Log entry!!!!!!!!!!!!!!!!!!!!!!!!!");
+  //dsm($data, "Log entry!!!!!!!!!!!!!!!!!!!!!!!!!");
   if ($data['tid'] && $data['message'] && $data['type']) {
     $id = db_insert('internet_archive_log')
       ->fields(array(
@@ -4091,4 +4084,29 @@ function internet_archive_form_alter(&$form, &$form_state, $form_id) {
 
 
   }
+}
+
+/**
+ * @param $file_name 
+ *  -the file we are going to generate a md5 for
+ *
+ * @return $md5
+ *  -a md generated hash of the file name
+ */
+function internet_archive_get_md5_for_file($file_name, $file_location) {
+  if (md5_file($file_name)) {
+    return md5_file($file_name);
+  }
+  else if ($file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
+    $prefix = variable_get('internet_archive_remote_prefix', FALSE);
+    $append = variable_get('internet_archive_remote_append', FALSE);
+    $remote_file_name = $prefix . $file_name . $append;
+    dsm($remote_file_name, 'rfn');
+    
+    $remote_url = variable_get('internet_archive_server_url', FALSE);
+    $url_parts = parse_url($remote_url);
+    $file_name = "http://" . $url_parts['host'] . '/' . $remote_file_name;
+    return md5_file($file_name);
+  }
+  return md5($file_name);
 }

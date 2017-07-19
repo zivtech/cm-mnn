@@ -33,8 +33,7 @@ function internet_archive_remote_admin_form($form, &$form_state) {
   }
 
   $form['internet_archive']['internet_archive_remote_test'] = array(
-    '#type' => 'markup',
-    '#value' => $status,
+    '#markup' => $status,
   );
 
   $description =
@@ -125,7 +124,7 @@ function internet_archive_remote_test_connection() {
   }
 
   $response = $client->testConnection();
-  dsm($response, 'response');
+
   return $response;
 }
 
