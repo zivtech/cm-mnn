@@ -67,6 +67,11 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['fields']['title_1']['table'] = 'node';
   $handler->display->display_options['fields']['title_1']['field'] = 'title';
   $handler->display->display_options['fields']['title_1']['label'] = 'Node Title';
+  /* Field: Internet Archive: Source Path */
+  $handler->display->display_options['fields']['in_path']['id'] = 'in_path';
+  $handler->display->display_options['fields']['in_path']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['in_path']['field'] = 'in_path';
+  $handler->display->display_options['fields']['in_path']['label'] = 'File Name';
   /* Field: Internet Archive: Transfer ID */
   $handler->display->display_options['fields']['tid']['id'] = 'tid';
   $handler->display->display_options['fields']['tid']['table'] = 'internet_archive';
@@ -79,10 +84,6 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['fields']['date']['label'] = 'Transfer Initiated';
   $handler->display->display_options['fields']['date']['date_format'] = 'short';
   $handler->display->display_options['fields']['date']['second_date_format'] = 'long';
-  /* Field: Internet Archive: Filename */
-  $handler->display->display_options['fields']['filename']['id'] = 'filename';
-  $handler->display->display_options['fields']['filename']['table'] = 'internet_archive';
-  $handler->display->display_options['fields']['filename']['field'] = 'filename';
   /* Field: Internet Archive: Item Identifier */
   $handler->display->display_options['fields']['item']['id'] = 'item';
   $handler->display->display_options['fields']['item']['table'] = 'internet_archive';
@@ -110,6 +111,7 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['filters']['title']['table'] = 'node';
   $handler->display->display_options['filters']['title']['field'] = 'title';
   $handler->display->display_options['filters']['title']['operator'] = 'allwords';
+  $handler->display->display_options['filters']['title']['group'] = 1;
   $handler->display->display_options['filters']['title']['exposed'] = TRUE;
   $handler->display->display_options['filters']['title']['expose']['operator_id'] = 'title_op';
   $handler->display->display_options['filters']['title']['expose']['label'] = 'Title';
@@ -156,62 +158,64 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['filters']['title']['expose']['autocomplete_raw_suggestion'] = 1;
   $handler->display->display_options['filters']['title']['expose']['autocomplete_raw_dropdown'] = 1;
   $handler->display->display_options['filters']['title']['expose']['autocomplete_dependent'] = 0;
-  /* Filter criterion: Internet Archive: Filename */
-  $handler->display->display_options['filters']['filename']['id'] = 'filename';
-  $handler->display->display_options['filters']['filename']['table'] = 'internet_archive';
-  $handler->display->display_options['filters']['filename']['field'] = 'filename';
-  $handler->display->display_options['filters']['filename']['operator'] = 'allwords';
-  $handler->display->display_options['filters']['filename']['exposed'] = TRUE;
-  $handler->display->display_options['filters']['filename']['expose']['operator_id'] = 'filename_op';
-  $handler->display->display_options['filters']['filename']['expose']['label'] = 'Filename';
-  $handler->display->display_options['filters']['filename']['expose']['operator'] = 'filename_op';
-  $handler->display->display_options['filters']['filename']['expose']['identifier'] = 'filename';
-  $handler->display->display_options['filters']['filename']['expose']['remember_roles'] = array(
-												2 => '2',
-												3 => 0,
-												1 => 0,
-												44 => 0,
-												8 => 0,
-												14 => 0,
-												10 => 0,
-												6 => 0,
-												11 => 0,
-												4 => 0,
-												51 => 0,
-												16 => 0,
-												49 => 0,
-												17 => 0,
-												20 => 0,
-												22 => 0,
-												23 => 0,
-												50 => 0,
-												25 => 0,
-												48 => 0,
-												39 => 0,
-												28 => 0,
-												29 => 0,
-												45 => 0,
-												26 => 0,
-												37 => 0,
-												33 => 0,
-												34 => 0,
-												35 => 0,
-												46 => 0,
-												36 => 0,
-												43 => 0,
-												47 => 0,
-												32 => 0,
-												);
-  $handler->display->display_options['filters']['filename']['expose']['autocomplete_items'] = '10';
-  $handler->display->display_options['filters']['filename']['expose']['autocomplete_field'] = 'filename';
-  $handler->display->display_options['filters']['filename']['expose']['autocomplete_raw_suggestion'] = 1;
-  $handler->display->display_options['filters']['filename']['expose']['autocomplete_raw_dropdown'] = 1;
-  $handler->display->display_options['filters']['filename']['expose']['autocomplete_dependent'] = 0;
+  /* Filter criterion: Internet Archive: Source Path */
+  $handler->display->display_options['filters']['in_path']['id'] = 'in_path';
+  $handler->display->display_options['filters']['in_path']['table'] = 'internet_archive';
+  $handler->display->display_options['filters']['in_path']['field'] = 'in_path';
+  $handler->display->display_options['filters']['in_path']['operator'] = 'allwords';
+  $handler->display->display_options['filters']['in_path']['group'] = 1;
+  $handler->display->display_options['filters']['in_path']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['in_path']['expose']['operator_id'] = 'in_path_op';
+  $handler->display->display_options['filters']['in_path']['expose']['label'] = 'File Name';
+  $handler->display->display_options['filters']['in_path']['expose']['operator'] = 'in_path_op';
+  $handler->display->display_options['filters']['in_path']['expose']['identifier'] = 'in_path';
+  $handler->display->display_options['filters']['in_path']['expose']['remember_roles'] = array(
+											       2 => '2',
+											       3 => 0,
+											       1 => 0,
+											       44 => 0,
+											       8 => 0,
+											       14 => 0,
+											       10 => 0,
+											       6 => 0,
+											       11 => 0,
+											       4 => 0,
+											       51 => 0,
+											       16 => 0,
+											       49 => 0,
+											       17 => 0,
+											       20 => 0,
+											       22 => 0,
+											       23 => 0,
+											       50 => 0,
+											       25 => 0,
+											       48 => 0,
+											       39 => 0,
+											       28 => 0,
+											       29 => 0,
+											       45 => 0,
+											       26 => 0,
+											       37 => 0,
+											       33 => 0,
+											       34 => 0,
+											       35 => 0,
+											       46 => 0,
+											       36 => 0,
+											       43 => 0,
+											       47 => 0,
+											       32 => 0,
+											       );
+  $handler->display->display_options['filters']['in_path']['expose']['autocomplete_items'] = '10';
+  $handler->display->display_options['filters']['in_path']['expose']['autocomplete_field'] = 'in_path';
+  $handler->display->display_options['filters']['in_path']['expose']['autocomplete_raw_suggestion'] = 1;
+  $handler->display->display_options['filters']['in_path']['expose']['autocomplete_raw_dropdown'] = 1;
+  $handler->display->display_options['filters']['in_path']['expose']['autocomplete_dependent'] = 0;
   /* Filter criterion: Internet Archive: Transfer Status */
   $handler->display->display_options['filters']['status_1']['id'] = 'status_1';
   $handler->display->display_options['filters']['status_1']['table'] = 'internet_archive';
   $handler->display->display_options['filters']['status_1']['field'] = 'status';
   $handler->display->display_options['filters']['status_1']['relationship'] = 'nid';
+  $handler->display->display_options['filters']['status_1']['group'] = 1;
   $handler->display->display_options['filters']['status_1']['exposed'] = TRUE;
   $handler->display->display_options['filters']['status_1']['expose']['operator_id'] = 'status_1_op';
   $handler->display->display_options['filters']['status_1']['expose']['label'] = 'Transfer Status';
@@ -267,7 +271,7 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['menu']['weight'] = '0';
   $handler->display->display_options['menu']['context'] = 0;
   $handler->display->display_options['menu']['context_only_inline'] = 0;
-
+  
   // Add view to list of views to provide.
   $views[$view->name] = $view;
   

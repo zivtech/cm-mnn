@@ -215,15 +215,32 @@ function internet_archive_queue_add_remove_form($form, &$form_state) {
   foreach($items as $item) {
     $data = unserialize($item['data']);
     $file_name = $data['file_name'];
-    $node = internet_archive_get_node_from_filepath($file_name);
+    $field_name = $data['field_name'];
+    $file_location = $data['file_location'];
+
+    $node = internet_archive_get_node_from_file_name($file_name,
+						     $field_name);
     $node_link = $node ? l($node->title, "node/".$node->nid) : 'NA';
     
-    $expire = $item['expire'] ? date('m/d/Y h:ia', $item['expire']) : '';
+    $expire = $item['expire'] ?
+      t('Claimed: expiress %expire',
+	array('%expire' => date('m/d/Y h:ia', $item['expire']))) :
+      t('Unclaimed');
+	      
     $created = $item['created'] ? date('m/d/Y h:ia', $item['created']) : '';
-    $rows[] = array($node_link, $file_name, $expire, $created); 
+    $rows[] = array($node_link, $file_name, $field_name, $file_location,
+		    $expire, $created); 
   }
   
-  $header = array(t('Node'),t('File Name'),t('Expire Date'),t('Created Date'));
+  $header = array(
+		  t('Node'),
+		  t('File Name'),
+		  t('Field Name'),
+		  t('File Location'),
+		  t('Claimed/Expiration'),
+		  t('Created Date'),
+		  );
+  
   $table = theme('table',array('header'=> $header, 'rows' => $rows));
   $form['status_fieldset']['status'] =
     array(
@@ -238,7 +255,6 @@ function internet_archive_queue_add_remove_form($form, &$form_state) {
  * Submit function for the insert-into-queue button.
  */
 function internet_archive_queue_add_remove_form_insert($form, &$form_state) {
-  dsm('internet_archive_queue_add_remove_form_insert');
   // Get a queue (of the default type) called 'internet_archive_queue_queue'.
   // If the default queue class is SystemQueue this creates a queue that stores
   // its items in the database.
@@ -388,17 +404,7 @@ function internet_archive_queue_drupal_queue_cron_run() {
   $internet_archive_queue_count = $internet_archive_queue_count ?
     $internet_archive_queue_count : 0;
 
-  $internet_archive_queue_count ++;
-
-  dsm($internet_archive_queue_count, 'my count');
-
   $limit = variable_get('internet_archive_queue_limit', '1');
-
-  if ($internet_archive_queue_count > $limit) {
-    $msg = t('Completed transfering @count files and reached limit') ;
-    drupal_set_message($msg, 'warning');
-    return;
-  }
 
   if (!internet_archive_hour_check() || !internet_archive_day_check()) {
     //setting the time range to negative causes the queue to skip execution
@@ -409,16 +415,20 @@ function internet_archive_queue_drupal_queue_cron_run() {
   }
   $lease = 9000; //Seconds allowed per transfer task
   $queue_name = 'internet_archive_send_file';
-
-  dsm(date('H:i:s', REQUEST_TIME), 'req time');
   $end = REQUEST_TIME + $time;
-  dsm(date('H:i:s' , $end), 'end');
+
   $queue = DrupalQueue::get($queue_name);
-  while (REQUEST_TIME < $end && ($item = $queue->claimItem($lease))) {
-    dsm('hi mom');
-    $archive_data = internet_archive_load_data($item->data);
+  while (REQUEST_TIME < $end && ($internet_archive_queue_count <= $limit)) {
+    $item = $queue->claimItem($lease);
+    if (!$item) {
+      continue;
+    }
+    $file_name = $item->data['file_name'];
+    $field_name = $item->data['field_name'];
+
+    $archive_data = internet_archive_load_data($file_name, $field_name);
     $status = $archive_data['status'];
-    dsm($status, 'found new status');
+
     if ($status != ARCHIVE_TRANSFERRING) {
       $transfer_status = internet_archive_transfer_file_worker($item->data);
       if (!$transfer_status) {
@@ -427,19 +437,26 @@ function internet_archive_queue_drupal_queue_cron_run() {
 	drupal_set_message($msg, 'error');
 	continue;
       }
-      
-      dsm('updating to transfer');
-      //update the file status to transferring
-      db_update('internet_archive')
-	->fields(array(
-		       'status' => ARCHIVE_TRANSFERRING,
-		       ))
-	->condition('in_path', $item->data)
-	->execute();
+
       $archive_data['status'] = ARCHIVE_TRANSFERRING;
+      
+      internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'transferring');
 
       $queue->deleteItem($item);
     }
+    $internet_archive_queue_count ++;
   }
+
+  if ($internet_archive_queue_count > $limit) {
+    $msg = t('Completed transfering @count files and reached limit of @limit.',
+	     array('@count' => $internet_archive_queue_count - 1,
+		   '@limit' => $limit)) ;
+    drupal_set_message($msg, 'warning');
+    return;
+  }
+
+  drupal_set_message(t('Completed transfering @count files.'), 'warning');
+  return;
+
 }

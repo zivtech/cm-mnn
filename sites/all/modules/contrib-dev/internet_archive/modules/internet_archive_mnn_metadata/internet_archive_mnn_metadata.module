@@ -28,7 +28,7 @@ function internet_archive_mnn_metadata_admin_form($form, &$form_state) {
  * Implements hook_internet_archive_metadata().
  */
 function internet_archive_mnn_metadata_internet_archive_metadata($node = NULL,
-								 $filepath) {
+								 $file_name) {
   dsm('internet_archive_mnn_metadata_internet_archive_metadata');
   $metadata = array();
 
@@ -148,8 +148,7 @@ function internet_archive_mnn_metadata_internet_archive_metadata($node = NULL,
  * Implements hook_internet_archive().
  */
 function internet_archive_mnn_metadata_internet_archive(&$archive_data, $op) {
-  dsm('internet_archive_mnn_metadata_internet_archive');
-  dsm($archive_data, "Archive Data for $op");
+
 }
 
 /**                                                                            

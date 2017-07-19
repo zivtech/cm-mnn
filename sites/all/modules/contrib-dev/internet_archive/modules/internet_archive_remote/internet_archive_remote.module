@@ -133,15 +133,15 @@ function internet_archive_remote_test_connection() {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_remote_put_object($filepath, $bucket, $uri,
+function internet_archive_remote_put_object($file_name, $bucket, $uri,
 					    $headers, $mimetype) {
 
   $prefix = variable_get('internet_archive_remote_prefix', FALSE);
   $append = variable_get('internet_archive_remote_append', FALSE);
-  $remote_filepath = $prefix . $filepath . $append;
-  dsm($remote_filepath, 'remote filepath');
+  $remote_file_name = $prefix . $file_name . $append;
+  dsm($remote_file_name, 'remote file_name');
   $settings = array(
-    'filepath' => $remote_filepath,
+    'file_name' => $remote_file_name,
     'bucket' => $bucket,
     'uri' => $uri,
     'headers' => $headers,
