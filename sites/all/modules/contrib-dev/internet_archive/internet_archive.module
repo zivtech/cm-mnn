@@ -1107,9 +1107,7 @@ function internet_archive_send($config, $file_info) {
     dsm($archive_data, 'found archive data');
     $s3->setTransferId($archive_data['tid']);
     //BUMP UP OUR NUMBER OF ATTEMPTS
-    if ($archive_data['attempts'] != 0) {
-      $archive_data['attempts'] ++;
-    }
+    $archive_data['attempts'] ++;
   }
   else {
     $archive_data = array(
@@ -1312,6 +1310,8 @@ function internet_archive_send($config, $file_info) {
  */
 function internet_archive_update_archive_data($archive_data) {
   dsm($archive_data, 'updating archive data');
+  //  dsm(debug_backtrace(), 'Load Archive Data Backtrace');
+  
   db_update('internet_archive')
     ->fields(array(
 		   'item' => $archive_data['item'],
@@ -2001,7 +2001,6 @@ function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
  * @return
  */
 function internet_archive_default_send($file_info) {
-  dsm('internet_archive_default_send');
   //grab all the necessary information
   $config = internet_archive_default_config();
   //send the file

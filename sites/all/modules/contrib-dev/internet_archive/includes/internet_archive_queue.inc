@@ -438,11 +438,6 @@ function internet_archive_queue_drupal_queue_cron_run() {
 	continue;
       }
 
-      $archive_data['status'] = ARCHIVE_TRANSFERRING;
-      
-      internet_archive_update_archive_data($archive_data);
-      internet_archive_invoke_internet_archive($archive_data, 'transferring');
-
       $queue->deleteItem($item);
     }
     $internet_archive_queue_count ++;
