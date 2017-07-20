@@ -153,7 +153,7 @@ function internet_archive_menu() {
     array(
 	  'title' => 'Upload Queue',
 	  'page callback' => 'drupal_get_form',
-	  'page arguments' => array('internet_archive_queue_add_remove_form'),
+	  'page arguments' => array('internet_archive_queue_admin_form'),
 	  'access arguments' => array('administer internet_archive'),
 	  'file' => 'includes/internet_archive_queue.inc',
 	  'type' => MENU_DEFAULT_LOCAL_TASK,
@@ -233,7 +233,7 @@ function internet_archive_reports_home() {
  */
 function internet_archive_queues_home() {
   module_load_include('inc', 'internet_archive', 'includes/internet_archive_queue');
-  return drupal_get_form('internet_archive_queue_add_remove_form');
+  return drupal_get_form('internet_archive_queue_admin_form');
 }
 
 /**
@@ -710,120 +710,10 @@ function internet_archive_file_views() {
 }
 
 /**
- * Builds an array of file_names from views chosen on the general 
- * settings page.
- *
- * @return $unarchived_files
- *   An associated array of field info and their value file_names.
- */
-function internet_archive_harvest_file_names_from_views() {
-  dsm('internet_archive_harvest_file_names_from_views');
-  $views = variable_get('internet_archive_file_views', NULL);
-
-  if (!$views) {
-    return FALSE;
-  }
-
-  //GET ALL THE FIELDS THAT THAT WILL PUSH DATA TO INTERNET ARCHIVE
-  $archive_fields = internet_archive_fields();
-
-  //GLOBAL SET IN internet_archive_fields()
-  global $internet_archive_fields_info;
-  
-  //right now only text and file fields are supported
-  $field_keys_by_type = array(
-			   'text' => array(),
-			   'file'=>array()
-			   );
-
-  //LOOP OVER EACH VIEW THAT CAN HARVEST ENTITY FIELDS THAT ARE CONFIGURED TO
-  //PUSH DATA TO Archive.org
-  foreach ($views as $view_name => $info) {
-    $harvest_results = views_get_view_result($view_name);
-
-    if (count($harvest_results) > 0) {
-      //FIND THE FIELDS THAT HAVE OUR FILE INFO
-      foreach ($archive_fields as $field_name => $field_info) {
-	
-	foreach ($harvest_results[0] as $key => $info) {
-	  if ("field_" . $field_name == $key) {
-	    $field_keys_by_type[$field_info['type']][$field_name] = $key;
-	    break;
-	  }
-	}
-      }    
-
-      //IF WE DONT FIND A FIELD KEY TO GRAB FILE INFO THEN THIS VIEW IS
-      //NOT CONFIGURED CORRECTLY
-      if (!$field_keys_by_type) {
-	drupal_set_message("Error Code #33453 No field found for $view_name",
-			   'error');
-        continue;
-      }
-
-      //LOOP OVER ALL THE RESULTS WE GOT FROM VIEWS
-      foreach ($harvest_results as $key => $fileinfo) {
-	//LOOP OVER ALL THE RELEVANT FIELD KEYS FOR WITHIN A VIEW RESULT
-	foreach($field_keys_by_type as $field_type => $field_keys) {
-	  //LOOP THROUGH ALL THE FIELD KEYS & GRAB THE VALUES FROM VIEW RESULT
-	  foreach($field_keys as $field_name => $field_key) {
-	    $field_value = $fileinfo->{$field_key};
-
-	    //WE HAVE A VALUE FOR OUR FIELD
-	    if ($field_value) {
-	      $file_location =
-		$internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
-		[$field_name] ? ARCHIVE_FILE_LOCATION_REMOTE :
-		ARCHIVE_FILE_LOCATION_LOCAL;
-	      
-	      //IF WE HAVE A 'file' FIELD
-	      if ($field_type == 'file') {
-		$uri = $field_value[0]['raw']['uri'];
-		if (file_exists($uri) ||
-		    ($file_location == ARCHIVE_FILE_LOCATION_REMOTE)) {
-		  $file_names[$uri] = array('field_name' => $field_name,
-					   'file_location' => $file_location);
-		}
-	      }
-	      //IF WE HAVE A VALUE FOR A 'text' FIELD
-	      else if($field_type == 'text') {
-		$uri = $field_value[0]['raw']['value'];
-		$file_names[$uri] = array('field_name' =>$field_name,
-					 'file_location' => $file_location);
-	      }
-	      //WE HAVE A VALUE BUT NO LOGIC SET UP FOR THE $field_type
-	      else {
-		drupal_set_message("Error Code #8268: Can't find file_name " .
-				   "for field of type $field_type", 'error');
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
-
-  $unarchived_files = array();
-
-  //IF WE FOUND VALUES FOR Archive.org FIELDS, CHECK TO SEE IF THEY THEY
-  //ALREADY EXIST IN THE internet_archive CUSTOM TABLE
-  if ($file_names) {
-    foreach ($file_names as $file_name => $file_info) {
-      $archive_data = internet_archive_load_data($file_name,
-						 $file_info['field_name']);
-      if ((!$archive_data)) {
-        $unarchived_files[$file_name] = $file_info;
-      }
-    }
-  }
-
-  return $unarchived_files;
-}
-
-/**
  * Implements hook_cron().
  */
 function internet_archive_cron() {
+  dsm('internet_archive_cron');
   //validate previous transfers
   internet_archive_validate_transfers();
 
@@ -834,113 +724,6 @@ function internet_archive_cron() {
   
   //Check for new derivations to update.
   internet_archive_store_derivatives();
-}
-
-/**
- * Primary file harvest function, grabs candidates from views based on 
- * administrative settings and adds them to a drupal queue for later transfer.
- */
-function internet_archive_harvest_files() {
-  //Check to see if we should authenticate
-  if ($cron_user = variable_get('internet_archive_cron_user', FALSE)) {
-    global $user;
-    $original_user = $user;
-    drupal_save_session(FALSE);
-    $tmp = array();
-    $users = array('name' => $cron_user);
-    $array = user_load_multiple($tmp, $users);
-    $user = array_shift($array);
-  }
-
-  //administrative setting for requeing stale/expired queue items
-  if (variable_get('internet_archive_expired_queue', FALSE)) {
-    internet_archive_harvest_expired_queued();
-  }
-  
-  $file_names = internet_archive_harvest_file_names_from_views();
-
-  if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-    $reprocess_file_names = internet_archive_harvest_failed();
-    if ($reprocess_file_names) {
-      $file_names = array_merge($reprocess_file_names, $file_names);
-    }
-  }
-  dsm($file_names, 'harvested the following file_names');
-  
-  $transfer_queue = DrupalQueue::get('internet_archive_send_file');
-
-  if ($file_names) {
-    foreach ($file_names as $file_name => $file_info) {
-      $archive_data = array();
-      $field_name = $file_info['field_name'];
-      $file_location = $file_info['file_location'];
-            
-      $status = isset($archive_data['status']) ?
-	$archive_data['status'] : NULL;
-
-      if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
-	  && $status != ARCHIVE_TRANSFERRED &&
-	  $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
-
-	$node = internet_archive_get_node_from_file_name($file_name,
-							 $field_name);
-	
-	if ($file_info['file_location'] == ARCHIVE_FILE_LOCATION_LOCAL &&
-	    is_readable($file_name)) {
-	  $file_size = internet_archive_file_size($file_name);
-	}
-	else {
-	  $file_size = 0;
-	}
-
-	$archive_data =
-	  array(
-		'nid' => $node->nid,
-		'in_path' => $file_name,
-		'file_name' => basename($file_name),
-		'file_size' => $file_size,
-		'status' => ARCHIVE_QUEUED,
-		'field_name' => $file_info['field_name'],
-		'file_location' => $file_info['file_location'],
-		'md5' => internet_archive_get_md5_for_file($file_name,
-							   $file_location),
-		'transfer_initiated' => 0,
-		'attempts' => 0,
-		'date' => REQUEST_TIME,
-		'item' => '',
-		);
-	internet_archive_invoke_internet_archive($archive_data, 'harvested');
-
-	//PREPARE QUEUE ITEM
-	$queue_item = array();
-	$queue_item = array('file_name' => $file_name,
-			    'field_name' => $archive_data['field_name'],
-			    'file_location' => $archive_data['file_location']);
-
-	//NEED TO MAKE SURE ITEM IS NOT ALREADY IN THE QUEUE
-	$sql = "SELECT item_id FROM {queue} WHERE data = :data";
-	$params = array(':data' => serialize($queue_item));
-	$queue_id = db_query($sql, $params)->fetchField();
-	
-	if ($queue_id) {
-	  dsm("found me in the queue");
-	  continue;
-	}
-	//add the file to queue
-	$transfer_queue->createItem($queue_item);
-	//update the file status to queued if this is the first attempt
-	if ($status != ARCHIVE_FAILED) {
-	  internet_archive_insert_archive_data($archive_data);	  
-	}
-	internet_archive_invoke_internet_archive($archive_data, 'queued');
-      }
-    }
-  }
-
-  //All done, reset our user session if necessary
-  if ($cron_user) {
-    $user = $original_user;
-  }
 }
 
 /**
@@ -1080,6 +863,7 @@ function internet_archive_send($config, $file_info) {
   }
   if (!isset($node)) {
     $node = internet_archive_get_node_from_file_name($file_name, $field_name);
+    $archive_data['nid'] = $node->nid;
   }
   
   //DEBUG LOG
@@ -1472,93 +1256,6 @@ function internet_archive_delete_files($archive_data) {
 
   $s3->deleteFiles($config['internet_archive_bucket'],
 		   $archive_data['file_name']);
-}
-
-/**
- * Harvests failed files and adds them back to the transfer queue
- * based on number of allowed attemps in administrative settings
- */
-function internet_archive_harvest_failed() {
-  dsm('internet_archive_harvest_failed');
-  $attempts = variable_get('internet_archive_queue_attempts', 0) + 1;
-  $result =
-    db_query("SELECT in_path FROM {internet_archive} " .
-	     "WHERE status = :status AND attempts < :attempts",
-	     array(':status' => ARCHIVE_FAILED, ':attempts' => $attempts));
-
-  $file_names = array();
-  while ($file_name = $result->fetchField()) {
-    $file_names[] = $file_name;
-  }
-
-  return $file_names;
-}
-
-/**
- * Optional administrative setting looks for items in the
- * internet_archive table that are set as queued, never started transferring
- * and no longer exist in the current drupal queue. For sites with very large
- * files this may be necessary in cases that the drupal queue expires before
- * the items are sent.
- *
- * @return $candidates
- *   An array of file_names to be queued
- */
-function internet_archive_harvest_expired_queued() {
-  dsm('internet_archive_harvest_expired_queued');
-  //grab all the queued non-transferred items from internet_archive table
-  $ia_result =
-    db_query("SELECT * FROM {internet_archive} " .
-	     "WHERE status = :status " .
-	     "AND transfer_initiated = :transfer_initiated",
-	     array(':status' => 'queued', ':transfer_initiated' => 0));
-  while ($ia_data = $ia_result->fetchAssoc()) {
-    $ia_queued[] = $ia_data['in_path'];
-  }
-
-  if (isset($ia_queued) && $ia_queued) {
-    //grab all the currently queued transfer items from drupal queue
-    $queue_result = db_query("SELECT * FROM {queue} WHERE name = :name",
-			     array(':name' => 'internet_archive_send_file'));
-    while ($queue_data = $queue_result->fetchAssoc()) {
-      $queue_queued[] = unserialize($queue_data['data']);
-    }
-    if ($queue_queued) {
-      $candidates = array_diff($ia_queued, $queue_queued);
-    }
-    else {
-      $candidates = $ia_queued;
-    }
-  }
-
-  //take candidates and re-add them to the queue if there is room
-  if (isset($candidates) && $candidates) {
-    $transfer_queue = DrupalQueue::get('internet_archive_send_file');
-
-    $file_names = $candidates;
-    foreach ($file_names as $file_name => $file_info) {
-      $field_name = $file_info['field_name'];
-      if (file_exists($file_name)) {
-	$node = internet_archive_get_node_from_file_name($file_name,$field_name);
-	$archive_data = internet_archive_load_data($file_name, $field_name);
-	$message =t('Added transfer back to queue due to stale queue status.');
-	
-	$log_data = array(
-			  'tid' => $archive_data['tid'],
-			  'message' => $message,
-			  'message_data' => $archive_data,
-			  'type' => ARCHIVE_LOG_NOTICE,
-			  );
-	
-	//add the file to queue
-	$transfer_queue->createItem($file_name);
-	internet_archive_log($log_data);
-      }
-    }
-  }
-  else {
-    return FALSE;
-  }
 }
 
 /**
@@ -3019,21 +2716,22 @@ function internet_archive_create_item_name($text) {
  * @param $field_name - the field name the file is stored in 
  */
 function internet_archive_load_data($file_name,
-				    $field_name = '') {
+				    $field_name) {
   
   $sql =
     "SELECT * FROM {internet_archive} ".
-    "WHERE (item = :file_name  OR in_path = :file_name)";
-  $args = array(':file_name' => $file_name);
+    "WHERE (file_name = :file_name  OR file_name = :base_name)";
+  $args = array(':file_name' => $file_name,
+		':base_name' => basename($file_name));
 
   if ($field_name) {
-    $sql .= "AND field_name = :field_name ";
+    $sql .= " AND field_name = :field_name ";
     $args[':field_name'] = $field_name;
   }
 
   //dsm("Archive Data File Name: $file_name");
   //dsm("Archive Data Field Name: $field_name");
-
+  //dsm($args, $sql);
   $archive_data = db_query($sql, $args)->fetchAssoc();
 
   if ($archive_data) {
@@ -3324,35 +3022,6 @@ function internet_archive_views_data() {
     ),
   );
   return $data;
-}
-
-/** 
- * utility function, checks validated files to see if they have any 
- * derivatives, if not sets to failed 
-**/
-function internet_archive_repair_validated() {
-  $result = db_query("SELECT * FROM {internet_archive} ".
-		     "WHERE status = :status",
-		     array(':status' => ARCHIVE_VALIDATED));
-  $total = 0;
-  $failed_count = 0;
-  while ($archive_data = $result->fetchAssoc()) {
-    $derivatives = internet_archive_get_derivatives($archive_data);
-    if (!$derivatives) {
-      db_update('internet_archive')
-	->fields(array(
-		       'status' => ARCHIVE_FAILED,
-		       'derivatives' => null,
-		       ))
-	->condition('tid', $archive_data['tid'])
-	->execute();
-      $failed_count++;
-    }
-    $total++;
-  }
-
-  drupal_set_message($failed_count . ' / ' . $total . ' have been marked ' .
-		     'as failed, with no derivatives available');
 }
 
 /**
@@ -3942,7 +3611,6 @@ function internet_archive_help_links($name, $type = 'icon') {
 
 /** * Implementation of hook_cron_queue_info() */
 function internet_archive_cron_queue_info() {
-  dsm("hi dad");
   // This is the callback function for each queue item.
   $queues['internet_archive_send_file'] =
     array(
@@ -4101,8 +3769,6 @@ function internet_archive_get_md5_for_file($file_name, $file_location) {
     $prefix = variable_get('internet_archive_remote_prefix', FALSE);
     $append = variable_get('internet_archive_remote_append', FALSE);
     $remote_file_name = $prefix . $file_name . $append;
-    dsm($remote_file_name, 'rfn');
-    
     $remote_url = variable_get('internet_archive_server_url', FALSE);
     $url_parts = parse_url($remote_url);
     $file_name = "http://" . $url_parts['host'] . '/' . $remote_file_name;
