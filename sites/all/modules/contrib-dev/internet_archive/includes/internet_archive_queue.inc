@@ -327,13 +327,15 @@ function internet_archive_transfer_queue_items() {
   $lease = 9000; //Seconds allowed per transfer task
   $queue_name = 'internet_archive_send_file';
   $end = REQUEST_TIME + $time;
-
+  $items = array();
   $queue = DrupalQueue::get($queue_name);
   while (REQUEST_TIME < $end && ($internet_archive_queue_count <= $limit)) {
     $item = $queue->claimItem($lease);
     if (!$item) {
+      $internet_archive_queue_count ++;
       continue;
     }
+    $items[] = $item;
     $file_name = $item->data['file_name'];
     $field_name = $item->data['field_name'];
 
@@ -354,7 +356,7 @@ function internet_archive_transfer_queue_items() {
     $internet_archive_queue_count ++;
   }
 
-  if ($internet_archive_queue_count > $limit) {
+  if (count($items) > $limit) {
     $msg = t('Completed transfering @count files and reached limit of @limit.',
 	     array('@count' => $internet_archive_queue_count - 1,
 		   '@limit' => $limit)) ;
@@ -362,7 +364,8 @@ function internet_archive_transfer_queue_items() {
     return;
   }
 
-  drupal_set_message(t('Completed transfering @count files.'), 'warning');
+  drupal_set_message(t('Completed transfering @count files.',
+		       array('@count' => count($items))), 'warning');
   return;
 
 }
