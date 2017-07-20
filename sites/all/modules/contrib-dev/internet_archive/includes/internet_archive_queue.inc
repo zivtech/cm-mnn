@@ -170,11 +170,6 @@ function internet_archive_queue_admin_form($form, &$form_state) {
   $queue_name = 'internet_archive_send_file';
   $items = internet_archive_retrieve_queue($queue_name);
 
-  // Add CSS to make the form a bit denser.
-  $form['#attached']['css'] =
-    array(drupal_get_path('module', 'internet_archive') .
-	  '/includes/internet_archive_queue.css');
-
   $form['internet_archive_queue_monitor'] = array(
     '#type' => 'fieldset',
     '#title' => 'Archive.org Queue Monitor' .
@@ -259,7 +254,6 @@ function internet_archive_harvest_files_for_queue($form, &$form_state) {
   internet_archive_harvest_files();
 
   $queue = DrupalQueue::get($form_state['values']['queue_name']);
-  $queue->createQueue(); // There is no harm in trying to recreate existing.
   $count = $queue->numberOfItems();
   drupal_set_message(t('Attempted to harvest files. There are now '.
 		       '@count items in the queue.',

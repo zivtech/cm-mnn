@@ -26,6 +26,15 @@ define('ARCHIVE_LOG_ERROR', 1);
 define('ARCHIVE_LOG_WARNING', 2);
 define('ARCHIVE_LOG_NOTICE', 3);
 
+/** 
+ * Implements hook_init()
+ */
+function internet_archive_init() {
+
+  module_load_include('inc', 'internet_archive',
+		      'includes/internet_archive_queue');
+
+}
 /**
  * Implements hook_permission().
  */
@@ -232,7 +241,6 @@ function internet_archive_reports_home() {
  *
  */
 function internet_archive_queues_home() {
-  module_load_include('inc', 'internet_archive', 'includes/internet_archive_queue');
   return drupal_get_form('internet_archive_queue_admin_form');
 }
 
@@ -863,7 +871,6 @@ function internet_archive_send($config, $file_info) {
   }
   if (!isset($node)) {
     $node = internet_archive_get_node_from_file_name($file_name, $field_name);
-    $archive_data['nid'] = $node->nid;
   }
   
   //DEBUG LOG
@@ -1134,6 +1141,7 @@ function internet_archive_insert_archive_data($archive_data) {
 		':archive_url' => $archive_data['archive_url'],
 		':nid' => $archive_data['nid']);
   dsm($args, 'my args');
+
   db_query($sql, $args);
 }
 /**
@@ -1733,7 +1741,6 @@ function internet_archive_default_config() {
  *   The returned value of the invoked hooks.
  */
 function internet_archive_invoke_internet_archive(&$archive_data, $op) {
-  dsm('internet_archive_invoke_internet_archive');
   $return = array();
   foreach (module_implements('internet_archive') as $name) {
     $function = $name . '_internet_archive';
@@ -1752,7 +1759,6 @@ function internet_archive_invoke_internet_archive(&$archive_data, $op) {
  * Implements hook_internet_archive().
  */
 function internet_archive_internet_archive(&$archive_data, $op) {
-  dsm('internet_archive_internet_archive');
   switch ($op) {
     case 'harvested':
       break;
@@ -2197,9 +2203,6 @@ function internet_archive_transfer_rate($limit = 0, $format = 'rate') {
  * @see http://drupal.org/node/1354
  */
 function internet_archive_transfer_queue() {
-  require_once DRUPAL_ROOT . '/' .
-    drupal_get_path('module', 'internet_archive') .
-    '/includes/internet_archive_queue.inc';
 
   //validate previous transfers
   internet_archive_validate_transfers();
