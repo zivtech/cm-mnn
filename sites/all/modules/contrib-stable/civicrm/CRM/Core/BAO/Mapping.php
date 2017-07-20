@@ -381,7 +381,7 @@ class CRM_Core_BAO_Mapping extends CRM_Core_DAO_Mapping {
 
     if (($mappingType == 'Search Builder') || ($exportMode == CRM_Export_Form_Select::CONTRIBUTE_EXPORT)) {
       if (CRM_Core_Permission::access('CiviContribute')) {
-        $fields['Contribution'] = CRM_Contribute_BAO_Contribution::exportableFields();
+        $fields['Contribution'] = CRM_Contribute_BAO_Contribution::getExportableFieldsWithPseudoConstants();
         unset($fields['Contribution']['contribution_contact_id']);
         $compArray['Contribution'] = ts('Contribution');
       }
@@ -602,6 +602,14 @@ class CRM_Core_BAO_Mapping extends CRM_Core_DAO_Mapping {
                 elseif (isset($relationshipType->$target_type)) {
                   $relatedFields = array_merge((array) $relatedMapperFields[$relationshipType->$target_type], (array) $relationshipCustomFields);
                 }
+                //CRM-20672 If contact target type not set e.g. "All Contacts" relationship - present user with all field options and let them determine what they expect to work
+                else {
+                  $types = CRM_Contact_BAO_ContactType::basicTypes(FALSE);
+                  foreach ($types as $contactType => $label) {
+                    $relatedFields = array_merge($relatedFields, (array) $relatedMapperFields[$label]);
+                  }
+                  $relatedFields = array_merge($relatedFields, (array) $relationshipCustomFields);
+                }
               }
               $relationshipType->free();
               asort($relatedFields);
@@ -645,6 +653,7 @@ class CRM_Core_BAO_Mapping extends CRM_Core_DAO_Mapping {
       'street_address',
       'supplemental_address_1',
       'supplemental_address_2',
+      'supplemental_address_3',
       'city',
       'postal_code',
       'postal_code_suffix',

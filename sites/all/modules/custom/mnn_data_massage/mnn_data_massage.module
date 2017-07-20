@@ -84,9 +84,24 @@ function mnn_data_massage_page($function) {
   return $ret;
 }
 function mnn_data_massage_function_tester() {
-  dsm("hi mom!");
 
-  internet_archive_cron();
+
+  dsm("hi mom!");
+  drupal_cron_run();
+  
+  //internet_archive_cron();
+  
+  //$node = node_load(701208);
+  //dsm($node, 'node');
+  //$metadata =
+  //  internet_archive_mnn_metadata_internet_archive_metadata($node, '');
+
+  
+  //dsm($metadata, 'metadata');
+  //drupal_cron_run();
+
+  
+  
   //mnn_airing_replication_replicate_quarterly_airings();
   return;
   // $project = node_load(6);
