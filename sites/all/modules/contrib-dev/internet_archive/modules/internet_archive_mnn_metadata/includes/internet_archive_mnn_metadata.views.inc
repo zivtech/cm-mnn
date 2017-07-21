@@ -1,7 +1,6 @@
 <?php
 
 function internet_archive_mnn_metadata_views_default_views() {
-  //FOR EACH VIEW, COPY EXPORT CODE THEN ADD IT TO THIS ARRAY
   $view = new view();
   $view->name = 'internet_archive_file_harvester';
   $view->description = '';
@@ -60,17 +59,15 @@ function internet_archive_mnn_metadata_views_default_views() {
   $handler->display->display_options['fields']['nid']['field'] = 'nid';
   $handler->display->display_options['fields']['nid']['label'] = '';
   $handler->display->display_options['fields']['nid']['element_label_colon'] = FALSE;
-  /* Field: Content: Internet Archive */
-  $handler->display->display_options['fields']['field_internet_archive']['id'] = 'field_internet_archive';
-  $handler->display->display_options['fields']['field_internet_archive']['table'] = 'field_data_field_internet_archive';
-  $handler->display->display_options['fields']['field_internet_archive']['field'] = 'field_internet_archive';
-  $handler->display->display_options['fields']['field_internet_archive']['label'] = '';
-  $handler->display->display_options['fields']['field_internet_archive']['element_label_colon'] = FALSE;
-  $handler->display->display_options['fields']['field_internet_archive']['click_sort_column'] = 'fid';
   /* Field: Content: Internet Archive Remote */
   $handler->display->display_options['fields']['field_internet_archive_remote']['id'] = 'field_internet_archive_remote';
   $handler->display->display_options['fields']['field_internet_archive_remote']['table'] = 'field_data_field_internet_archive_remote';
   $handler->display->display_options['fields']['field_internet_archive_remote']['field'] = 'field_internet_archive_remote';
+  /* Field: Content: Internet Archive Local */
+  $handler->display->display_options['fields']['field_internet_archive_local']['id'] = 'field_internet_archive_local';
+  $handler->display->display_options['fields']['field_internet_archive_local']['table'] = 'field_data_field_internet_archive_local';
+  $handler->display->display_options['fields']['field_internet_archive_local']['field'] = 'field_internet_archive_local';
+  $handler->display->display_options['fields']['field_internet_archive_local']['click_sort_column'] = 'fid';
   /* Sort criterion: Content: Post date */
   $handler->display->display_options['sorts']['created']['id'] = 'created';
   $handler->display->display_options['sorts']['created']['table'] = 'node';
@@ -95,13 +92,13 @@ function internet_archive_mnn_metadata_views_default_views() {
 									 'cm_show' => 'cm_show',
 									 );
   $handler->display->display_options['filters']['type']['group'] = 1;
-  /* Filter criterion: Content: Internet Archive (field_internet_archive:fid) */
-  $handler->display->display_options['filters']['field_internet_archive_fid']['id'] = 'field_internet_archive_fid';
-  $handler->display->display_options['filters']['field_internet_archive_fid']['table'] = 'field_data_field_internet_archive';
-  $handler->display->display_options['filters']['field_internet_archive_fid']['field'] = 'field_internet_archive_fid';
-  $handler->display->display_options['filters']['field_internet_archive_fid']['operator'] = '>';
-  $handler->display->display_options['filters']['field_internet_archive_fid']['value']['value'] = '0';
-  $handler->display->display_options['filters']['field_internet_archive_fid']['group'] = 2;
+  /* Filter criterion: Content: Internet Archive Local (field_internet_archive_local:fid) */
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['id'] = 'field_internet_archive_local_fid';
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['table'] = 'field_data_field_internet_archive_local';
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['field'] = 'field_internet_archive_local_fid';
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['operator'] = '>';
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['value']['value'] = '0';
+  $handler->display->display_options['filters']['field_internet_archive_local_fid']['group'] = 2;
   /* Filter criterion: Content: Internet Archive Remote (field_internet_archive_remote) */
   $handler->display->display_options['filters']['field_internet_archive_remote_value']['id'] = 'field_internet_archive_remote_value';
   $handler->display->display_options['filters']['field_internet_archive_remote_value']['table'] = 'field_data_field_internet_archive_remote';
@@ -109,7 +106,6 @@ function internet_archive_mnn_metadata_views_default_views() {
   $handler->display->display_options['filters']['field_internet_archive_remote_value']['operator'] = 'not empty';
   $handler->display->display_options['filters']['field_internet_archive_remote_value']['group'] = 2;
   
-
   // Add view to list of views to provide.
   $views[$view->name] = $view;
 
