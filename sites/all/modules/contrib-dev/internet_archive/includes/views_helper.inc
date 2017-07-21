@@ -1,0 +1,260 @@
+<?php
+
+/**
+ * Loads all views indicated as file views on the general settings page.
+ *
+ * @return $views
+ *   An array of view names.
+ */
+function internet_archive_file_views() {
+  $all_views = views_get_all_views();
+
+  $views = array();
+  foreach ($all_views as $key => $view) {
+    if ($view->base_table == 'files' || $view->base_table == 'node') {
+      $views[$view->name] = $view->name;
+    }
+  }
+  asort($views);
+  return $views;
+}
+
+
+/**
+ * Theme function for the 'internet_archive_video_embed' formatter.
+ */
+function theme_internet_archive_formatter_video_embed($variables) {
+  $element = $variables['file'];
+  // Inside a View this function may be called with null data. In that case,
+  // just return.
+  if (empty($element['#item'])) {
+    return '';
+  }
+
+  $field = content_fields($element['#field_name']);
+  $item = $element['#item'];
+
+  //TODO: may need to do some sanitization here..
+  if ($item['value']) {
+    $file_name = $item['value'];
+  }
+  else {
+    // If there is no image on the database, use default.
+    if (empty($item['fid']) && $field['use_default_file']) {
+      $item = $field['default_file'];
+    }
+    if (empty($item['file_name']) && !empty($item['fid'])) {
+      $item = array_merge($item, field_file_load($item['fid']));
+    }
+
+    $file_name = $item['file_name'];
+  }
+
+  return empty($file_name) ? '' :
+    internet_archive_embed(file_create_path($file_name));
+}
+
+/**
+ * Theme function for the 'internet_archive_video_thumbnail' formatter.
+ */
+function theme_internet_archive_formatter_thumbnail($variables) {
+  $element = $variables['file'];
+  // Inside a View this function may be called with null data. In that case,
+  // just return.
+  if (empty($element['#item'])) {
+    return '';
+  }
+
+  $field = content_fields($element['#field_name']);
+  $item = $element['#item'];
+
+  //TODO: may need to do some sanitization here..
+  if ($item['value']) {
+    $file_name = $item['value'];
+  }
+  else {
+    // If there is no image on the database, use default.
+    if (empty($item['fid']) && $field['use_default_file']) {
+      $item = $field['default_file'];
+    }
+    if (empty($item['file_name']) && !empty($item['fid'])) {
+      $item = array_merge($item, field_file_load($item['fid']));
+    }
+
+    $file_name = $item['file_name'];
+  }
+
+  return empty($file_name) ? '' : '<img src="' .
+    internet_archive_thumb_from_file_name(file_create_path($file_name)) . '" />';
+}
+
+/**
+ * Theme function for the 'internet_archive_video_thumbnail' formatter.
+ */
+function theme_internet_archive_formatter_animated_thumbnail($variables) {
+  $element = $variables['file'];
+  // Inside a View this function may be called with null data. In that case,
+  // just return.
+  if (empty($element['#item'])) {
+    return '';
+  }
+
+  $field = content_fields($element['#field_name']);
+  $item = $element['#item'];
+
+  //TODO: may need to do some sanitization here..
+  if ($item['value']) {
+    $file_name = $item['value'];
+  }
+  else {
+    // If there is no image on the database, use default.
+    if (empty($item['fid']) && $field['use_default_file']) {
+      $item = $field['default_file'];
+    }
+    if (empty($item['file_name']) && !empty($item['fid'])) {
+      $item = array_merge($item, field_file_load($item['fid']));
+    }
+
+    $file_name = $item['file_name'];
+  }
+
+  return empty($file_name) ? '' : '<img src="' .
+   internet_archive_animated_thumb_from_file_name(file_create_path($file_name))
+    . '" />';
+}
+
+
+
+/********************************************************
+ * General Field Integration
+ ********************************************************
+ */
+/**
+ * Implements hook_field_formatter_info().
+ */
+function internet_archive_field_formatter_info() {
+  return array(
+    'video_embed' => array(
+      'label' => t('Internet Archive Video Embed'),
+      'field types' => array('file', 'filefield', 'text', 'emvideo'),
+      'description' => t('Displays video embed code from archive.org.'),
+    ),
+    'thumbnail' => array(
+      'label' => t('Internet Archive Thumbnail'),
+      'field types' => array('file', 'filefield', 'text', 'emvideo'),
+      'description' => t('Displays thumbnail from archive.org.'),
+    ),
+    'animated_thumbnail' => array(
+      'label' => t('Internet Archive Animated Thumbnail'),
+      'field types' => array('file', 'filefield', 'text', 'emvideo'),
+      'description' => t('Displays animated thumbnail from archive.org.'),
+    ),
+  );
+}
+
+/********************************************************
+ * Views Integration
+ ********************************************************
+ */
+
+
+/**
+ * implements hook_action_info()
+ */
+function internet_archive_action_info() {
+  $items = array();
+    $items['internet_archive_delete_archive_item_action'] =
+    array(
+	  'type' => 'entity',
+	  'label' =>
+	  t('Internet Archive Transfers: Delete files, buckets, and items'),
+	  'configurable' => FALSE,
+	  'vbo_configurable' => FALSE,
+	  'triggers' => array('any'),
+	  'behavior' => array(),
+	  );
+
+  $items['internet_archive_complete_transfer_action'] =
+    array(
+	  'type' => 'entity',
+	  'label' =>
+	  t('Internet Archive Transfers: Validate and get Derivatives'),
+	  'configurable' => FALSE,
+	  'vbo_configurable' => FALSE,
+	  'triggers' => array('any'),
+	  'behavior' => array(),
+	  );
+
+  
+  return $items;
+}
+
+/**
+ * Custom VBO action callback function
+ */
+function internet_archive_complete_transfer_action(&$node, $context) {
+  internet_archive_validate_transfers($node->nid);
+
+  internet_archive_store_derivatives($node->nid);
+}
+/**
+ * Custom VBO action callback function
+ */
+function internet_archive_delete_archive_item_action(&$node, $context){
+  dsm($node, 'internet_archive_delete_archive_item_action');
+
+  $sql = "SELECT * from {internet_archive} where nid = :nid";
+  $results = db_query($sql, array(':nid' => $node->nid));
+
+  while($result = $results->fetchAssoc()) {
+    $archive_data = internet_archive_load_data_tid($result['tid']);
+    dsm($archive_data, 'woohoo archive data');
+    internet_archive_delete_files($archive_data);
+    internet_archive_delete_item($archive_data);
+
+    db_delete('internet_archive')
+      ->condition('tid', $archive_data['tid'])
+      ->execute();
+
+    $msg = t('Selected files at Archive.org deleted. <strong>Note that it '.
+	     'may take some time for this update to be visible at '.
+	     'Archive.org!</strong>');
+	     
+    drupal_set_message($msg);
+    $log_entry = array(
+      'tid' => $tid,
+      'message' => t('File and derivatives deleted at Archive.org'),
+      'message_data' => $archive_data,
+      'type' => ARCHIVE_LOG_WARNING,
+    );
+    internet_archive_log($log_entry);
+
+  }
+  
+}
+/**
+ * implements hook_form_alter()
+ */
+function internet_archive_form_alter(&$form, &$form_state, $form_id) {
+  if ($form['#id'] == 'views-exposed-form-internet-archive-transfers-page') {
+    $options = array(
+		     '' => '<select>',
+		     ARCHIVE_QUEUED => ARCHIVE_QUEUED,
+		     ARCHIVE_TRANSFERRING => ARCHIVE_TRANSFERRING,
+		     ARCHIVE_TRANSFERRED => ARCHIVE_TRANSFERRED,
+		     ARCHIVE_VALIDATED => ARCHIVE_VALIDATED,
+		     ARCHIVE_DERIVED => ARCHIVE_DERIVED,
+		     ARCHIVE_DELETED => ARCHIVE_DELETED,
+		     ARCHIVE_FAILED => ARCHIVE_FAILED,
+		     );
+
+    $form['status_1'] =
+      array(
+	    '#type' => 'select',
+	    '#options' => $options,
+	  );
+
+
+  }
+}
+

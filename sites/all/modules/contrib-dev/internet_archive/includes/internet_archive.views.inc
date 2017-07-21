@@ -62,6 +62,11 @@ function internet_archive_views_default_views() {
 																			       'label' => '',
 																			       ),
 												  );
+  /* Field: Internet Archive: Transfer ID */
+  $handler->display->display_options['fields']['tid']['id'] = 'tid';
+  $handler->display->display_options['fields']['tid']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['tid']['field'] = 'tid';
+  $handler->display->display_options['fields']['tid']['separator'] = '';
   /* Field: Content: Title */
   $handler->display->display_options['fields']['title_1']['id'] = 'title_1';
   $handler->display->display_options['fields']['title_1']['table'] = 'node';
@@ -72,11 +77,14 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['fields']['in_path']['table'] = 'internet_archive';
   $handler->display->display_options['fields']['in_path']['field'] = 'in_path';
   $handler->display->display_options['fields']['in_path']['label'] = 'File Name';
-  /* Field: Internet Archive: Transfer ID */
-  $handler->display->display_options['fields']['tid']['id'] = 'tid';
-  $handler->display->display_options['fields']['tid']['table'] = 'internet_archive';
-  $handler->display->display_options['fields']['tid']['field'] = 'tid';
-  $handler->display->display_options['fields']['tid']['separator'] = '';
+  /* Field: Internet Archive: Field Name */
+  $handler->display->display_options['fields']['field_name']['id'] = 'field_name';
+  $handler->display->display_options['fields']['field_name']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['field_name']['field'] = 'field_name';
+  /* Field: Internet Archive: File Location */
+  $handler->display->display_options['fields']['file_location']['id'] = 'file_location';
+  $handler->display->display_options['fields']['file_location']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['file_location']['field'] = 'file_location';
   /* Field: Internet Archive: Date Archived */
   $handler->display->display_options['fields']['date']['id'] = 'date';
   $handler->display->display_options['fields']['date']['table'] = 'internet_archive';
