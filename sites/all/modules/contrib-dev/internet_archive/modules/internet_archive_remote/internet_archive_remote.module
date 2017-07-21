@@ -140,7 +140,7 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
   $remote_file_name = $prefix . $file_name . $append;
   dsm($remote_file_name, 'remote file_name');
   $settings = array(
-    'file_name' => $remote_file_name,
+    'filepath' => $remote_file_name,
     'bucket' => $bucket,
     'uri' => $uri,
     'headers' => $headers,
