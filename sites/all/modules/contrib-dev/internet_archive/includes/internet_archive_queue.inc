@@ -428,6 +428,7 @@ function internet_archive_harvest_files() {
 	$node = internet_archive_get_node_from_file_name($file_name,
 							 $field_name);
 	$status = '';
+	$file_size = $file_size ? $file_size : 0;
 	$archive_data =
 	  array(
 		'in_path' => $file_name,
@@ -441,7 +442,8 @@ function internet_archive_harvest_files() {
 		'attempts' => 0,
 		'date' => REQUEST_TIME,
 		'item' => '',
-		'nid' => $node->nid
+		'nid' => $node->nid,
+		'archive_url' => '',
 		);
 	
       }
@@ -478,7 +480,7 @@ function internet_archive_harvest_files() {
 	$transfer_queue->createItem($queue_item);
 
 	$archive_data['status'] = ARCHIVE_QUEUED;
-	if (!$archive_data['tid']) {
+	if (!isset($archive_data['tid']) && $archive_data['tid']) {
 	  internet_archive_insert_archive_data($archive_data);
 	}
 	else {
@@ -610,7 +612,7 @@ function internet_archive_harvest_file_names_from_views() {
   $archive_fields = internet_archive_fields();
 
   //GLOBAL SET IN internet_archive_fields()
-  global $internet_archive_fields_info;
+  global $archive_fields_info;
   
   //right now only text and file fields are supported
   $field_keys_by_type = array(
@@ -654,8 +656,8 @@ function internet_archive_harvest_file_names_from_views() {
 	    //WE HAVE A VALUE FOR OUR FIELD
 	    if ($field_value) {
 	      $file_location =
-		$internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
-		[$field_name] ? ARCHIVE_FILE_LOCATION_REMOTE :
+		isset($archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
+		      [$field_name]) ? ARCHIVE_FILE_LOCATION_REMOTE :
 		ARCHIVE_FILE_LOCATION_LOCAL;
 	      
 	      //IF WE HAVE A 'file' FIELD

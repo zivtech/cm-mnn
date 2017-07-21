@@ -303,11 +303,11 @@ function internet_archive_field_attach_view_alter(&$output, $context) {
  *   An array of field objects.
  */
 function internet_archive_fields() {
-  global $internet_archive_fields_info;
+  global $archive_fields_info;
 
-  $internet_archive_fields_info = array();
-  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL] = array();
-  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE] = array();
+  $archive_fields_info = array();
+  $archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL] = array();
+  $archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE] = array();
   
   $fields = array();
   $field_info = field_info_field_map();
@@ -315,7 +315,7 @@ function internet_archive_fields() {
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
-      $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL][$field_name] =
+      $archive_fields_info[ARCHIVE_FILE_LOCATION_LOCAL][$field_name] =
 	$field_info[$field_name];
     }
   }
@@ -323,7 +323,7 @@ function internet_archive_fields() {
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {
       $fields[$field_name] = $field_info[$field_name];
-      $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE][$field_name] =
+      $archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE][$field_name] =
 	$field_info[$field_name];
     }
   }
@@ -384,9 +384,9 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
       }
       //we haven't started the transfer yet, so offer a link to do so
       else {
-	global $internet_archive_fields_info;
+	global $archive_fields_info;
 	$file_location =
-	  $internet_archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
+	  $archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
 	  [$field_name] ?
 	  ARCHIVE_FILE_LOCATION_REMOTE : ARCHIVE_FILE_LOCATION_LOCAL;
 
@@ -979,7 +979,7 @@ function internet_archive_send($config, $file_info) {
   dsm($headers, "Putting up Bucket: $name");
     
   $status =
-    $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
+    $s3->putBucket($config['internet_archive_bucket'], $headers);
 
   //Log start of transfer time if we already have row in internet_archive
   $archive_data['transfer_initiated'] = REQUEST_TIME;
@@ -1202,7 +1202,7 @@ function internet_archive_update_item($node, $archive_data) {
 
   dsm('about to putBucket with updated metadata');
   // Send new metadata
-  $s3->putBucket($config['internet_archive_bucket'], $headers, $perms);
+  $s3->putBucket($config['internet_archive_bucket'], $headers);
 
   $log_entry = array(
     'tid' => $archive_data['tid'],
@@ -1775,8 +1775,9 @@ function internet_archive_internet_archive(&$archive_data, $op) {
 			   variable_get('internet_archive_queue_attempts', 0)
 			   + 1));
       }
+      $tid = isset($archive_data['tid']) ? $archive_data['tid'] : NULL;
       $log_data = array(
-        'tid' => $archive_data['tid'],
+        'tid' => $tid,
         'message' => $message,
         'message_data' => $archive_data,
         'type' => ARCHIVE_LOG_NOTICE,
@@ -2365,7 +2366,7 @@ function internet_archive_get_metadata(&$node, $file_name) {
 
   //if mediatype is not set, try to figure it out manually
   //TODO: add a whole bunch more mimetype mappings to this list.
-  if (!$metadata['mediatype']) {
+  if (!isset($metadata['mediatype'])) {
     $pathinfo = pathinfo($file_name);
     $filemime = file_get_mimetype($file_name);
     dsm($filemime, 'filemime');
@@ -2398,7 +2399,7 @@ function internet_archive_get_metadata(&$node, $file_name) {
 
   //if no collection was specified in hook_internet_archive_metadata, check
   //for default in settings
-  if (!$metadata['collection'] &&
+  if (!isset($metadata['collection']) &&
       ($default_collection =
        variable_get('internet_archive_collection', "test_collection"))) {
     $metadata['collection'] = explode(',', $default_collection);
@@ -2418,13 +2419,14 @@ function internet_archive_get_metadata(&$node, $file_name) {
   //if no description has been provided, and administrative setting is set
   ///description to body, set it now
   if (variable_get('internet_archive_bucket_body', FALSE) &&
-      !$metadata['description'] && $node->body) {
+      !isset($metadata['description']) && isset($node->body)) {
     $metadata['description'] = $node->body;
   }
 
   //if no creative commons license has been provided, but it is available
   //in node, set it now
-  if (!$metadata['licenseurl'] && $node->cc->uri) {
+  $uri = ($node && isset($node->cc)) ? $node->cc->uri : NULL;
+  if (!isset($metadata['licenseurl']) && $uri) {
     $metadata['licenseurl'] = $node->cc->uri;
   }
 
@@ -2586,8 +2588,7 @@ function internet_archive_animated_thumb_from_file_name($field_name,
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_embed($tid ,$field_name,
-				$width = 470, $height = 371) {
+function internet_archive_embed($tid, $width = 470, $height = 371) {
   
   $archive_data = internet_archive_load_data_tid($tid);
   $url = internet_archive_derivative_url($archive_data, 'mp4');
@@ -3765,10 +3766,7 @@ function internet_archive_form_alter(&$form, &$form_state, $form_id) {
  *  -a md generated hash of the file name
  */
 function internet_archive_get_md5_for_file($file_name, $file_location) {
-  if (md5_file($file_name)) {
-    return md5_file($file_name);
-  }
-  else if ($file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
+  if ($file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
     $prefix = variable_get('internet_archive_remote_prefix', FALSE);
     $append = variable_get('internet_archive_remote_append', FALSE);
     $remote_file_name = $prefix . $file_name . $append;
@@ -3777,5 +3775,10 @@ function internet_archive_get_md5_for_file($file_name, $file_location) {
     $file_name = "http://" . $url_parts['host'] . '/' . $remote_file_name;
     return md5_file($file_name);
   }
+
+  if (md5_file($file_name)) {
+    return md5_file($file_name);
+  }
+ 
   return md5($file_name);
 }
