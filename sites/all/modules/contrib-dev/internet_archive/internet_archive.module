@@ -94,7 +94,6 @@ function internet_archive_menu() {
 	    'page callback' => 'drupal_get_form',
 	    'page arguments' => array('internet_archive_queue_settings_form'),
 	    'access arguments' => array('administer internet_archive'),
-	    'file' => 'includes/internet_archive_queue.inc',
 	    'weight' => 0,
 	    );
     

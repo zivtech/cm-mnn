@@ -234,15 +234,12 @@ function internet_archive_send($config, $file_info) {
     $config['internet_archive_bucket'] . '/' . basename($file_name);
   
   dsm($headers, "Putting up Bucket: $name");
-    
+
   $status =
     $s3->putBucket($config['internet_archive_bucket'], $headers);
 
   //Log start of transfer time if we already have row in internet_archive
   $archive_data['transfer_initiated'] = REQUEST_TIME;
-  if (isset($archive_data['tid'])) {    
-    internet_archive_update_archive_data($archive_data);
-  }
 
   //SET VARIABLES FOR THE WAIT LOOP ON BUCKET CREATTION
   //find a pause time for each loop, ideally so we get 3 nicely timed loops
