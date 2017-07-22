@@ -14,7 +14,12 @@ function internet_archive_fields() {
   $archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE] = array();
   
   $fields = array();
+
+  //GET DRUPAL'S CACHED TABLE OF ALL FIELD INFORMATION
   $field_info = field_info_field_map();
+
+  //IF WE HAVE FIELDS CONFIGURED TO INTERACT WITH Archive.org AND FIELDS
+  //ARE MARKED TO DISPLAY VIA THE INTERNET ARCHVIE DEFAULT SETTINGS
   if (($field_types = variable_get('internet_archive_fields', FALSE)) &&
       variable_get('internet_archive_fields_list_display', FALSE)) {
     foreach ($field_types as $field_name => $description) {

@@ -401,6 +401,12 @@ function internet_archive_harvest_files() {
     internet_archive_harvest_expired_queued();
   }
 
+  //THIS HOOK WILL ALLOW OTHER MODULES, ESPECIALLY internet_archive_remote,
+  //TO FETCH FILES FROM A REMOTE SERVER AND STORE ON A NODE SO THEY WILL
+  //BE CAPTURED WHEN WE HARVEST TO THE QUEUE BELOW
+  dsm('hi mom');
+  module_invoke_all('internet_archive_harvest_remote_files');
+  
   //FIND FILE NAMES FROM ENTITY/NODE FIELDS THAT DO NOT YET EXIST IN THE
   //INTERNET ARCHIVE TABLE
   $file_names = internet_archive_harvest_file_names_from_views();

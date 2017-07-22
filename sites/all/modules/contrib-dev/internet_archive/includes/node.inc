@@ -172,24 +172,6 @@ function internet_archive_node_files($nid) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_tab_permission($node) {
-  global $user;
-  if (user_access('access all internet_archive node tabs') ||
-      (user_access('access own internet_archive node tabs') &&
-       $user->uid == $node->uid)) {
-    if ($node_fields = internet_archive_node_fields($node)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
-  }
-}
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
 function internet_archive_node_status($node) {
   global $user;
   $files = internet_archive_node_files($node->nid);
@@ -367,24 +349,6 @@ function internet_archive_node_field_files($node) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_update_node_metadata_permission($node) {
-  global $user;
-  if (user_access('update all internet_archive metadata') ||
-      (user_access('update own internet_archive metadata') &&
-       $user->uid == $node->uid)) {
-    if ($files = internet_archive_node_files($node->nid)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
-  }
-}
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
 function internet_archive_update_node_metadata($node) {
   if ($files = internet_archive_node_files($node->nid)) {
     foreach ($files as $key => $archive_data) {
@@ -398,24 +362,6 @@ function internet_archive_update_node_metadata($node) {
   else {
     drupal_set_message('No item found for this node at Archive.org!');
     drupal_goto('node/' . $node->nid . '/ia');
-  }
-}
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
-function internet_archive_delete_node_files_permission($node) {
-  global $user;
-  if (user_access('delete all internet_archive files') ||
-      (user_access('delete own internet_archive files') &&
-       $user->uid == $node->uid)) {
-    if ($files = internet_archive_node_files($node->nid)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
   }
 }
 

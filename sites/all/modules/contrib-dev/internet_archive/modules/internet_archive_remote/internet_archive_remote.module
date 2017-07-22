@@ -154,3 +154,31 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
   //$response = $response ? unserialize($response) : '';
   dsm($response, 'response');
 }
+
+/**
+ * IMPLEMENTS hook_internet_archive_harvest_remote_files()
+ *
+ * Will use remote settings to find all the files on the remote server and
+ * then invoke a hook to allow other modules to define what to do with those
+ * files, i.e. what what node and what field to put them on
+ */
+function internet_archive_remote_internet_archive_harvest_remote_files() {
+  dsm('hi damd');
+  //build url to the files directory
+  $prefix = variable_get('internet_archive_remote_prefix', FALSE);
+  $remote_url = variable_get('internet_archive_server_url', FALSE);
+  if ($remote_url) {
+    return;
+  }
+  
+  $url_parts = parse_url($remote_url);
+  $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
+
+  dsm($remote_file_directory_url, 'my url!');
+
+  //grab all file names from directory
+
+  //for each file name invoke the hook to store on a entity/node
+
+  
+}

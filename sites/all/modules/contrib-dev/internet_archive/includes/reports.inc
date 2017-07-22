@@ -338,7 +338,6 @@ function internet_archive_transfer_rate($limit = 0, $format = 'rate') {
  * Log function used to record all updates associated with file transfers
  */
 function internet_archive_log($data) {
-  //dsm($data, "Log entry!!!!!!!!!!!!!!!!!!!!!!!!!");
   if ($data['tid'] && $data['message'] && $data['type']) {
     $id = db_insert('internet_archive_log')
       ->fields(array(
@@ -358,7 +357,6 @@ function internet_archive_log($data) {
  */
 function internet_archive_log_table($type = 'tid', $identifier = NULL,
 				    $show_only_errors_and_warnings = FALSE) {
-  dsm('internet_archive_log_table');
   $args = array();
   switch ($type) {
     case 'tid':
@@ -470,8 +468,6 @@ function internet_archive_log_table($type = 'tid', $identifier = NULL,
  * @see http://drupal.org/node/1354
  */
 function internet_archive_log_view($type = 'tid', $identifier = NULL) {
-  dsm('internet_archive_log_view');
-
   if (user_access('access internet_archive logs')) {
     drupal_add_css(drupal_get_path('module', 'internet_archive') .
 		   '/css/log.css');
