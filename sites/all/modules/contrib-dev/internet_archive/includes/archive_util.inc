@@ -310,7 +310,7 @@ function internet_archive_send($config, $file_info) {
       $archive_data['status'] = ARCHIVE_FAILED;
       
       //UPDATE internet_archive TABLE WITH FAILURE INFO
-      if (isset($archive['tid'])) {
+      if (isset($archive_data['tid'])) {
 	internet_archive_update_archive_data($archive_data);
       }
       else {

@@ -334,30 +334,29 @@ function internet_archive_transfer_queue_items() {
   $items = array();
   $queue = DrupalQueue::get($queue_name);
   while (REQUEST_TIME < $end && ($internet_archive_queue_count <= $limit)) {
+    $internet_archive_queue_count ++;
     $item = $queue->claimItem($lease);
     if (!$item) {
-      $internet_archive_queue_count ++;
       continue;
     }
-    $items[] = $item;
     $file_name = $item->data['file_name'];
     $field_name = $item->data['field_name'];
 
     $archive_data = internet_archive_load_data($file_name, $field_name);
     $status = $archive_data['status'];
-
+    
     if ($status != ARCHIVE_TRANSFERRING) {
       $transfer_status = internet_archive_transfer_file_worker($item->data);
       if (!$transfer_status) {
-	$msg =t("!filename could not be transferred and remains in the queue.",
-		array('!filename' => $archive_data['filename']));
+	$queue->deleteItem($item);
+	$msg =t("!filename could not be transferred and marked as 'failed'.",
+		array('!filename' => $archive_data['file_name']));
 	drupal_set_message($msg, 'error');
 	continue;
       }
-
       $queue->deleteItem($item);
     }
-    $internet_archive_queue_count ++;
+    $items[] = $item;
   }
 
   if (count($items) > $limit) {
