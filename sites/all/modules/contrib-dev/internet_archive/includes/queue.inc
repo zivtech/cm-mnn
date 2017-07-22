@@ -225,15 +225,21 @@ function internet_archive_queue_admin_form($form, &$form_state) {
     $node = internet_archive_get_node_from_file_name($file_name,
 						     $field_name);
     $node_link = $node ? l($node->title, "node/".$node->nid) : 'NA';
+
+    $archive_data = internet_archive_load_data($file_name, $field_name);
     
     $expire = $item['expire'] ?
       t('Claimed: expiress %expire',
 	array('%expire' => date('m/d/Y h:ia', $item['expire']))) :
       t('Unclaimed');
-	      
+
+    $link = isset($archive_data['tid']) ?
+		  l(t("Transfer from Queue to Archive.org"),
+		    "/ia/transfer/" . $archive_data['tid']) : '';
+    
     $created = $item['created'] ? date('m/d/Y h:ia', $item['created']) : '';
     $rows[] = array($node_link, $file_name, $field_name, $file_location,
-		    $expire, $created); 
+		    $expire, $created, $link); 
   }
   
   $header = array(
@@ -243,6 +249,7 @@ function internet_archive_queue_admin_form($form, &$form_state) {
 		  t('File Location'),
 		  t('Claimed/Expiration'),
 		  t('Created Date'),
+		  t('Action'),
 		  );
   
   $table = theme('table',array('header'=> $header, 'rows' => $rows));
