@@ -711,7 +711,7 @@ function internet_archive_is_archive_format($file_name) {
  *   An integer which limits how many files to check in a single run at 
  *   archive.org
  */
-function internet_archive_store_derivatives($nid, $limit = 25) {
+function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
   dsm('internet_archive_store_derivatives');
 
   if ($nid) {
