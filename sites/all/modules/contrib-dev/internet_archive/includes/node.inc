@@ -6,9 +6,7 @@
 function internet_archive_node_update($node) {
   if (variable_get('internet_archive_update', FALSE)) {
     if ($files = internet_archive_node_files($node->nid)) {
-      dsm($files, 'files in node update');
       foreach ($files as $key => $archive_data) {
-	dsm($archive_data, 'archive data yo');
         internet_archive_update_item($node, $archive_data);
       }
     }
@@ -423,7 +421,6 @@ function internet_archive_delete_node_files($node, $tid) {
  */
 function internet_archive_get_node_from_file_name($file_name,
 						 $field_name) {
-  //dsm('internet_archive_get_node_from_file_name');
 
   //FETCH AN ASSOCIATIVE ARRAY OF Archive.org FIELD DB TABLE INFO
   $tables = internet_archive_get_field_tables($field_name);
@@ -445,7 +442,6 @@ function internet_archive_get_node_from_file_name($file_name,
       
       if ($nid) {
 	$node = node_load($nid);
-	//dsm("found node from file_name: $file_name");
 	return $node;
       }
       break;
@@ -458,7 +454,6 @@ function internet_archive_get_node_from_file_name($file_name,
       
       if ($nid) {
 	$node = node_load($nid);
-	//dsm("found node from text field file_name: $file_name");
 	return $node;
       }
       break;

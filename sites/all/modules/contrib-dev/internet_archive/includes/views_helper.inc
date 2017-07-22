@@ -201,14 +201,12 @@ function internet_archive_complete_transfer_action(&$node, $context) {
  * Custom VBO action callback function
  */
 function internet_archive_delete_archive_item_action(&$node, $context){
-  dsm($node, 'internet_archive_delete_archive_item_action');
 
   $sql = "SELECT * from {internet_archive} where nid = :nid";
   $results = db_query($sql, array(':nid' => $node->nid));
 
   while($result = $results->fetchAssoc()) {
     $archive_data = internet_archive_load_data_tid($result['tid']);
-    dsm($archive_data, 'woohoo archive data');
     internet_archive_delete_files($archive_data);
     internet_archive_delete_item($archive_data);
 

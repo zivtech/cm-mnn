@@ -120,7 +120,6 @@ function internet_archive_admin_validate($element, &$form_state) {
  *   A string containing the itemname/file_name
  */
 function internet_archive_send($config, $file_info) {
-  dsm('internet_archive_send');
   $file_name = $file_info['file_name'];
   $field_name = $file_info['field_name'];
   $file_location = $file_info['file_location'];
@@ -146,7 +145,6 @@ function internet_archive_send($config, $file_info) {
   }
 
   if ($archive_data) {
-    dsm($archive_data, 'found archive data');
     $s3->setTransferId($archive_data['tid']);
     //BUMP UP OUR NUMBER OF ATTEMPTS
     $archive_data['attempts'] ++;
@@ -165,7 +163,6 @@ function internet_archive_send($config, $file_info) {
       $config['internet_archive_bucket'] . '/' . basename($file_name),
       'nid' => $node ? $node->nid : NULL,
     );
-    dsm($archive_data, 'initialized archive data');
   }
 
   // IF THE FILE IS LOCAL AND WE CANT READ IT RETURN FALSE
@@ -197,7 +194,6 @@ function internet_archive_send($config, $file_info) {
   //grab metadata if it is available
   $metadata = array();
   $metadata = internet_archive_get_metadata($node, $file_name);
-  dsm($metadata, "back from internet_archive_get_metadata");
   //TODO: add some sort of backup in case there is no title/pattern...
 
   //CHECK TO SEE THE METADATA HOOK HAS SET A BUCKET NAME, THIS TAKES
@@ -238,8 +234,6 @@ function internet_archive_send($config, $file_info) {
   $archive_data['archive_url'] = 'http://www.archive.org/download/' .
     $config['internet_archive_bucket'] . '/' . basename($file_name);
   
-  dsm($headers, "Putting up Bucket: $name");
-
   $status =
     $s3->putBucket($config['internet_archive_bucket'], $headers);
 
@@ -289,13 +283,10 @@ function internet_archive_send($config, $file_info) {
     return FALSE;
   }
 
-  dsm('found bucket!!!!!!!');
-  
   //WE FOUND OUR BUCKET SO NOW ITS TIME TO UPLOAD FILE, EITHER FROM A LOCAL
   //SOURCE OR A REMOTE ONE.
   if (module_exists('internet_archive_remote') &&
       $file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
-    dsm("pushing remote file");
     $status =
       internet_archive_remote_put_object($file_name,
 					 $config['internet_archive_bucket'],
@@ -307,7 +298,6 @@ function internet_archive_send($config, $file_info) {
   }
   //PUTTING UP A LOCAL FILE
   else {
-    dsm('pushing local file');
     $status = $s3->putObjectFile($file_name,$config['internet_archive_bucket'],
 				 basename($file_name), $headers, $mimetype);
     //IF WE HAD A HARD FAIL ON PUTTING UP THE FILE
@@ -353,9 +343,6 @@ function internet_archive_send($config, $file_info) {
  * @param $archive_data filled with all necessary info for an insert
  */
 function internet_archive_update_archive_data($archive_data) {
-  dsm($archive_data, 'updating archive data');
-  //  dsm(debug_backtrace(), 'Load Archive Data Backtrace');
-  
   db_update('internet_archive')
     ->fields(array(
 		   'item' => $archive_data['item'],
@@ -381,7 +368,6 @@ function internet_archive_update_archive_data($archive_data) {
  * @param $archive_data filled with all necessary info for an insert
  */
 function internet_archive_insert_archive_data($archive_data) {
-  dsm($archive_data, 'inserting archive data');
   $sql =
     "INSERT into {internet_archive} ".
     "(item, in_path, file_name, file_size, field_name, file_location, " .
@@ -403,7 +389,6 @@ function internet_archive_insert_archive_data($archive_data) {
 		':date' => $archive_data['date'],
 		':archive_url' => $archive_data['archive_url'],
 		':nid' => $archive_data['nid']);
-  dsm($args, 'my args');
 
   return db_query($sql, $args, array('return' => Database::RETURN_INSERT_ID));
 }
@@ -415,7 +400,6 @@ function internet_archive_insert_archive_data($archive_data) {
  *   A source file_name of a file transferred to archive.org
  */
 function internet_archive_update_item($node, $archive_data) {
-  dsm('internet_archive_update_item');
 
   //grab all the necessary information
   $config = internet_archive_default_config();
@@ -431,7 +415,6 @@ function internet_archive_update_item($node, $archive_data) {
   }
   $s3->setTransferId($archive_data['tid']);
 
-  dsm($archive_data, 'archive data for node');
   //grab metadata if it is available
   $metadata = array();
   $metadata = internet_archive_get_metadata($node, $archive_data['file_name']);
@@ -444,7 +427,6 @@ function internet_archive_update_item($node, $archive_data) {
   $config['internet_archive_bucket'] = $archive_data['item'];
   $s3->bucket = $config['internet_archive_bucket'];
 
-  dsm('about to putBucket with updated metadata');
   // Send new metadata
   $s3->putBucket($config['internet_archive_bucket'], $headers);
 
@@ -515,10 +497,8 @@ function internet_archive_delete_files($archive_data) {
  * via S3
  */
 function internet_archive_validate_transfers($nid = null) {
-  dsm('internet_archive_validate_transfers');
   //how many times should we attempt to transfer failed files
   $attempts = variable_get('internet_archive_queue_attempts', 0) + 1;
-  dsm($attempts, 'attempts');
 
   if ($nid) {
     //only grab 10 at a time to avoid pounding archive.org
@@ -628,7 +608,6 @@ function internet_archive_simple_derivative($nid, $ext) {
  */
 function internet_archive_bucket_exists($item_name) {
   $bucket_url = 'https://www.archive.org/details/' . $item_name;
-  dsm($bucket_url, 'looking for bucket with url');
   if (internet_archive_validate_url($bucket_url)) {
     return TRUE;
   }
@@ -664,7 +643,6 @@ function internet_archive_buckets() {
  *   An object containing all of the derivatives for an item.
  */
 function internet_archive_get_derivatives($archive_data, $extension = NULL) {
-  dsm('internet_archive_get_derivatives');
   $s3 = internet_archive_new_s3();
 
   $s3->setTransferId($archive_data['tid']);
@@ -717,7 +695,6 @@ function internet_archive_is_archive_format($file_name) {
  *   archive.org
  */
 function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
-  dsm('internet_archive_store_derivatives');
 
   if ($nid) {
     // only grab items that have already been successfully uploaded
@@ -760,7 +737,7 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
 
     unset($derivatives);
     $derivatives = internet_archive_get_derivatives($archive_data);
-    dsm($derivatives, 'found derivatives');
+
     if ($derivatives && (count($derivatives) >= $expected_derivatives)) {
       $archive_data['status'] = ARCHIVE_DERIVED;
       $archive_data['derivatives'] = serialize($derivatives);
@@ -851,7 +828,6 @@ function internet_archive_transfer_confirm($form, $drupal_form, $file_name) {
  * @ingroup forms
  */
 function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
-  dsm('internet_archive_transfer_confirm_submit');
 
   $data = array(
 		'file_name' => $form_state['values']['file_name'],
@@ -872,10 +848,6 @@ function internet_archive_transfer_confirm_submit($form_id, &$form_state) {
 		       'error');
   }
 
-  //clear the page cache so updated file information appears on node
-  //TODO: there has to be a less drastic way to accomplish the goal
-  dsm('did not flush cache');
-  //drupal_flush_all_caches();
 }
 
 /**
@@ -1043,7 +1015,6 @@ function internet_archive_internet_archive(&$archive_data, $op) {
  *   An array of metadata keyed by header name
  */
 function internet_archive_get_metadata(&$node, $file_name) {
-  dsm('internet_archive_get_metadata');
   $metadata = array();
 
   $results = module_invoke_all('internet_archive_metadata', $node, $file_name);
@@ -1326,20 +1297,7 @@ function internet_archive_load_data($file_name,
     $args[':field_name'] = $field_name;
   }
 
-  //dsm("Archive Data File Name: $file_name");
-  //dsm("Archive Data Field Name: $field_name");
-  //dsm($args, $sql);
   $archive_data = db_query($sql, $args)->fetchAssoc();
-
-  if ($archive_data) {
-    //dsm('found archive data');
-    //dsm($archive_data, 'Archive Data from DB');
-  }
-  else {
-    //dsm('didnt find archive data');
-  }
-
-  //dsm(debug_backtrace(), 'Load Archive Data Backtrace');
   
   return $archive_data;
 }

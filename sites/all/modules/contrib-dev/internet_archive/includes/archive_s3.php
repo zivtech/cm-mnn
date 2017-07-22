@@ -246,7 +246,6 @@ class S3 {
   */
   public static function putBucket($bucket, $metaHeaders = NULL,
 				   $location = false) {
-    dsm($bucket, 'S3 putBucket');
     
     $rest = new S3Request('PUT', $bucket, '');
     
@@ -270,10 +269,8 @@ class S3 {
     if ($metaHeaders) {
       foreach ($metaHeaders as $h => $v) $rest->setAmzHeader($h, $v);
     }
-    dsm($rest, 'S3 rest before response');
+
     $rest = $rest->getResponse();
-    dsm($rest, 'S3 rest after response');
-    dsm($rest->code, 'rest code');
 
     if(!($rest->code > 0)) {
       $rest->code = 400;
@@ -460,7 +457,6 @@ class S3 {
   public static function putObject($input, $bucket, $uri,
 				   $metaHeaders = array(),
 				   $requestHeaders = array()) {
-    dsm('archive.php putObject()');
     if ($input === false) {
       return false;
     }
@@ -533,7 +529,6 @@ class S3 {
       }
 
       $rest = $rest->getResponse();
-      dsm($rest, 'rest after response');
     } 
     else {
       watchdog('internet_archive', 'Unable to put file: '.$uri.
@@ -562,7 +557,6 @@ class S3 {
       internet_archive_log($log_entry);
       return false;
     }
-    dsm($rest->code, 'rest code');
     switch ($rest->code) {
       case 200:
       case 201:
@@ -749,10 +743,8 @@ class S3 {
   * @return boolean
   */
   public static function deleteObject($bucket, $uri) {
-    dsm('archive.php deleteObject');
     $rest = new S3Request('DELETE', $bucket, $uri);
     $rest = $rest->getResponse();
-    dsm($rest, 'after response');
     if ($rest->error === false && $rest->code !== 204)
       $rest->error = array('code' => $rest->code,
 			   'message' => 'Unexpected HTTP status');
@@ -772,14 +764,13 @@ class S3 {
   * @return boolean
   */
   public static function deleteFiles($bucket, $uri) {
-    dsm('archive.php deleteFiles');
     $rest = new S3Request('DELETE', $bucket, $uri);
     $rest->setHeader('x-archive-cascade-delete', '1');
     
     $rest = $rest->getResponse();
-    dsm($rest, 'after response');
     if ($rest->error === false && $rest->code !== 204)
-      $rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
+      $rest->error = array('code' => $rest->code,
+			   'message' => 'Unexpected HTTP status');
     if ($rest->error !== false) {
       trigger_error(sprintf("S3::deleteObject(): [%s] %s",
       $rest->error['code'], $rest->error['message']), E_USER_WARNING);

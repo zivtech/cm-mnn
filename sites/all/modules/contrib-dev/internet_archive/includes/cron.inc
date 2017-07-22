@@ -4,7 +4,6 @@
  * Implements hook_cron().
  */
 function internet_archive_cron() {
-  dsm('internet_archive_cron');
   //validate previous transfers
   internet_archive_validate_transfers();
 
@@ -34,15 +33,12 @@ function internet_archive_cron_queue_info() {
  * the data up to archive.org
  */
 function internet_archive_send_file_run($item) {
-  dsm('internet_archive_send_file_run');
   global $internet_archive_queue_count;
 
   $internet_archive_queue_count = $internet_archive_queue_count ?
     $internet_archive_queue_count : 0;
 
   $internet_archive_queue_count ++;
-
-  dsm($internet_archive_queue_count, 'my count');
 
   $limit = variable_get('internet_archive_queue_limit', '1');
 
@@ -60,8 +56,6 @@ function internet_archive_send_file_run($item) {
     throw new Exception('Item will remain in the queue.');
   }
 
-  dsm($item, 'item');
-  
   //SENDING THE ITEM WITH FILE NAME, FIELD NAME, AND FILE LOCATION
   internet_archive_default_send($item);
   
@@ -133,8 +127,6 @@ function internet_archive_day_check() {
  *   True or False
  */
 function internet_archive_transfer_file_worker($queue_item) {
-  dsm('internet_archive_transfer_file_worker');
-  dsm($queue_item, 'my queue item i just claimed');
   $status = internet_archive_default_send($queue_item);
   return $status;
 }
