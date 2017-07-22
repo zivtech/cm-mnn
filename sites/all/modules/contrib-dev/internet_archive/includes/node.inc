@@ -6,7 +6,9 @@
 function internet_archive_node_update($node) {
   if (variable_get('internet_archive_update', FALSE)) {
     if ($files = internet_archive_node_files($node->nid)) {
+      dsm($files, 'files in node update');
       foreach ($files as $key => $archive_data) {
+	dsm($archive_data, 'archive data yo');
         internet_archive_update_item($node, $archive_data);
       }
     }
@@ -107,8 +109,8 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
       else {
 	global $archive_fields_info;
 	$file_location =
-	  $archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
-	  [$field_name] ?
+	  isset($archive_fields_info[ARCHIVE_FILE_LOCATION_REMOTE]
+		 [$field_name]) ?
 	  ARCHIVE_FILE_LOCATION_REMOTE : ARCHIVE_FILE_LOCATION_LOCAL;
 
 	$uri = $file_info[$value_key];

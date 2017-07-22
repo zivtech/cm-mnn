@@ -138,7 +138,6 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
   $prefix = variable_get('internet_archive_remote_prefix', FALSE);
   $append = variable_get('internet_archive_remote_append', FALSE);
   $remote_file_name = $prefix . $file_name . $append;
-  dsm($remote_file_name, 'remote file_name');
   $settings = array(
     'filepath' => $remote_file_name,
     'bucket' => $bucket,
@@ -152,6 +151,6 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
   $client = internet_archive_remote_new_client();
   dsm($settings, 'soap settings');
   $response = $client->putObject(serialize($settings));
-  $response = unserialize($response);
+  //$response = $response ? unserialize($response) : '';
   dsm($response, 'response');
 }

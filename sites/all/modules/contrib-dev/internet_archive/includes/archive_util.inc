@@ -219,7 +219,8 @@ function internet_archive_send($config, $file_info) {
   }
 
   if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-    if ($archive_data['status'] == ARCHIVE_FAILED) {
+    if (isset($archive_data['status']) &&
+	$archive_data['status'] == ARCHIVE_FAILED) {
       $name = $archive_data['item'];
     }
   }
@@ -272,7 +273,8 @@ function internet_archive_send($config, $file_info) {
       internet_archive_update_archive_data($archive_data);
     }
     else {
-      internet_archive_insert_archive_data($archive_data);
+      $archive_data['tid'] =
+	internet_archive_insert_archive_data($archive_data);
     }
 
     $msg = t("Error Code #23244 Bucket could not be found for !file_name, ".
@@ -311,11 +313,12 @@ function internet_archive_send($config, $file_info) {
       $archive_data['status'] = ARCHIVE_FAILED;
       
       //UPDATE internet_archive TABLE WITH FAILURE INFO
-      if ($archive['tid']) {
+      if (isset($archive['tid'])) {
 	internet_archive_update_archive_data($archive_data);
       }
       else {
-	internet_archive_insert_archive_data($archive_data);
+	$archive_data['tid'] =
+	  internet_archive_insert_archive_data($archive_data);
       }
       
       $error =
@@ -331,11 +334,11 @@ function internet_archive_send($config, $file_info) {
   // THE ROW IN THE internet_archive TABLE 
   $archive_data['status'] = ARCHIVE_TRANSFERRED;
   
-  if ($archive_data['tid']) {
+  if (isset($archive_data['tid'])) {
     internet_archive_update_archive_data($archive_data);
   }
   else {
-    internet_archive_insert_archive_data($archive_data);
+    $archive_data['tid'] = internet_archive_insert_archive_data($archive_data);
   }
   
   internet_archive_invoke_internet_archive($archive_data, 'transferred');
@@ -365,6 +368,8 @@ function internet_archive_update_archive_data($archive_data) {
 		   'date' => $archive_data['date'],
 		   'archive_url' => $archive_data['archive_url'],
 		   'nid' => $archive_data['nid'],
+		   'derivatives' => isset($archive_data['derivatives']) ?
+		   $archive_data['derivatives'] : '',
 		   ))
     ->condition('tid', $archive_data['tid'])
     ->execute();
@@ -398,7 +403,7 @@ function internet_archive_insert_archive_data($archive_data) {
 		':nid' => $archive_data['nid']);
   dsm($args, 'my args');
 
-  db_query($sql, $args);
+  return db_query($sql, $args, array('return' => Database::RETURN_INSERT_ID));
 }
 
 /**
@@ -536,31 +541,19 @@ function internet_archive_validate_transfers($nid = null) {
 			     ':attempts' => $attempts));
   }
   while ($archive_data = $result->fetchAssoc()) {
-    dsm($archive_data, 'ai');
-    $valid = internet_archive_validate_transfer($archive_data['tid']);
-    dsm($valid, 'valid');
+    $valid = internet_archive_validate_transfer($archive_data);
     if (!$valid && (REQUEST_TIME - $archive_data['date']) > (8*60*60)) {
-      db_update('internet_archive')
-	->fields(array(
-		       'status' => ARCHIVE_FAILED,
-		       ))
-	->condition('tid', $archive_data['tid'])
-	->execute();
       $archive_data['status'] = ARCHIVE_FAILED;
       $archive_data['error'] = 
 	t('Validation failed, source file does not exist at Archive.org ' .
-	 'after 8 hours. Marked as failed.');
-
+	  'after 8 hours. Marked as failed.');
+      
+      internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'failed');
     }
     elseif ($valid) {
-      db_update('internet_archive')
-	->fields(array(
-		       'status' => ARCHIVE_VALIDATED,
-		       ))
-	->condition('tid', $archive_data['tid'])
-	->execute();
       $archive_data['status'] = ARCHIVE_VALIDATED;
+      internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'validated');
     }
   }
@@ -576,16 +569,14 @@ function internet_archive_validate_transfers($nid = null) {
  * @return
  * TRUE or FALSE
  */
-function internet_archive_validate_transfer($tid) {
-  dsm('internet_archive_validate_transfer');
-  $archive_data = internet_archive_load_data_tid($tid);
+function internet_archive_validate_transfer($archive_data) {
 
   if (!$archive_data) {
     return FALSE;
   }
 
   $derivatives = internet_archive_get_derivatives($archive_data);
-  dsm($derivatives, 'derivs');
+
   if (!$derivatives) {
     return FALSE;
   }
@@ -678,10 +669,8 @@ function internet_archive_get_derivatives($archive_data, $extension = NULL) {
 
   //NEED TO ADD HERE..
   $bucket_info = $s3->getBucket($archive_data['item']);
-  dsm($bucket_info, 'bucket info');
   if ($bucket_info) {
     if ($extension) {
-      dsm($extension, 'extension');
       foreach ($bucket_info as $file_name => $fileinfo) {
         $pathinfo = pathinfo($file_name);
         if ($pathinfo['extension'] == $extension) {
@@ -771,15 +760,15 @@ function internet_archive_store_derivatives($nid, $limit = 25) {
     $derivatives = internet_archive_get_derivatives($archive_data);
     dsm($derivatives, 'found derivatives');
     if ($derivatives && (count($derivatives) >= $expected_derivatives)) {
-      db_update('internet_archive')
-	->fields(array(
-		       'status' => ARCHIVE_DERIVED,
-		       ))
-	->condition('item', $archive_data['item'])
-	->execute();
-      
+      $archive_data['status'] = ARCHIVE_DERIVED;
       $archive_data['derivatives'] = serialize($derivatives);
+      
+      internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'derived');
+    }
+    else if ($derivatives && (count($derivatives) > 0)) {
+      $archive_data['derivatives'] = serialize($derivatives);
+      internet_archive_update_archive_data($archive_data);
     }
     elseif ((REQUEST_TIME - $archive_data['date']) > 172800) {
       // if derivatives are not completed after 2 days, check to see if
@@ -787,33 +776,19 @@ function internet_archive_store_derivatives($nid, $limit = 25) {
       $valid = internet_archive_validate_transfer($archive_data['tid']);
       if (!$valid) {
         // if it doesn't validate, mark as failed for reprocessing
-        db_update('internet_archive')
-	  ->fields(array(
-			 'status' => ARCHIVE_FAILED,
-			 ))
-	  ->condition('tid', $archive_data['tid'])
-	  ->execute();
+	$archive_data['status'] = ARCHIVE_FAILED;
+	$archive_data['error'] = 
+	t('Validation failed, source file does not exist at Archive.org ' .
+	  'after 8 hours. Marked as failed.');
+	
+	internet_archive_update_archive_data($archive_data);
         internet_archive_invoke_internet_archive($archive_data, 'failed');
       }
       else {
-        // if it does validate, mark derivatives as failed
-        db_update('internet_archive')
-	  ->fields(array(
-			 'derivatives' => 'failed',
-			 ))
-	  ->condition('item', $archive_data['item'])
-	  ->execute();
-        internet_archive_invoke_internet_archive($archive_data, 'derivativefailed');
+	$archive_data['derivatives'] = 'failed';	
+        internet_archive_invoke_internet_archive($archive_data,
+						 'derivativefailed');
       }
-    }
-
-    if ($derivatives && (count($derivatives) > 0)) {
-      db_update('internet_archive')
-	->fields(array(
-		       'derivatives' => serialize($derivatives),
-		       ))
-	->condition('item', $archive_data['item'])
-	->execute();
     }
   }
   return;
@@ -1079,7 +1054,6 @@ function internet_archive_get_metadata(&$node, $file_name) {
   if (!isset($metadata['mediatype'])) {
     $pathinfo = pathinfo($file_name);
     $filemime = file_get_mimetype($file_name);
-    dsm($filemime, 'filemime');
     switch ($filemime) {
       case 'image/jpeg':
         $metadata['mediatype'] = 'Image';

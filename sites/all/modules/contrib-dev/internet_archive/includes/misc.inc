@@ -165,12 +165,16 @@ function internet_archive_help_links($name, $type = 'icon') {
     case 'icon':
       // TODO Please change this theme call to use an associative array
       //for the $variables parameter.
-      $output = theme('advanced_help_topic', 'internet_archive', $name);
+      $output =	theme('advanced_help_topic',
+		      array('module' => 'internet_archive',
+			    'topic' => $name));
       break;
     case 'link':
       // TODO Please change this theme call to use an associative array for
       //the $variables parameter.
-      $link = theme('advanced_help_topic', 'internet_archive', $name, 'title');
+      $link = theme('advanced_help_topic',
+		    array('module' => 'internet_archive',
+			  'topic' => $name));
       if (!$link) {
         $link = t('Please install the ') .
 	  l('advanced help module', 'http://drupal.org/project/advanced_help')
@@ -187,7 +191,9 @@ function internet_archive_help_links($name, $type = 'icon') {
     case 'full':
       // TODO Please change this theme call to use an associative array for
       //the $variables parameter.
-      $output = theme('advanced_help_topic', 'internet_archive', $name);
+      $output = theme('advanced_help_topic',
+		    array('module' => 'internet_archive',
+			  'topic' => $name));
       $output .= '&nbsp;' .
 	t('Click the help icon to view more details on this page.');
       break;

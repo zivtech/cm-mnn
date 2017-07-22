@@ -222,7 +222,7 @@ function internet_archive_delete_archive_item_action(&$node, $context){
 	     
     drupal_set_message($msg);
     $log_entry = array(
-      'tid' => $tid,
+      'tid' => $archive_data['tid'],
       'message' => t('File and derivatives deleted at Archive.org'),
       'message_data' => $archive_data,
       'type' => ARCHIVE_LOG_WARNING,

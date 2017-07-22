@@ -175,6 +175,7 @@ function internet_archive_queue_settings_form($form, &$form_state) {
  * released.
  */
 function internet_archive_queue_admin_form($form, &$form_state) {
+
   $queue_name = 'internet_archive_send_file';
   $items = internet_archive_retrieve_queue($queue_name);
 
@@ -430,7 +431,7 @@ function internet_archive_harvest_files() {
 	$node = internet_archive_get_node_from_file_name($file_name,
 							 $field_name);
 	$status = '';
-	$file_size = $file_size ? $file_size : 0;
+	$file_size = isset($file_size) && ($file_size > 0) ? $file_size : 0;
 	$archive_data =
 	  array(
 		'in_path' => $file_name,
@@ -481,8 +482,9 @@ function internet_archive_harvest_files() {
 	$transfer_queue->createItem($queue_item);
 
 	$archive_data['status'] = ARCHIVE_QUEUED;
-	if (!isset($archive_data['tid']) && !$archive_data['tid']) {
-	  internet_archive_insert_archive_data($archive_data);
+	if (!isset($archive_data['tid'])) {
+	  $archive_data['tid'] =
+	    internet_archive_insert_archive_data($archive_data);
 	}
 	else {
 	  internet_archive_update_archive_data($archive_data);
