@@ -87,6 +87,12 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
 	$html .= "</li><li>";
 	$html .=l(t("Download from Archive.org"),$archive_data['archive_url']);
 	$html .= "</li>";
+	$html .= "<li>";
+	$html .= l(t("Delete Files on Archive.org"),
+		   "node/". $archive_data['nid'] ."/ia/delete-files/" .
+		   $archive_data['tid']);
+	$html .= "</li>";
+	
       }
       //if we have data from teh internet archive table and we are queued
       //offer a link to see it in the internet_archive_send_file queue 
@@ -121,6 +127,7 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
 	$html .= "<li>";
 	$html .= l(t("View Partially Transferred Item on Archive.org"), $path);
 	$html .= "</li>";
+
       }
       //we haven't started the transfer yet, so offer a link to do so
       else {
@@ -388,7 +395,7 @@ function internet_archive_delete_node_files($node, $tid) {
       'type' => ARCHIVE_LOG_WARNING,
     );
     internet_archive_log($log_entry);
-    drupal_goto('node/' . $node->nid . '/ia');
+    drupal_goto('node/' . $node->nid);
   }
   else {
     drupal_set_message('No files found for this source at Archive.org!');
@@ -399,7 +406,7 @@ function internet_archive_delete_node_files($node, $tid) {
       'type' => ARCHIVE_LOG_ERROR,
     );
     internet_archive_log($log_entry);
-    drupal_goto('node/' . $node->nid . '/ia');
+    drupal_goto('node/' . $node->nid);
   }
 }
 

@@ -208,3 +208,39 @@ function internet_archive_mnn_metadata_views_api() {
 			       'internet_archive_mnn_metadata').'/includes'
 	       );
 }
+
+/**
+ * Implements hook_internet_archive_process_remote_files()
+ *
+ */
+function internet_archive_mnn_metadata_internet_archive_process_remote($files){
+
+  $prefix = 'mnn_';
+  $index = strlen($prefix);
+  
+  foreach($files as $file) {
+    //does file start with mnn?
+    if (strpos($file, $prefix) === 0) {
+      $parts = explode('_', $file);
+      $project_id = $parts[1];
+      $episode_number = substr($parts[2], 0, strpos($parts[2], '.'));
+      if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+	$show_nid =
+	  mnn_show_get_existing_show_for_episode_number($project_id,
+							NULL,
+							$episode_number);
+	if ($show_nid) {
+	  $show = node_load($show_nid);
+	  
+	  if ($show) {
+	    dsm($show, 'show');
+	    //$show->field_internet_archive_remote[LANGUAGE_NONE][0]['value'] =
+	    //  $file;
+	    //node_save($show);
+	  }
+	}
+      }	
+    }
+  }
+  
+}

@@ -511,6 +511,7 @@ function internet_archive_update_node_metadata_permission($node) {
  * @see http://drupal.org/node/1354
  */
 function internet_archive_delete_node_files_permission($node) {
+  internet_archive_init();
   global $user;
   if (user_access('delete all internet_archive files') ||
       (user_access('delete own internet_archive files') &&

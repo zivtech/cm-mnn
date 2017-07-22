@@ -68,6 +68,15 @@ function internet_archive_remote_admin_form($form, &$form_state) {
     t("This key is used to authenticate with the remote server."),
     '#required' => TRUE,
   );
+  $form['internet_archive']['internet_archive_harvest_remote'] = array(
+    '#type' => 'checkbox',
+    '#title' =>
+    t('Grab files from the remote directory and save them to nodes/entities'),
+    '#default_value' => variable_get('internet_archive_harvest_remote', FALSE),
+    '#description' =>
+    t("You will need to override hook_internet_archive_process_remote_files ".
+      "to determine what entity/node fields to save the file name to."),
+  );
   $form['internet_archive']['internet_archive_remote_prefix'] = array(
     '#type' => 'textfield',
     '#title' => t('Prepend text to the beginning of stored paths'),
@@ -163,22 +172,37 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
  * files, i.e. what what node and what field to put them on
  */
 function internet_archive_remote_internet_archive_harvest_remote_files() {
-  dsm('hi damd');
+  if (!variable_get('internet_archive_harvest_remote', FALSE)) {
+    return;
+  }
+
   //build url to the files directory
   $prefix = variable_get('internet_archive_remote_prefix', FALSE);
   $remote_url = variable_get('internet_archive_server_url', FALSE);
-  if ($remote_url) {
+  if (!$remote_url) {
     return;
   }
   
   $url_parts = parse_url($remote_url);
   $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
 
-  dsm($remote_file_directory_url, 'my url!');
-
   //grab all file names from directory
+  $html = file_get_contents($remote_file_directory_url);
+  
+  //parse the html
+  $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
+			  $html, $files);
 
   //for each file name invoke the hook to store on a entity/node
+  for ($i = 0; $i < $count; ++$i) {
+    $file = $files[1][$i];
+    if (ctype_alnum(substr($file, 0, 1))){
+      $harvested_files[] = $file;
+    } 
+  }
 
-  
+  if ($harvested_files) {
+    module_invoke_all('internet_archive_process_remote',
+		      $harvested_files);
+  }
 }
