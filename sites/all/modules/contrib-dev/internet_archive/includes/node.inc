@@ -92,8 +92,25 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
       //offer a link to see it in the internet_archive_send_file queue 
       else if ($archive_data && ($archive_data['status'] == ARCHIVE_QUEUED)) {
 	$html .= "<li>";
+	$html .= l(t("Transfer from Queue to Archive.org"),
+		   "/ia/transfer/" . $archive_data['tid']);
+	$html .= "</li>";
+
+	$html .= "<li>";
 	$html .= l(t("View item in the queue"),
 		   "/admin/structure/internet_archive");
+	$html .= "</li>";
+
+      }
+      //if we have data from teh internet archive table but we aren't yet
+      //in a completed state, give a link to the item on archive.org
+      //if it exists there it means we haven't run cron or use the transfer VBO
+      elseif ($archive_data &&
+	      ($archive_data['status'] == ARCHIVE_TRANSFERRED ||
+	       $archive_data['status'] == ARCHIVE_TRANSFERRING)) {
+	$html .= "<li>";
+	$html .= l(t("Recheck Status for Incomplete Upload."),
+		   "/ia/validate/" . $archive_data['nid']);
 	$html .= "</li>";
       }
       //if we have data from teh internet archive table but we aren't yet
@@ -501,4 +518,19 @@ function internet_archive_get_node_from_file_name($file_name,
   }
 
   return FALSE;
+}
+
+
+/**
+ * This function is called by the /ia/transfer_item menu hook and will
+ * allow a item to be taken out of the queue and transferred
+ */
+function internet_archive_validate_and_derive($nid) {
+  if (!$nid) {
+    return;
+  }
+
+  internet_archive_validate_transfers($nid);
+  internet_archive_store_derivatives($nid);
+  drupal_goto('node/'. $nid);
 }

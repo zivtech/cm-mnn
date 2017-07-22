@@ -22,7 +22,7 @@ function internet_archive_queue_settings_form($form, &$form_state) {
   $description =
     t('The settings below provide basic automation of file transfers to '.
       'Archive.org. These settings are in addition to any configurations you '.
-      'create in Media Mover, or crontab settings for your Drupal Queue. In '.
+      'or crontab settings for your Drupal Queue. In '.
       'other words, if you have configured your drupal queue crontab to '.
       'run every 15 minutes, but selected only Sundays below -- files will '.
       'be transferred every 15 minutes on Sundays only.') . '</div>';
@@ -773,8 +773,40 @@ function internet_archive_transfer_queue() {
   internet_archive_harvest_files();
 
   //transfer files available in the queue
-  internet_archive_queue_drupal_queue_cron_run();
+  internet_archive_transfer_queue_items();
 
   //Check for new derivations to update.
   internet_archive_store_derivatives();
 }
+
+/**
+ * This function is called by the /ia/transfer_item menu hook and will
+ * allow a item to be taken out of the queue and transferred
+ */
+function internet_archive_transfer_item_out_of_queue($tid) {
+  if (!$tid) {
+    return;
+  }
+  $archive_data = internet_archive_load_data_tid($tid);
+
+  if (!$archive_data) {
+    return;
+  }
+  $queue_item = array('file_name' => $archive_data['in_path'],
+		      'field_name' => $archive_data['field_name'],
+		      'file_location' => $archive_data['file_location'],
+		      );
+
+  $transfer_status = internet_archive_transfer_file_worker($queue_item);
+  if (!$transfer_status) {
+    $msg =t("!filename could not be transferred and marked as 'failed'.",
+	    array('!filename' => $archive_data['file_name']));
+    drupal_set_message($msg, 'error');
+  }
+  $sql = "DELETE FROM queue WHERE data=:data";
+  $args = array(':data' => serialize($queue_item));
+  db_query($sql, $args);
+  drupal_goto('node/'. $archive_data['nid']);
+}
+
+

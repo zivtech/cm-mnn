@@ -196,6 +196,24 @@ function internet_archive_menu() {
 	  'type' => MENU_CALLBACK,
 	  'weight' => 11,
 	  );
+  $items['ia/transfer'] =
+    array(
+	  'title' => 'Transfer Item Out of Queue',
+	  'page callback' => 'internet_archive_transfer_item_out_of_queue',
+	  'page arguments' => array(2),
+	  'access arguments' => array('administer internet_archive'),
+	  'type' => MENU_LOCAL_TASK,
+	  'weight' => 11,
+	  );
+  $items['ia/validate'] =
+    array(
+	  'title' => 'Validate and Transfer Archive Item',
+	  'page callback' => 'internet_archive_validate_and_derive',
+	  'page arguments' => array(2),
+	  'access arguments' => array('administer internet_archive'),
+	  'type' => MENU_LOCAL_TASK,
+	  'weight' => 11,
+	  );
 
   return $items;
 }
