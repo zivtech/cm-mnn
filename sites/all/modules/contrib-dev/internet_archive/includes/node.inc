@@ -19,6 +19,16 @@ function internet_archive_node_update($node) {
  * beneath relevant field displays
  */
 function internet_archive_field_attach_view_alter(&$output, $context) {
+  //GLOBAL VARIABLE IS SET VIA A VIEW FORMATTER, IF ITS SET TO FALSE WE
+  //WILL NOT DO ANYTHING ON THE FIELD
+  global $internet_archive_show_links;
+  
+  $internet_archive_show_links = isset($internet_archive_show_links) ?
+    $internet_archive_show_links : TRUE;
+
+  if (!$internet_archive_show_links) {
+    return;
+  }
   //grab all applicable fields
   $fields = internet_archive_fields();
 

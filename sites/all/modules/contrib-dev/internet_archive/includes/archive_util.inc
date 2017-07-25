@@ -1120,55 +1120,45 @@ function internet_archive_process_metadata($metadata) {
 }
 
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Function is passed data from the internet archive table and then returns
+ * a url to a jpg file
+ *
+ * @param $archive_data as associated array of values from a row in the 
+ * internet archive table
  */
-function internet_archive_thumb_from_file_name($field_name, $field_name) {
-  $data = internet_archive_load_data($field_name,
-				     $field_name);
-
-  if ((!$item = $data['item']) || $data['status'] != 'derived') {
+function internet_archive_thumb_from_archive_data($archive_data) {
+  if ((!$archive_data['item']) || $archive_data['status'] != ARCHIVE_DERIVED) {
     return FALSE;
   }
-
-  $pathinfo = pathinfo($data['archive_url']);
-  $file_name = $pathinfo['file_name'] . '_000001.jpg';
-
-  $link = 'http://www.archive.org/download/';
-  $link .= $item . '/' . $item . '.thumbs/';
-  $link .= $file_name;
-  return $link;
+  $url = 'https://www.archive.org/download/';
+  $url .= $archive_data['item'] . '/' . $archive_data['item'] . '.thumbs/';
+  $url .= pathinfo($archive_data['file_name'], PATHINFO_FILENAME);
+  $url .= '_000001.jpg';
+  return $url;
 }
-
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
-function internet_archive_animated_thumb_from_file_name($field_name,
-						       $field_name) {
-
-  $data = internet_archive_load_data($field_name, $field_name);
-
-  if ((!$item = $data['item']) || $data['status'] != 'derived') {
-    return FALSE;
-  }
-
-  $pathinfo = pathinfo($data['archive_url']);
-  $file_name = $pathinfo['file_name'] . '.gif';
-
-  $link = 'http://www.archive.org/download/';
-  $link .= $item . '/';
-  $link .= $file_name;
-  return $link;
-}
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Function will return an embed for a $tid, which is the primary key of the
+ * internet archive table
+ *
+ * @param $tid the unique id of a row in the internet archive table
+ * @return an embedded video from archive.org
  */
 function internet_archive_embed($tid, $width = 470, $height = 371) {
   
   $archive_data = internet_archive_load_data_tid($tid);
+  return internet_archive_embed_from_archive_data($archive_data, $width = 470,
+						  $height = 371);
+}
+/**
+ * Function is passed data from the internet archive tablee and then returns
+ * a link to a jpg file
+ *
+ * @param $archive_data an associated array of values from a row in the 
+ * internet archive table
+ * @return an embedded video from archive.org
+ */
+function internet_archive_embed_from_archive_data($archive_data, $width = 470,
+						  $height = 371) {
   $url = internet_archive_derivative_url($archive_data, 'mp4');
 
   if ($url) {
@@ -1303,8 +1293,29 @@ function internet_archive_load_data($file_name,
 }
 
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Function takes in a node ID and field name and then queries for a row
+ * in the internet_archive table
+ *
+ * @param $nid - the node ID
+ * @param $field_name - the field name the file is stored in 
+ */
+function internet_archive_load_data_nid($nid, $field_name) {
+  if (is_numeric($nid)) {
+    $archive_data = db_query("SELECT * from {internet_archive} ".
+			     "WHERE nid = :nid AND field_name = :field_name ",
+			     array(':nid' => $nid,
+				   ':field_name' => $field_name))
+      ->fetchAssoc();
+    return $archive_data;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Function returns all the data in the internet_archive table for a 
+ * particular $tid, which is the primary key of table
+ * @param $tid the the primary key of table
  */
 function internet_archive_load_data_tid($tid) {
   if (is_numeric($tid)) {
