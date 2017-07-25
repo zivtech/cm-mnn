@@ -53,19 +53,6 @@ function internet_archive_init() {
   }
 }
 /**
- * Implements hook_views_api().
- * @return Array with Views API version.
- */
-function internet_archive_views_api() {
-  return array(
-	       'api' => 3,
-	       'path' => 
-	       drupal_get_path('module', 
-			       'internet_archive').'/includes'
-	       );
-}
-
-/**
  * Implements hook_menu().
  */
 function internet_archive_menu() {
@@ -220,6 +207,7 @@ function internet_archive_menu() {
 }
 /**
  * Implements hook_permission().
+ * Note: this function has to be in module file, it can't be in an include file
  */
 function internet_archive_permission() {
   return array(
@@ -266,9 +254,92 @@ function internet_archive_permission() {
   );
 }
 
+
+/**
+ * This function determines who and when the Internet Archive tab appears
+ * Note: this function has to be in module file, it can't be in an include file
+ */
+function internet_archive_tab_permission($node) {
+  internet_archive_init();
+  global $user;
+  if (user_access('access all internet_archive node tabs') ||
+      (user_access('access own internet_archive node tabs') &&
+       $user->uid == $node->uid)) {
+    if ($node_fields = internet_archive_node_fields($node)) {
+      return TRUE;
+    }
+  }
+  else {
+    return FALSE;
+  }
+}
+
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ * Note: this function has to be in module file, it can't be in an include file
+ */
+function internet_archive_update_node_metadata_permission($node) {
+  internet_archive_init();
+  global $user;
+  if (user_access('update all internet_archive metadata') ||
+      (user_access('update own internet_archive metadata') &&
+       $user->uid == $node->uid)) {
+    if ($files = internet_archive_node_files($node->nid)) {
+      return TRUE;
+    }
+  }
+  else {
+    return FALSE;
+  }
+}
+
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ * Note: this function has to be in module file, it can't be in an include file
+ */
+function internet_archive_delete_node_files_permission($node) {
+  internet_archive_init();
+  global $user;
+  if (user_access('delete all internet_archive files') ||
+      (user_access('delete own internet_archive files') &&
+       $user->uid == $node->uid)) {
+    if ($files = internet_archive_node_files($node->nid)) {
+      return TRUE;
+    }
+  }
+  else {
+    return FALSE;
+  }
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+//VIEWS RELATED FUNCTION THAT NEED TO BE IN THIS FILE RATHER THAN INCLUDE
+//
+//FOR MORE VIEWS FUNCTION GO TO internet_archive/includes/views_helper.inc
+
+/**
+ * Implements hook_views_api().
+ * @return Array with Views API version.
+ * Note: this function has to be in module file, it can't be in an include file
+ */
+function internet_archive_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'internet_archive').'/includes'
+	       );
+}
+
 /**
  * Implements hook_views_data().
  * @return Array with Views table information.
+ * Note: this function has to be in module file, it can't be in an include file
  */
 function internet_archive_views_data() {
   $data['internet_archive']['table']['group'] = t('Internet Archive');
@@ -468,64 +539,9 @@ function internet_archive_views_data() {
 }
 
 /**
- * This function determines who and when the Internet Archive tab appears
- */
-function internet_archive_tab_permission($node) {
-  internet_archive_init();
-  global $user;
-  if (user_access('access all internet_archive node tabs') ||
-      (user_access('access own internet_archive node tabs') &&
-       $user->uid == $node->uid)) {
-    if ($node_fields = internet_archive_node_fields($node)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
-  }
-}
-
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
-function internet_archive_update_node_metadata_permission($node) {
-  internet_archive_init();
-  global $user;
-  if (user_access('update all internet_archive metadata') ||
-      (user_access('update own internet_archive metadata') &&
-       $user->uid == $node->uid)) {
-    if ($files = internet_archive_node_files($node->nid)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
-  }
-}
-
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
-function internet_archive_delete_node_files_permission($node) {
-  internet_archive_init();
-  global $user;
-  if (user_access('delete all internet_archive files') ||
-      (user_access('delete own internet_archive files') &&
-       $user->uid == $node->uid)) {
-    if ($files = internet_archive_node_files($node->nid)) {
-      return TRUE;
-    }
-  }
-  else {
-    return FALSE;
-  }
-}
-/**
  * Implements hook_field_formatter_info().
+ * 
+ * Note: this function has to be in module file, it can't be in an include file
  */
 function internet_archive_field_formatter_info() {
   return array(
@@ -546,104 +562,3 @@ function internet_archive_field_formatter_info() {
     ),
   );
 }
-
-/**
- *  Implements  hook_field_formatter_settings_form().
- */
-function internet_archive_field_formatter_settings_form($field, $instance,
-							$view_mode, $form,
-							&$form_state) {
-  //This gets the view_mode where our settings are stored
-  $display = $instance['display'][$view_mode];
-  //This gets the actual settings
-  $settings = $display['settings'];
-  //Initialize the element variable
-  $element = array();
-  //Add your select box
-  $element['archive_links'] =
-    array(
-	  '#type' => 'select', // Use a select box widget
-	  '#title' => t('Links?'), // Widget label
-	  '#description' => t('Show Archive.org Links?'), // Helper text
-	  '#default_value' => $settings['archive_links'], 
-	  '#options' => array(
-			      'show' => 'Show',
-			      'hide' => 'Hide',
-			      ),
-	  );
-  $element['archive_embed_width'] =
-    array(
-	  '#type' => 'textfield',
-	  '#title' => t('Embed Width'),
-	  '#size' => 4,
-	  '#maxlength' => 4,
-	  '#default_value' => isset($settings['archive_embed_width']) ?
-	  $settings['archive_embed_width'] : 470,
-	  );
-
-  $element['archive_embed_height'] =
-    array(
-	  '#type' => 'textfield',
-	  '#title' => t('Embed Height'),
-	  '#size' => 4,
-	  '#maxlength' => 4,
-	  '#default_value' => isset($settings['archive_embed_height']) ?
-	  $settings['archive_embed_height'] : 371,
-	  );
-
-  return $element;
-}
-/**
- * Implements hook_field_formatter_view
- */
-function internet_archive_field_formatter_view($entity_type, $entity, $field,
-					       $instance, $langcode, $items,
-					       $display) {
-  
-  $element = array();
-  $html = '';
-  
-  $settings = $display['settings'];
-
-  $show_links = FALSE;
-  global $internet_archive_show_links;
-  if (isset($settings['archive_links']) &&
-      $settings['archive_links'] == 'show') {
-    $internet_archive_show_links = TRUE;
-  }
-  else {
-    $internet_archive_show_links = FALSE;
-  }
-
-  $width = isset($settings['archive_embed_width']) ?
-    $settings['archive_embed_width'] : 470;
-
-  $height = isset($settings['archive_embed_height']) ?
-    $settings['archive_embed_height'] : 371;
-
-  $fields = internet_archive_fields();
-  foreach ($fields as $field_name => $field_info) {
-    if ($field_name == $field['field_name'] && $items) {
-      $archive_data = internet_archive_load_data_nid($entity->nid,$field_name);
-      switch ($display['type']) {
-      case 'internet_archive_video_embed':
-	$html = internet_archive_embed_from_archive_data($archive_data,
-							 $width, $height);
-	break;
-      case 'internet_archive_thumbnail':
-	$thumb = internet_archive_thumb_from_archive_data($archive_data);
-	$html = '<img src="' . $thumb . '" />';
-	break;
-      default:
-	break;
-      }
-
-      $element[0]['#markup'] = $html;
-    }
-  }
-  
-
-
-  return $element;
-}
-
