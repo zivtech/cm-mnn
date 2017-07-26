@@ -1063,17 +1063,29 @@ function internet_archive_get_metadata(&$node, $file_name) {
   }
 
   //TITLE IS THE HUMAN READABLE TITLE DISPLAY ON Archive.org PAGES
-  //if no title has been provided, and administrative setting is set item to
-  //node title, set it now
-  if (variable_get('internet_archive_bucket_title', FALSE) &&
-      !$metadata['title'] && $node->title) {
-    $metadata['title'] = $node->title;
+  //if no title has been provided, set the title based on the default settings
+  //for bucket title, special characters are allowed so we won't sanitize it
+  //like bucket item title
+  if (!$metadata['title']) {
+    $bucket_name_mode = variable_get('internet_archive_bucket_name_mode',
+				     'default');
+  
+    switch ($bucket_name_mode) {
+    case 'node':
+      $title = $node->title;
+      break;
+    case 'custom':
+      $title = variable_get("internet_archive_custom_bucket_title",
+			    $default_item);
+      $title = token_replace($title, array('node' => $node));
+      break;
+    case 'default':
+    default:
+      $title = basename($file_name);
+      break;
+    }  
+    $metadata['title'] = $title;
   }
-  elseif (!$metadata['title']) {
-    //finally if no title has been provided, use the file_name.
-    $metadata['title'] = basename($file_name);
-  }
-
   //if no description has been provided, and administrative setting is set
   ///description to body, set it now
   if (variable_get('internet_archive_bucket_body', FALSE) &&

@@ -99,12 +99,18 @@ function internet_archive_admin_form($form) {
 
   $description =
     t("When you upload a file to Archive.org it gets stored in a bucket ".
-      "item. This item is used in the URL of your uploaded files on " .
-      "Archive.org, i.e. http://archive.org/details/my-bucket-item-title " .
-      "Bucket item titles  must be unique on Archive.org or controlled by " .
-      "the account associated with the Access and Secret keys you entered ".
-      "above. <br/><br/>".
-      "If you choose the <i>'Default Title'</i> choice, all items will go in ".
+      "item. Bucket items have both a human readable title and a machine " .
+      "friendly name that will only have alphanumeric characters and " .
+      "underscores. As you configure the title below you will be configuring ".
+      "the human readable title. The machine friendly version will be " .
+      "auto-generated using the human readable version, replacing special " .
+      "characters and spaces with underscores. " .
+      "The machine name is used in the url on Archive.org, i.e. " .
+      "http://archive.org/details/my-bucket-item-title <br/><br/>" .
+      "Machine name bucket item titles  must be unique on Archive.org or " .
+      "controlled by the account associated with the Access and Secret keys ".
+      "you entered above. <br/><br/> For the choices given above, ".
+      "if you choose the <i>'Default Title'</i> choice, all items will go in ".
       "the <i>'Default Archive.org Bucket Item'</i> entered above. If you " .
       "choose <i>'Node Title'</i>, ".
       "the title of the node connected to Archive.org ".
