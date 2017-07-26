@@ -77,6 +77,102 @@ function internet_archive_admin_form($form) {
 	    'hook_internet_archive_metadata.'),
 	  );
 
+  /////////////////////////////////////////////////////////////
+  //START OF CHANGES
+  $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
+  $default_value = variable_get('internet_archive_bucket', $default_value);
+
+  $form['internet_archive_data']['internet_archive_bucket'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Default Archive.org Bucket Item'),
+	  '#default_value' => $default_value,
+	  '#description' =>
+	  t("Default name of the Archive.org bucket item. Note, this name " .
+	    "must be unique on Archive.org or controlled by the account " .
+	    "associated with the Access and Secret keys you entered above. " .
+	    "This name will be used to test your connection. If you select " .
+	    "'Default' below, all files will be uploaded to this " .
+	    "Archive.org Bucket Item."),
+	  '#required' => TRUE,
+	  );
+
+  $description =
+    t("When you upload a file to Archive.org it gets stored in a bucket ".
+      "item. This item is used in the URL of your uploaded files on " .
+      "Archive.org, i.e. http://archive.org/details/my-bucket-item-title " .
+      "Bucket item titles  must be unique on Archive.org or controlled by " .
+      "the account associated with the Access and Secret keys you entered ".
+      "above. <br/><br/>".
+      "If you choose the <i>'Default Title'</i> choice, all items will go in ".
+      "the <i>'Default Archive.org Bucket Item'</i> entered above. If you " .
+      "choose <i>'Node Title'</i>, ".
+      "the title of the node connected to Archive.org ".
+      "will be used as the title. Note: this may cause problems if the node ".
+      "title is already used as an Archive.org bucket item title. If you " .
+      "choose <i>'Custom Title'</i>, you will be able to set a custom title ".
+      "using tokens. Note: if you set the bucket item title in your custom " .
+      "metadata hook function -- <i>hook_internet_archive_metadata()</i> -- ".
+      "this setting will have no effect.");
+
+  $form['internet_archive_data']['internet_archive_bucket_name_mode'] =
+    array(
+	  '#type' => 'radios',
+	  '#title' =>t('How should the Archive.org bucket item title be set?'),
+	  '#default_value' => variable_get('internet_archive_bucket_name_mode',
+					   'default'),
+	  '#description' => $description,
+	  '#options' => array('default' => 'Default Title',
+			      'node' => t("Node Title"),
+			      'custom' => t("Custom Title"),
+			      ),
+        );
+
+  $description =
+    t("This provides a simple alternative to storing files in the default " .
+      "item above or using the node title. Use the tokens provided below to " .
+      "create a title pattern. Note, all special characters and spaces will " .
+      "be stripped and replaced with underscores. Note: this custom title ".
+      "will only be used if the 'Custom Title' option is selected above. " .
+      "AND the title is not set in a custom metadata hook function. " .
+      "<br><br>If the 'Browse Available Tokens' widget doesn't appear make ".
+      "sure the token module is enabled which is required by this field.");
+  
+  $default = variable_get('internet_archive_custom_bucket_title', FALSE);
+
+  $states =
+    array('visible' =>
+	  array(
+		//FIXME FORM API CONDITIONAL NOT WORKING, WHY?????
+		':input[name="internet_archive_data'.
+		'[internet_archive_bucket_name_mode]"]' =>
+		array('value' => 'custom'),
+		),
+	  );
+  
+  $form['internet_archive_data']['internet_archive_custom_bucket_title'] =
+    array(
+	  '#type' => 'textarea',
+	  '#title' => t('Custom Title (with Tokens)'),
+	  '#default_value' => $default,	  
+	  '#description' => $description,
+	  '#states' => $states,
+	  );
+
+  $form['internet_archive_data']['tokens'] =
+    array(
+	  '#theme' => 'token_tree_link',
+	  '#token_types' => array('node'), 
+	  '#global_types' => FALSE, 
+	  '#click_insert' => TRUE,
+	  '#states' => $states,
+	  '#suffix' => "<br/><hr><br/>",
+	  );
+
+
+
+  //END OF CHANGES
+  /////////////////////////////////////////////////////////////  
   $form['internet_archive_data']['internet_archive_update'] = array(
     '#type' => 'checkbox',
     '#title' =>
@@ -87,30 +183,10 @@ function internet_archive_admin_form($form) {
     t("If this option is checked, all item metadata will be resent to ".
       "archive.org when their associated nodes are updated."),
   );
-  $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
-  $default_value = variable_get('internet_archive_bucket', $default_value);
 
-  $form['internet_archive_data']['internet_archive_bucket'] =
-    array(
-	  '#type' => 'textfield',
-	  '#title' => t('Default Archive.org Item to store files in'),
-	  '#default_value' => $default_value,
-	  '#description' =>
-	  t("Name of the Archive.org item that files will be placed into, ".
-	    "note this has to be unique. This can be overridden by a , ".
-	    "configuration but this is the default value and used to test ".
-	    "your connection."),
-	  '#required' => TRUE,
-	  );
-  $form['internet_archive_data']['internet_archive_bucket_title'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Use node title for item name when available?'),
-    '#default_value' => variable_get('internet_archive_bucket_title', FALSE),
-    '#description' =>
-    t("This provides a simple alternative to storing files in the default ".
-      "item above. Checking this box will result in all transferred files ".
-      "being stored in a item/bucket based on their source node title."),
-  );
+
+
+  
   $form['internet_archive_data']['internet_archive_bucket_body'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use node body for item description when available?'),
@@ -120,6 +196,8 @@ function internet_archive_admin_form($form) {
       "along as the description for the item on archive.org"),
   );
 
+
+  
   $default_value =
     variable_get('internet_archive_collection', "test_collection");
   $description =

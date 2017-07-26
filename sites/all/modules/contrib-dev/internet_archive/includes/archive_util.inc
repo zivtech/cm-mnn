@@ -86,8 +86,10 @@ function internet_archive_admin_validate($element, &$form_state) {
 				 );
 
     // To test the configuration credentials, attempt to create default bucket.
-    if (! $s3->putBucket($form_state['values']['internet_archive_bucket'],NULL,
-		     $form_state['values']['internet_archive_default_perm'])) {
+    $bucket_title = $form_state['values']['internet_archive_bucket'];
+    
+    $perm = $form_state['values']['internet_archive_default_perm'];
+    if (! $s3->putBucket($bucket_title, NULL, $perm)) {
       $msg =
 	t('Could not create your default item on the Archive servers. '.
 	       'This most likely means that either:') . '<br />' .
@@ -198,37 +200,35 @@ function internet_archive_send($config, $file_info) {
 
   //CHECK TO SEE THE METADATA HOOK HAS SET A BUCKET NAME, THIS TAKES
   //PRECEDENT OVER THE OTHER METHODS
+
   if (isset($metadata['bucket-name']) && $metadata['bucket-name']) {
     $name = $metadata['bucket-name'];
     unset($metadata['bucket-name']);
   }
-  else if ($itempattern = variable_get('internet_archive_itemname', NULL)) {
-    //FIXME, TOKENS ARE NOT WORKING RIGHT NOW
-    $name = token_replace($itempattern, $type = 'node', $object = $node,
-			  $leading = '[', $trailing = ']', $options = array());
-
-    $name = internet_archive_create_item_name($name);
-  }
-  elseif (variable_get('internet_archive_bucket_title', FALSE)) {
-    $name = internet_archive_create_item_name($metadata['title']);
-  }
   else {
-    $default_item =variable_get('internet_archive_bucket',
-				variable_get('site_name', t('My Site')));
+    $bucket_name_mode = variable_get('internet_archive_bucket_name_mode',
+				     'default');
+    $site_name = variable_get('site_name', t('My Site'));
+    $default_item = variable_get('internet_archive_bucket', $site_name);
     
-    $name = internet_archive_create_item_name($default_item);
-  }
-
-  if (variable_get('internet_archive_queue_attempts', 0) > 0) {
-    if (isset($archive_data['status']) &&
-	$archive_data['status'] == ARCHIVE_FAILED) {
-      $name = $archive_data['item'];
+    switch ($bucket_name_mode) {
+    case 'node':
+      $name = $node->title;
+      break;
+    case 'custom':
+      $name = variable_get("internet_archive_custom_bucket_title",
+			   $default_item);
+      $name = token_replace($name, array('node' => $node));
+      break;
+    case 'default':
+    default:
+      $name = $default_item;
+      break;
     }
   }
 
   $headers = internet_archive_process_metadata($metadata);
-
-  $config['internet_archive_bucket'] = $name;
+  $config['internet_archive_bucket']= internet_archive_create_item_name($name);
   $s3->bucket = $config['internet_archive_bucket'];
   $archive_data['item'] = $config['internet_archive_bucket'];
   $archive_data['archive_url'] = 'http://www.archive.org/download/' .
