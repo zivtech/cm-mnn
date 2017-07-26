@@ -1062,6 +1062,7 @@ function internet_archive_get_metadata(&$node, $file_name) {
     $metadata['collection'] = explode(',', $default_collection);
   }
 
+  //TITLE IS THE HUMAN READABLE TITLE DISPLAY ON Archive.org PAGES
   //if no title has been provided, and administrative setting is set item to
   //node title, set it now
   if (variable_get('internet_archive_bucket_title', FALSE) &&
