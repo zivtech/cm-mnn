@@ -1,6 +1,7 @@
 <?php
 
 function cma_program_import_show_create($row, $variables) {
+  dsm($variables, 'var');
   global $user;
 
   $node = new stdClass();
