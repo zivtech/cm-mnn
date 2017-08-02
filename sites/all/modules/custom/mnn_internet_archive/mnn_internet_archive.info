@@ -1,0 +1,17 @@
+name = MNN Internet Archive
+package = Internet Archive
+project = "mnn_internet_archive"
+version = "7.x-1.0"
+core = 7.x
+
+dependencies[] = internet_archive
+dependencies[] = views
+
+description = Implements hook_internet_archive_metadata() and hook_internet_archive_process_remote() as well as provides views for harvesting and displaying.
+
+
+
+
+
+
+

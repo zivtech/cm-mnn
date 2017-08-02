@@ -1,0 +1,252 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function mnn_internet_archive_menu() {
+  $items['admin/config/internet_archive/mnn_metadata'] = array(
+    'title' => 'MNN Metadata Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mnn_internet_archive_admin_form'),
+    'access arguments' => array('administer internet_archive'),
+    'weight' => 17,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive MNN metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function mnn_internet_archive_admin_form($form, &$form_state) {
+  $form['header'] = array(
+			  '#markup' =>
+			  "No settings at this time, just a place holder",
+			  );
+			 
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_internet_archive_metadata().
+ */
+function mnn_internet_archive_internet_archive_metadata($node = NULL,
+								 $file_name) {
+  $metadata = array();
+
+  if ($node) {
+    $metadata['title'] = $node->title;
+    
+    if (isset($node->body)) {
+      $metadata['description'] = $node->body;
+    }
+    else {
+      $narrative =
+	mnn_internet_archive_get_single_field_value($node,
+							     'field_narrative',
+							     'value');
+
+      if ($narrative) {
+	$metadata['description'] = $narrative;
+      }
+      else {
+	$short_desc =
+	  mnn_internet_archive_get_single_field_value($node,
+							       'field_short_'.
+							       'description',
+							       'value');
+
+	if ($short_desc) {
+	  $metadata['description'] = $short_desc;
+	}
+      }
+    }
+    $metadata['date'] = date("Y-m-d", $node->created);
+  }
+
+  
+
+  //grab all the cm_show specific metadata fields
+  if ($node->type == 'cm_show') {
+
+    //find project
+    $project_id =
+      mnn_internet_archive_get_single_field_value($node,
+							   'og_node2',
+							   'target_id');
+    if ($project_id) {
+      $project = node_load($project_id);
+      $producer =
+	mnn_internet_archive_get_display_name($project->uid);
+
+      $metadata['creator'] = $producer;
+      $metadata['project'] = $project->title;
+
+      
+      $episode_number =
+	mnn_internet_archive_get_single_field_value($node,
+							     'field_episode_'.
+							     'number',
+							     'value');
+
+      if ($episode_number) {
+	$bucket_name = 'mnn_'. $project_id . '_' . $episode_number;
+	$bucket_name = internet_archive_create_item_name($bucket_name);
+	$metadata['bucket-name'] = $bucket_name;
+	$metadata['mnn-house-id'] = $bucket_name;
+      }
+    }
+
+    $genre_tid =
+      mnn_internet_archive_get_single_field_value($node,
+							   'field_pbcore_'.
+							   'genres',
+							   'tid');
+
+    if ($genre_tid) {
+      $genre = taxonomy_term_load($genre_tid);
+      if ($genre) {
+	//here we set the pbcore_genre custom field, as well as the subject
+	//pbcore_genre gives us more consistant control over pulling content by
+	//genre. Subject enables people to browse by genre on archive.org
+	$metadata['pbcore-genre'] = $genre->name;
+	$metadata['subject'] = $genre->name;
+      }
+    }
+    
+    $fcc_rating_tid =
+      mnn_internet_archive_get_single_field_value($node,
+							   'field_pbcore_'.
+							   'fcc_ratings',
+							   'tid');
+
+    if ($fcc_rating_tid) {
+      $fcc_rating = taxonomy_term_load($fcc_rating_tid);
+      if ($fcc_rating) {
+	$metadata['tv-parental-guidelines'] = $fcc_rating->name;
+      }
+    }
+
+    $language_tid =
+      mnn_internet_archive_get_single_field_value($node,
+							   'field_pbcore_'.
+							   'languages',
+							   'tid');
+
+    if ($language_tid) {
+      $language = taxonomy_term_load($language_tid);
+      if ($language) {
+	$metadata['language'] = $language->name;
+      }
+    }
+
+  }
+
+  $data = array($metadata);
+  return $data;
+}
+
+/**
+ * Implements hook_internet_archive().
+ */
+function mnn_internet_archive_internet_archive(&$archive_data, $op) {
+
+}
+
+/**                                                                            
+ * Helper function to get a single value off of a entity  
+*/
+function mnn_internet_archive_get_single_field_value($entity,
+							      $field_name,
+							      $index='value') {
+  if (isset($entity->{$field_name})) {
+    $field = $entity->{$field_name};
+    if (isset($field[LANGUAGE_NONE]) &&
+        isset($field[LANGUAGE_NONE][0]) &&
+        isset($field[LANGUAGE_NONE][0][$index])) {
+      return $field[LANGUAGE_NONE][0][$index];
+    }
+  }
+  return NULL;
+}
+
+/**
+  * Get the the display name of the contact of the contact
+  */
+function mnn_internet_archive_get_display_name($uid) {
+
+  $cid = cm_crew_connect_get_cid($uid);
+
+  if ($cid) {
+    civicrm_initialize();
+    
+    $result = civicrm_api3('Contact', 'get', array(
+						   'sequential' => 1,
+						   'id' => $cid,
+						   ));
+
+    $display_name = (isset($result) && isset($result['values']) && 
+		     isset($result['values'][0])) ? 
+      $result['values'][0]['display_name'] : NULL;
+      
+    return $display_name;
+  }
+  return "";
+}
+
+/**
+ * Implements hook_views_api().
+ * @return Array with Views API version.
+ */
+function mnn_internet_archive_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'mnn_internet_archive').'/includes'
+	       );
+}
+
+/**
+ * Implements hook_internet_archive_process_remote_files()
+ *
+ */
+function mnn_internet_archive_internet_archive_process_remote($files){
+
+  $prefix = 'mnn_';
+  $index = strlen($prefix);
+  
+  foreach($files as $file) {
+    //does file start with mnn?
+    if (strpos($file, $prefix) === 0) {
+      $parts = explode('_', $file);
+      $project_id = $parts[1];
+      $episode_number = substr($parts[2], 0, strpos($parts[2], '.'));
+      if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+	$show_nid =
+	  mnn_show_get_existing_show_for_episode_number($project_id,
+							NULL,
+							$episode_number);
+	
+	if ($show_nid) {
+	  $show = node_load($show_nid);
+	  
+	  if ($show) {
+	    $name = 'field_internet_archive_remote';
+	    $value =
+	      mnn_internet_archive_get_single_field_value($show,
+								   $name);
+	    if (!$value) {
+	      $show->field_internet_archive_remote[LANGUAGE_NONE][0]['value'] =
+		$file;
+	      node_save($show);
+	    }
+	  }
+	}
+      }	
+    }
+  }
+  
+}

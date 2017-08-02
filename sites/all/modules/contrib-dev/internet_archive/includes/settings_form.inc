@@ -27,6 +27,7 @@ function internet_archive_admin_form($form) {
 	  '#type' => 'fieldset',
 	  '#element_validate' => array('internet_archive_admin_validate'),
 	  '#title' => 'Archive.org Account Configuration',
+	  '#weight' => -10,
 	  '#description' =>
 	  t('Global settings for Archive.org S3 configurations.'),
   );
@@ -66,81 +67,141 @@ function internet_archive_admin_form($form) {
 	    'http://www.archive.org/account/s3.php'),
 	  '#required' => TRUE,
 	  );
-
-  $form['internet_archive_data'] =
-    array(
-	  '#type' => 'fieldset',
-	  '#title' => 'Basic item and metadata options',
-	  '#description' =>
-	  t('Basic item and metadata options. More advanced configurations '.
-	    'can override these settings in a custom module via '.
-	    'hook_internet_archive_metadata.'),
-	  );
-
-  /////////////////////////////////////////////////////////////
-  //START OF CHANGES
   $default_value =str_replace(' ','_', variable_get('site_name',t('My Site')));
   $default_value = variable_get('internet_archive_bucket', $default_value);
-
-  $form['internet_archive_data']['internet_archive_bucket'] =
+  $description =
+    t("Default name of the Archive.org bucket item. This bucket item name ".
+      "will be used to test your account credentials on Archive.org. The ".
+      "machine friendly version of this name -- the name you entered with ".
+      "all non alphanumeric characters replaced by underscores -- must be ".
+      "unique on Archive.org. You can check if the machine friendly bucket ".
+      "item title is available by entering the following URL with the ".
+      "'my_bucket_item_name' part replaced by your desired machine ".
+      "friendly bucket item name.");
+  
+  $form['internet_archive_account']['internet_archive_bucket'] =
     array(
 	  '#type' => 'textfield',
 	  '#title' => t('Default Archive.org Bucket Item'),
+	  '#description' => $description,
 	  '#default_value' => $default_value,
-	  '#description' =>
-	  t("Default name of the Archive.org bucket item. Note, this name " .
-	    "must be unique on Archive.org or controlled by the account " .
-	    "associated with the Access and Secret keys you entered above. " .
-	    "This name will be used to test your connection. If you select " .
-	    "'Default' below, all files will be uploaded to this " .
-	    "Archive.org Bucket Item."),
 	  '#required' => TRUE,
 	  );
 
+  //////////////////////////////////////////////////////////////////////
+  //FIELD SUPPORT
+  $description = '<div>' .
+    t('Select any fields below that you would like to use to transfer '.
+      'files to Archive.org. File, text and embedded media fields are '.
+      'supported.') . '<strong>' .
+    t(' All fields selected must contain accessible path information as '.
+      'their value. Currently this only works with "file" and "text" fields.'.
+      'If you are storing path data for files on a remote server, DO NOT '.
+      'select the field here. Please enable and configure the Internet '.
+      'Archive Remote submodule.') .
+    '</strong>';
+
+  $form['internet_archive']['internet_archive_field_support'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Field Integration',
+	  '#description' => $description,
+	  '#weight' => -9,
+	  );
+
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields'] =
+    array(
+	  '#type' => 'select',
+	  '#title' => t('Include the following fields as file sources'),
+	  '#default_value' => variable_get('internet_archive_fields', FALSE),
+	  '#options' => internet_archive_field_select_options(),
+	  '#multiple' => TRUE,
+	  );
+
+  $default_value =
+    variable_get('internet_archive_fields_list_display', TRUE);
+  
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields_list_display'] =
+    array(
+	  '#type' => 'checkbox',
+	  '#title' =>
+	  t('Display archive.org file information when displaying '.
+	    'selected fields on nodes?'),
+	  '#default_value' => $default_value,
+	  );
+
+  $default_value = variable_get('internet_archive_fields_add_inline', TRUE);
+  $form['internet_archive']['internet_archive_field_support']
+    ['internet_archive_fields_add_inline'] =
+    array(
+	  '#type' => 'checkbox',
+	  '#title' =>
+	  t('Offer "add to Archive.org" link when displaying selected '.
+	    'fields on nodes?'),
+	  '#default_value' => $default_value,
+	  );
+  
+  //////////////////////////////////////////////////////////////////////
+  //METADATA OPTIONS
+  $form['internet_archive_data'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Metadata options',
+	  '#weight' => -6,
+	  '#description' =>
+	  t('Basic item and metadata options. More advanced configurations '.
+	    'can override these settings in a custom module by implementing '.
+	    'hook_internet_archive_metadata().'),
+	  );
+  
+
   $description =
     t("When you upload a file to Archive.org it gets stored in a bucket ".
-      "item. Bucket items have both a human readable title and a machine " .
+      "item. Bucket items have both a human readable name that contains ".
+      "spaces and special characters, and a machine " .
       "friendly name that will only have alphanumeric characters and " .
-      "underscores. As you configure the title below you will be configuring ".
-      "the human readable title. The machine friendly version will be " .
+      "underscores. As you configure the name below you will be configuring ".
+      "the human readable name. The machine friendly version will be " .
       "auto-generated using the human readable version, replacing special " .
       "characters and spaces with underscores. " .
       "The machine name is used in the url on Archive.org, i.e. " .
-      "http://archive.org/details/my-bucket-item-title <br/><br/>" .
-      "Machine name bucket item titles  must be unique on Archive.org or " .
+      "http://archive.org/details/my_bucket_item_name <br/><br/>" .
+      "Machine name bucket item names  must be unique on Archive.org or " .
       "controlled by the account associated with the Access and Secret keys ".
       "you entered above. <br/><br/> For the choices given above, ".
-      "if you choose the <i>'Default Title'</i> choice, all items will go in ".
-      "the <i>'Default Archive.org Bucket Item'</i> entered above. If you " .
-      "choose <i>'Node Title'</i>, ".
-      "the title of the node connected to Archive.org ".
-      "will be used as the title. Note: this may cause problems if the node ".
-      "title is already used as an Archive.org bucket item title. If you " .
-      "choose <i>'Custom Title'</i>, you will be able to set a custom title ".
-      "using tokens. Note: if you set the bucket item title in your custom " .
+      "if you choose the <i>'Default Bucket Item'</i> choice, all items will ".
+      "go in the <i>'Default Archive.org Bucket Item'</i> entered above. " .
+      "If you choose <i>'Node Title'</i>, the title of the node".
+      "connected to Archive.org will be used as the bucket item name. ".
+      "Note: this may cause problems if the node title is already ".
+      "used as an Archive.org bucket item name. If you choose" .
+      "<i>'Custom Tokenized '</i>, you will be able to set a custom name ".
+      "using tokens. Note: if you set the bucket item name in your custom " .
       "metadata hook function -- <i>hook_internet_archive_metadata()</i> -- ".
       "this setting will have no effect.");
 
   $form['internet_archive_data']['internet_archive_bucket_name_mode'] =
     array(
 	  '#type' => 'radios',
-	  '#title' =>t('How should the Archive.org bucket item title be set?'),
+	  '#title' =>t('How should the Archive.org bucket item name be set?'),
 	  '#default_value' => variable_get('internet_archive_bucket_name_mode',
 					   'default'),
 	  '#description' => $description,
-	  '#options' => array('default' => 'Default Title',
+	  '#options' => array('default' => 'Default Bucket Item Name',
 			      'node' => t("Node Title"),
-			      'custom' => t("Custom Title"),
+			      'custom' => t("Custom Tokenized Name"),
 			      ),
         );
 
   $description =
     t("This provides a simple alternative to storing files in the default " .
       "item above or using the node title. Use the tokens provided below to " .
-      "create a title pattern. Note, all special characters and spaces will " .
-      "be stripped and replaced with underscores. Note: this custom title ".
-      "will only be used if the 'Custom Title' option is selected above. " .
-      "AND the title is not set in a custom metadata hook function. " .
+      "create a name pattern. Note, all special characters and spaces will " .
+      "be stripped and replaced with underscores. Note: this custom name ".
+      "will only be used if the 'Custom Tokenized Name' option is selected  " .
+      "above AND the name is not set in a custom metadata hook function. " .
       "<br><br>If the 'Browse Available Tokens' widget doesn't appear make ".
       "sure the token module is enabled which is required by this field.");
   
@@ -159,7 +220,7 @@ function internet_archive_admin_form($form) {
   $form['internet_archive_data']['internet_archive_custom_bucket_title'] =
     array(
 	  '#type' => 'textarea',
-	  '#title' => t('Custom Title (with Tokens)'),
+	  '#title' => t('Custom Name (with Tokens)'),
 	  '#default_value' => $default,	  
 	  '#description' => $description,
 	  '#states' => $states,
@@ -175,10 +236,6 @@ function internet_archive_admin_form($form) {
 	  '#suffix' => "<br/><hr><br/>",
 	  );
 
-
-
-  //END OF CHANGES
-  /////////////////////////////////////////////////////////////  
   $form['internet_archive_data']['internet_archive_update'] = array(
     '#type' => 'checkbox',
     '#title' =>
@@ -189,9 +246,6 @@ function internet_archive_admin_form($form) {
     t("If this option is checked, all item metadata will be resent to ".
       "archive.org when their associated nodes are updated."),
   );
-
-
-
   
   $form['internet_archive_data']['internet_archive_bucket_body'] = array(
     '#type' => 'checkbox',
@@ -256,63 +310,13 @@ function internet_archive_admin_form($form) {
       "able to defer the type from the file itself."),
   );
   
-  $description = '<div>' .
-    t('Select any fields below that you would like to use to transfer '.
-      'files to Archive.org. File, text and embedded media fields are '.
-      'supported.') . '<strong>' .
-    t(' All fields selected must contain accessible path information as '.
-      'their value. Currently this only works with "file" and "text" fields.'.
-      'If you are storing path data for files on a remote server, DO NOT '.
-      'select the field here. Please enable and configure the Internet '.
-      'Archive Remote submodule.') .
-    '</strong>';
-    
-  $form['internet_archive']['internet_archive_field_support'] =
-    array(
-	  '#type' => 'fieldset',
-	  '#title' => 'Field Integration',
-	  '#description' => $description,
-	  );
-
-  $form['internet_archive']['internet_archive_field_support']
-    ['internet_archive_fields'] =
-    array(
-	  '#type' => 'select',
-	  '#title' => t('Include the following fields as file sources'),
-	  '#default_value' => variable_get('internet_archive_fields', FALSE),
-	  '#options' => internet_archive_field_select_options(),
-	  '#multiple' => TRUE,
-	  );
-
-  $default_value =
-    variable_get('internet_archive_fields_list_display', TRUE);
-  
-  $form['internet_archive']['internet_archive_field_support']
-    ['internet_archive_fields_list_display'] =
-    array(
-	  '#type' => 'checkbox',
-	  '#title' =>
-	  t('Display archive.org file information when displaying '.
-	    'selected fields on nodes?'),
-	  '#default_value' => $default_value,
-	  );
-
-  $default_value = variable_get('internet_archive_fields_add_inline', TRUE);
-  $form['internet_archive']['internet_archive_field_support']
-    ['internet_archive_fields_add_inline'] =
-    array(
-	  '#type' => 'checkbox',
-	  '#title' =>
-	  t('Offer "add to Archive.org" link when displaying selected '.
-	    'fields on nodes?'),
-	  '#default_value' => $default_value,
-	  );
-  
-
+  /////////////////////////////////////////////////////////////////////
+  //REPORT SETTINGS
   $form['internet_archive']['internet_archive_report_settings'] =
     array(
 	  '#type' => 'fieldset',
 	  '#title' => 'Report Settings',
+	  '#weight' => -5,
 	  '#description' => '',
 	  );
 
@@ -344,6 +348,7 @@ function internet_archive_admin_form($form) {
   $form['internet_archive']['internet_archive_debug'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable Debug Mode'),
+    '#weight' => 10,
     '#default_value' => variable_get('internet_archive_debug', FALSE),
     '#description' =>
     t("Enables verbose watchdog messages for debug purposes."),

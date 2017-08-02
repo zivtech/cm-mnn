@@ -1,0 +1,17 @@
+name = Custom Internet Archive
+package = Internet Archive
+project = "custom_internet_archive"
+version = "7.x-1.0"
+core = 7.x
+
+dependencies[] = internet_archive
+dependencies[] = views
+
+description = And example/template module that implements the hooks in internet_archive() and internet_archive_remote(). The module provides basic views for harvesting files from drupal fields for upload and displaying those files in views. The hooks harvest files on drupal nodes and files on remote servers as well as set metadata to be pushed to Archive.org. 
+
+
+
+
+
+
+
