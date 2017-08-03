@@ -14,10 +14,25 @@ function cma_program_import_process_csv($import_node) {
   while ($line = fgetcsv($file_handle)) {
     $line_array = array();
     foreach ($keys as $key) {
-      $line_array[$key] = array_shift($line);
+      $text = array_shift($line);
+      $strlen = strlen( $text );
+      $safe_text = '';
+      for( $i = 0; $i <= $strlen; $i++ ) {
+	$char = substr( $text, $i, 1 );
+	if (!ctype_space($char) && !ctype_alnum($char) && !ctype_punct($char)){
+	  $safe_text .= '|';
+	}
+	else {
+	  $safe_text .= $char;
+	}
+      }
+      $safe_text = str_replace('|||', "'", $safe_text);
+      $safe_text = str_replace('|', "", $safe_text);
+      $line_array[$key] = $safe_text;
     }
     $csv_array[] = $line_array;
   }
+
   return($csv_array);
 
 }
