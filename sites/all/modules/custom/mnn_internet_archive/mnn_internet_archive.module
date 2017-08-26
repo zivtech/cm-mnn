@@ -215,16 +215,26 @@ function mnn_internet_archive_views_api() {
  */
 function mnn_internet_archive_internet_archive_process_remote($files){
 
-  $prefix = 'mnn_';
-  $index = strlen($prefix);
-  
   foreach($files as $file) {
-    //does file start with mnn?
-    if (strpos($file, $prefix) === 0) {
-      $parts = explode('_', $file);
+    $pathinfo = pathinfo($file);
+    $name = $pathinfo['filename'];
+    $parts = explode('_', $name);
+
+    if ($parts[0] == 'mnn') {
       $project_id = $parts[1];
-      $episode_number = substr($parts[2], 0, strpos($parts[2], '.'));
-      if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+      $episode_number = $parts[2];
+    }
+    else {
+      $project_id = $parts[0];
+      $episode_number = $parts[1];
+    }
+    
+    if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+
+      $project = node_load($project_id);
+      $field = 'field_internet_archive_opt_out';
+      $opt_out = mnn_internet_archive_get_single_field_value($project, $field);
+      if (!$opt_out) {
 	$show_nid =
 	  mnn_show_get_existing_show_for_episode_number($project_id,
 							NULL,
@@ -237,7 +247,7 @@ function mnn_internet_archive_internet_archive_process_remote($files){
 	    $name = 'field_internet_archive_remote';
 	    $value =
 	      mnn_internet_archive_get_single_field_value($show,
-								   $name);
+							  $name);
 	    if (!$value) {
 	      $show->field_internet_archive_remote[LANGUAGE_NONE][0]['value'] =
 		$file;
@@ -245,8 +255,7 @@ function mnn_internet_archive_internet_archive_process_remote($files){
 	    }
 	  }
 	}
-      }	
-    }
+      }
+    }	
   }
-  
 }
