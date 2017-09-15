@@ -232,9 +232,9 @@ function mnn_internet_archive_internet_archive_process_remote($files){
     if (ctype_digit($project_id) && ctype_digit($episode_number)) {
 
       $project = node_load($project_id);
-      $field = 'field_internet_archive_opt_out';
-      $opt_out = mnn_internet_archive_get_single_field_value($project, $field);
-      if (!$opt_out) {
+      $field = 'field_internet_archive_opt_in';
+      $opt_in = mnn_internet_archive_get_single_field_value($project, $field);
+      if ($opt_in) {
 	$show_nid =
 	  mnn_show_get_existing_show_for_episode_number($project_id,
 							NULL,
