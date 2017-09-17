@@ -1,4 +1,48 @@
 <?
+/**
+ * File will return the label for the Position on the Crew Connect
+ * It will look at both the current field for position, as well as the 
+ * legacy
+ */
+function cm_crew_connect_get_position_label(&$request) {
+  $position = array();
+  
+  //DOES THE NEW POSITION FIELD EXIST?
+  $position_field = field_info_instance('node','field_crew_position_taxonomy',
+					 'crew_connect_request');
+  if ($position_field) {
+    $tid =
+      cm_crew_connect_get_single_field_value($request,
+					     'field_crew_position_taxonomy',
+					     'tid');
+    
+    $term = $tid ? taxonomy_term_load($tid) : NULL;
+    $position['id'] = $tid;
+    $position['label'] = $term ? $term->name : '';
+  }
+  //ELSE, DOES THE LEGACY POSITION FIELD EXIST
+  else {
+    $position_field = field_info_instance('node', 'field_crew_positions',
+					  'crew_connect_request');
+    if ($position_field) {
+      $value =
+	cm_crew_connect_get_single_field_value($request,
+					       'field_crew_positions',
+					       'tid');
+
+      $position_field = field_info_field('field_crew_positions');   
+      $allowed_values = list_allowed_values($position_field);
+      
+      $position['id'] = $tid;
+      $position['label'] =
+	$allowed_values[$value] ? $allowed_values[$value] : '';
+
+    }
+  }
+   
+  return $position;
+}
+
 /**                                                                            
  * Helper function to get a single value off of a entity  
 */
@@ -32,106 +76,34 @@ function cm_crew_connect_user_has_role($roles = array()) {
   }
   return FALSE;
 }           
-
-function cm_crew_connect_role_position_mapping() {
-
-  $ret = array(
-	  'admin' => array(
-				"express_studios_general",
-				"editor_premiere",
-				"editor_xpression_cg",
-				"studios_camera_manual",
-				"studios_camera_robotic",
-				"studios_floor_manager",
-				"studios_audio",
-				"studios_switcher",
-				"studios_teleprompter",
-				"studios_cg_operator",
-				"studios_director",
-        "studios_general_prod_asst",
-		),
-	  'Staff - All' => array(
-				"express_studios_general",
-				"editor_premiere",
-				"editor_xpression_cg",
-				"studios_camera_manual",
-				"studios_camera_robotic",
-				"studios_floor_manager",
-				"studios_audio",
-				"studios_switcher",
-				"studios_teleprompter",
-				"studios_cg_operator",
-				"studios_director",
-        "studios_general_prod_asst",
-		),
-
-    'DSTE' => array(
-        "express_studios_general",
-    ),
-    'FH - Express' => array(
-        "express_studios_general",
-    ),    
-	  'PREM' => array(
-			  "editor_premiere",
-		),	       
-	  'FH - Premiere' => array(
-			  "editor_premiere",
-		),
-    'DSTW' => array(
-				"editor_xpression_cg",
-				"studios_camera_manual",
-				"studios_camera_robotic",
-				"studios_floor_manager",
-				"studios_audio",
-				"studios_switcher",
-				"studios_teleprompter",
-				"studios_cg_operator",
-				"studios_director",
-        "studios_general_prod_asst",
-    ),
-    'FH - Studio' => array(
-				"editor_xpression_cg",
-				"studios_camera_manual",
-				"studios_camera_robotic",
-				"studios_floor_manager",
-				"studios_audio",
-				"studios_switcher",
-				"studios_teleprompter",
-				"studios_cg_operator",
-				"studios_director",
-        "studios_general_prod_asst",
-    ),            
-	       );
-  return $ret;
-}
-
-function cm_crew_connect_role_positions($mapping) {
-  $positions = NULL;
-  $is_first = TRUE;
-  $sql = "SELECT name from {role}";
-  $roles_result = db_query($sql);
-  
-  while($role = $roles_result->fetchObject()) {
-    if (!cm_crew_connect_user_has_role(array($role->name))) {
-      continue;
+/**
+ * Function will return all the possible Position names on a Crew Request
+ *
+ * @return $positions - '+' deliminated string of position tid's
+ */
+function cm_crew_connect_get_all_positions() {
+  //FIXME IMPLEMENT!
+  $positions = array();
+  //FIND POSITIONS FROM THE "NEW" POSITION FIELD
+  //FIND POSITIONS FROM LEGACY POSITION FIELD
+  //
+  $position_arg = '';
+  foreach($positions as $position) {
+    if (!$is_first) {
+      $positions .= "+";
     }
-
-    if (isset($mapping[$role->name])) {
-      foreach($mapping[$role->name] as $position) {
-	if (!$is_first) {
-	  $positions .= "+";
-	}
-	else {
-	  $is_first = FALSE;
-	}
-  
-	$positions .= $position;
-      }
+    else {
+      $is_first = FALSE;
     }
+    $position_arg .= $position;
   }
-  return $positions;
+
+  return $position_arg;
 }
 
+/**
+ * Finds all authors of Crew Requests other than the logged in user
+ */
 function cm_crew_connect_other_crew_producers() {
   global $user;
   $sql = "SELECT distinct uid FROM node WHERE type = 'crew_connect_request'";
@@ -154,6 +126,10 @@ function cm_crew_connect_other_crew_producers() {
   return $users;
 }
 
+/**
+ * Function gets the set of current drupal status messages and updates them
+ * so that the status messages make more sense for crew connect
+ */
 function cm_crew_connect_override_messages() {
   $messages = drupal_get_messages();
   foreach($messages as $type=>$type_msgs) {
@@ -203,9 +179,12 @@ function cm_crew_connect_override_messages() {
   }
 }
 
+/**
+ * Function returns an Application node for a nid of a Crew Request node
+ */
 function cm_crew_connect_get_application_for_request($nid) {
   $sql =
-    "SELECT entity_id FROM field_data_field_app_crew_connect_node             
+    "SELECT entity_id FROM {field_data_field_app_crew_connect_node}         
      WHERE field_app_crew_connect_node_target_id = :nid";
   $results = db_query($sql, array(':nid' => $nid));
   $result = $results->fetchObject();

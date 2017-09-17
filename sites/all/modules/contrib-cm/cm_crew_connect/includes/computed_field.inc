@@ -1,12 +1,8 @@
 <?
-/*
-function computed_field_field_civicrm_event_link_display($field, $entity_field_item, $entity_lang, $langcode) {
- dsm($field, 'field');
-dsm($entity_field_item, 'item');
-dsm($entity, 'ent');  
-  return l('hi mom', '');
-  }*/
-
+/**
+ * This defines the display of the CiviCRM Event Link field on the
+ * Crew Connect Request content type
+ */
 function computed_field_field_civicrm_event_link_compute(&$entity_field, 
 							 $entity_type, 
 							 $entity, $field, 
@@ -22,6 +18,8 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
     $deleting_application =  $_SESSION['cm_crew_connect_deleting_application'];
 
     $_SESSION['cm_crew_connect_deleting_application'] = FALSE;
+
+    //IF WE ARE DELETING THE APPLICATION, DON'T FIRE THIS CODE
     if (!$deleting_application) {
 
       //find applicant node 
@@ -54,10 +52,11 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
 
     //if it exists, find particpant id and contact id, and build link
     if ($participant_id) {
-      $result = civicrm_api3('Participant', 'get', array(
-							 'sequential' => 1,
-							 'id' => $participant_id,
-							 ));
+      $result = civicrm_api3('Participant', 'get',
+			     array(
+				   'sequential' => 1,
+				   'id' => $participant_id,
+				   ));
       if ($result && isset($result['values']) && $result['values'] &&
 	  isset($result['values'][0]) && $result['values'][0]) {
 	$contact_id = $result['values'][0]['contact_id'];
@@ -67,14 +66,10 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
 		       'id' => $participant_id, 
 		       'cid' => $contact_id,
 		     );
-	
-	//contact/view/participant?reset=1&action=update&id=44639&cid=24432&context=search&compContext=participant&key=df0c891182920977f805756b43ddd75a_158 [^]
 
       $link = l(t("Manage CiviCRM Event"),
 		  'civicrm/contact/view/participant',array('query'=>$query));
       }
-
-		  
     }
     //link will be as it was
     else {
@@ -85,10 +80,6 @@ function computed_field_field_civicrm_event_link_compute(&$entity_field,
       $link = l(t("Manage CiviCRM Event"), 
 		'civicrm/event/manage/settings', array('query'=>$query));
     }
-    
-		
-  
-
   }
   $entity_field[0]['value'] = $link;
   return $link;

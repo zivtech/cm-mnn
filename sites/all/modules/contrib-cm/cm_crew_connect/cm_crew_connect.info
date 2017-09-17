@@ -1,20 +1,27 @@
 name = "CM Crew Connect"
-description = "Provides helper files for managing crew connections. Relies on the Crew Request and Crew Application content types"
+description = "Provides helper files for managing crew connections. Relies on the Community Media Project (cm_project) module"
 
 package = "Community Media"
 core = 7.x
 
-files[] = includes/computed_field.inc
+dependencies[] = cm_project
+dependencies[] = computed_fields
+dependencies[] = entity
+dependencies[] = entityreference
+dependencies[] = views
+dependencies[] = views_bulk_operations
+
+
+
 files[] = includes/civicrm.inc
+files[] = includes/computed_field.inc
 files[] = includes/form_alter.inc
 files[] = includes/form.inc
-files[] = includes/menu.inc
 files[] = includes/misc.inc
 files[] = includes/page.inc
 files[] = includes/phpfields.inc
 files[] = includes/postsave.inc
 files[] = includes/presave.inc
-files[] = includes/validate.inc
-files[] = includes/view_util.inc
+files[] = includes/setting_form.inc
 
 

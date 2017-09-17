@@ -1,0 +1,9 @@
+name = MNN Crew Connect
+package = MNN Custom
+description = "Implments hooks declared in CM Crew Connect. Most hooks deal with location and studios and who can see each type of Crew Requests"
+
+core = 7.x
+files[] = mnn_crew_connect.module
+
+
+

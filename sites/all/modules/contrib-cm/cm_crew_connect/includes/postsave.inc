@@ -20,7 +20,7 @@ function cm_crew_connect_node_postsave(&$node) {
 					     'field_app_crew_connect_node',
 					     'target_id');
  
-
+    //resave Crew Connect Request node so computed field can be set
     $request = node_load($request_nid);
     if ($request) {
       node_save($request);

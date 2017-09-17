@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Implementes the CM Crew Connect Module
+ * Implements the CM Crew Connect Module
  */
 
 /**
@@ -10,11 +10,19 @@
 function cm_crew_connect_menu() {
   $items = array();
 
+  $items['admin/config/crew_connect'] =
+   array(
+	 'title' => 'Crew Connect Settings',
+	 'page callback' => 'drupal_get_form',
+	 'page arguments' => array('cm_crew_connect_admin_form'),
+	 'access arguments' => array('administer crew connect'),
+	 );
+ 
   $items['user/%/cm_crew_connect'] =
     array(
 	  'title' => 'Crew Connect',
 	  'description' => 'Crew Connect',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('use crew connect'),
 	  'page callback' => 'cm_crew_connect_page',
 	  'page arguments'   => array(1),
 	  'type' => MENU_LOCAL_TASK,
@@ -24,7 +32,7 @@ function cm_crew_connect_menu() {
     array(
 	  'title' => 'Crew Connect Search',
 	  'description' => 'Crew Connect Search',
-	  'access arguments' => array('access content'),
+	  'access arguments' => array('use crew connect'),
 	  'page callback' => 'cm_crew_connect_search_page',
 	  'page arguments'   => array(1),
 	  'type' => MENU_CALLBACK,
@@ -45,16 +53,41 @@ function cm_crew_connect_init() {
   module_load_include('inc', 'cm_crew_connect', 'includes/computed_field');
   module_load_include('inc', 'cm_crew_connect', 'includes/civicrm');
   module_load_include('inc', 'cm_crew_connect', 'includes/form_alter');
-  module_load_include('inc', 'cm_crew_connect', 'includes/form');
-  module_load_include('inc', 'cm_crew_connect', 'includes/menu');
   module_load_include('inc', 'cm_crew_connect', 'includes/misc');
   module_load_include('inc', 'cm_crew_connect', 'includes/page');
   module_load_include('inc', 'cm_crew_connect', 'includes/phpfields');
   module_load_include('inc', 'cm_crew_connect', 'includes/postsave');
   module_load_include('inc', 'cm_crew_connect', 'includes/presave');
-  module_load_include('inc', 'cm_crew_connect', 'includes/validate');
-  module_load_include('inc', 'cm_crew_connect', 'includes/view_util');
+  module_load_include('inc', 'cm_crew_connect', 'includes/settings_form');
 }
+function custom_example_permission() {
+  return
+    array(
+	  'administer crew connect' =>
+	  array(
+		'title' => t('Administer my module'),
+		'description' => t('Access settings form'),
+		),
+	  );
 
+      array(
+	  'use crew connect' =>
+	  array(
+		'title' => t('Able to use crew connect'),
+		'description' => t('See the Crew Connect Tab'),
+		),
+	  );
 
+}
+/**
+ * Implements hook_views_api
+ */
+function cm_crew_connect_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'cm_crew_connect').'/includes'
+	       );
+}
 
