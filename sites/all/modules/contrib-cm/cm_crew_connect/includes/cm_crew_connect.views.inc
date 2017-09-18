@@ -1,6 +1,6 @@
 <?php
 
-function cma_program_import_views_default_views() {
+function cm_crew_connect_views_default_views() {
 
   //FOR EACH VIEW, COPY EXPORT CODE THEN ADD IT TO THIS ARRAY
   $views = array();

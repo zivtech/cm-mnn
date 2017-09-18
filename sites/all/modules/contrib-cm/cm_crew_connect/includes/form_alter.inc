@@ -85,31 +85,8 @@ function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
     //FIND A POSITION TO ADD TO MESSAGE PROMPT
     $position = '';
     
-    //DOES THE NEW POSITION FIELD EXIST?
-    $field = field_info_instance('node', 'field_crew_position_taxonomy',
-				 'crew_connect_request');
-    if ($field) {
-      $tid =
-	cm_crew_connect_get_single_field_value($request,
-					       'field_crew_position_taxonomy',
-					       'tid');
-      
-      $term = $language_tid ? taxonomy_term_load($tid) : NULL;
-      $position = $term ? $term->name : '';
-    }
-    //ELSE, DOES THE LEGACY POSITION FIELD EXIST
-    else {
-      $field = field_info_instance('node', 'field_crew_positions',
-				   'crew_connect_request');
-      //LEGACY HAD POSITION IN TITLE, HACKY BUT EFFECTIVE
-      //FIXME GRAB POSITION OFF $request, NOT FROM TITLE
-      if ($field) {
-	$position = $request ?
-	  substr($request->title, strpos($request->title, ":") + 2) : '';  
-	
-      }
-    }
-
+    $position_array = cm_crew_connect_get_position_label($request);
+    $position = $position_array['label'];
     $text = "<h3>".
       t('Are you sure you want to Cancel this "!position" Crew Request?',
 	array('!position' => $position))."</h3>";
@@ -138,11 +115,14 @@ function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
   // REQUEST SEARCH FORM FOR PRODUCERS
   // CONVERTS TEXT FIELD TO DROPDOWN FIELD
   // https://www.drupal.org/node/1549250
-  if ($form['#id'] == 'views-exposed-form-crew-connect-search-page') {
+  else if ($form['#id'] == 'views-exposed-form-crew-connect-search-page') {
     $form['submit']['#value'] = "Search";
-
-    //CALLS HOOKS TO MAKE CUSTOM IMPROVEMENTS TO THE SEARCH FORM
-    drupal_alter("crew_connect_search_form_alter", $form);
+    //WE WILL LOOP THROUGH ALL THE FUNCTION THAT DEFINE OUR HOOK
+    $hook_name = "crew_connect_search_form_alter";
+    foreach (module_implements($hook_name) as $module) {
+      $function = $module . '_' . $hook_name;
+      $function($form);
+    } 
   }    
 }
 

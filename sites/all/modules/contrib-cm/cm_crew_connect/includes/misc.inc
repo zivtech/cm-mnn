@@ -33,7 +33,7 @@ function cm_crew_connect_get_position_label(&$request) {
       $position_field = field_info_field('field_crew_positions');   
       $allowed_values = list_allowed_values($position_field);
       
-      $position['id'] = $tid;
+      $position['id'] = $value;
       $position['label'] =
 	$allowed_values[$value] ? $allowed_values[$value] : '';
 
@@ -79,25 +79,52 @@ function cm_crew_connect_user_has_role($roles = array()) {
 /**
  * Function will return all the possible Position names on a Crew Request
  *
- * @return $positions - '+' deliminated string of position tid's
+ * @return $positions - '+' deliminated string of position tid's or values
  */
-function cm_crew_connect_get_all_positions() {
-  //FIXME IMPLEMENT!
-  $positions = array();
-  //FIND POSITIONS FROM THE "NEW" POSITION FIELD
-  //FIND POSITIONS FROM LEGACY POSITION FIELD
-  //
+function cm_crew_connect_get_default_position_arg() {
   $position_arg = '';
-  foreach($positions as $position) {
-    if (!$is_first) {
-      $positions .= "+";
+  
+  //DOES THE NEW POSITION FIELD EXIST?
+  $position_field = field_info_instance('node','field_crew_position_taxonomy',
+					 'crew_connect_request');
+  if ($position_field) {
+    //get all taxonomy terms
+    $v = taxonomy_vocabulary_machine_name_load('Crew Connect Positions');
+    $terms = taxonomy_get_tree($v->vid);
+    $is_first = TRUE;
+    foreach ($terms as $term) {
+      if (!$is_first) {
+	$position_arg .= "+";
+      }
+      else {
+	$is_first = FALSE;
+      }
+      $position_arg .= $term->tid;
     }
-    else {
-      $is_first = FALSE;
-    }
-    $position_arg .= $position;
   }
+  //ELSE, DOES THE LEGACY POSITION FIELD EXIST
+  else {
+    $position_field = field_info_instance('node', 'field_crew_positions',
+					  'crew_connect_request');
+    if ($position_field) {
+      $position_field = field_info_field('field_crew_positions');   
+      $allowed_values = list_allowed_values($position_field);
 
+      $is_first = TRUE;
+      foreach($allowed_values as $value => $label) {
+	if (!$value) {
+	  continue;
+	}
+	if (!$is_first) {
+	  $position_arg .= "+";
+	}
+	else {
+	  $is_first = FALSE;
+	}
+	$position_arg .= $value;
+      }
+    }
+  }
   return $position_arg;
 }
 

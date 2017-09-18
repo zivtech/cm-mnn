@@ -101,23 +101,22 @@ function cm_crew_connect_page($uid) {
 
   $user_arg = cm_crew_connect_other_crew_producers();
   $position_arg = cm_crew_connect_get_default_position_arg();
-  
+
   //WE WILL LOOP THROUGH ALL THE FUNCTION THAT DEFINE OUR HOOK
   //WE AREN'T USING module_invoke or drupal_alter because we want to
   //alter an array AND pass in the $user_arg and $position_arg arrays
   $hook_name = "crew_connect_available_positions";
   foreach (module_implements($hook_name) as $module) {
     $function = $module . '_' . $hook_name;
-    $function($form, $user_arg, $position_arg);
-  } 
+    $function($user_arg, $position_arg);
+  }
 
+  //FIRE THE VIEW WITH OUR 
+  $view->set_arguments(array($user_arg, $position_arg));
   $display = $view->execute_display('block');
- 
   $result = $view->result ? $view->result : array();
-
   $volunteer_block .= $display['content'];
   $ouptput .= "</ul><br/>";
-
   $output .= "<div class='cm-box'>".$volunteer_block."</div>";
 
   return $output;
@@ -143,7 +142,7 @@ function cm_crew_connect_search_page() {
   $hook_name = "crew_connect_available_positions";
   foreach (module_implements($hook_name) as $module) {
     $function = $module . '_' . $hook_name;
-    $function($form, $user_arg, $position_arg);
+    $function($user_arg, $position_arg);
   } 
 
   $ret =

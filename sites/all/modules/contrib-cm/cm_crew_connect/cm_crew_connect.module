@@ -60,24 +60,19 @@ function cm_crew_connect_init() {
   module_load_include('inc', 'cm_crew_connect', 'includes/presave');
   module_load_include('inc', 'cm_crew_connect', 'includes/settings_form');
 }
-function custom_example_permission() {
+function cm_crew_connect_permission() {
   return
     array(
 	  'administer crew connect' =>
 	  array(
-		'title' => t('Administer my module'),
-		'description' => t('Access settings form'),
+		'title' => t('Administer Crew Connect'),
 		),
-	  );
-
-      array(
 	  'use crew connect' =>
 	  array(
-		'title' => t('Able to use crew connect'),
-		'description' => t('See the Crew Connect Tab'),
+		'title' => t('Crew Connect Tab On User Page'),
 		),
 	  );
-
+  
 }
 /**
  * Implements hook_views_api
