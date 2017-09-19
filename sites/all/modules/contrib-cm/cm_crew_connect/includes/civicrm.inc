@@ -28,13 +28,13 @@ function cm_crew_connect_get_display_name($uid) {
   */
 function cm_crew_connect_get_email_for_location_type($uid, $location_type_id) {
   $cid = cm_crew_connect_get_cid($uid);
-  
   if ($cid) {
-    $result = civicrm_api3('Email', 'get', array(
-      'sequential' => 1,
-      'contact_id' => $cid,
-      'location_type_id' => $location_type_id,
-    ));               
+    $params = array(
+		    'sequential' => 1,
+		    'contact_id' => $cid,
+		    'location_type_id' => $location_type_id,
+		    );
+    $result = civicrm_api3('Email', 'get', $params);               
 
     $public_email = (isset($result) && isset($result['values'][0])) ? 
       $result['values'][0]['email'] : NULL;      

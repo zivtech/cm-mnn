@@ -42,14 +42,11 @@ function cm_crew_connect_form_alter(&$form, &$form_state, $form_id) {
 	['value']['#default_value'] =
       cm_crew_connect_get_display_name($author_id);
     }
-
     //WE WILL LOOP THROUGH ALL THE FUNCTION THAT DEFINE OUR HOOK
-    //WE AREN'T USING module_invoke or drupal_alter because we want to
-    //alter an array AND pass in the crew request and author uid
     $hook_name = "crew_connect_request_form_alter";
     foreach (module_implements($hook_name) as $module) {
       $function = $module . '_' . $hook_name;
-      $function($form, $request, $author_id);
+      $function($form, $request, $project, $author_id);
     } 
 
   }

@@ -16,19 +16,17 @@ function cm_crew_connect_node_presave($node) {
     $project = $project_nid ? node_load($project_nid) : NULL;
 
 
-    $position = cm_crew_connect_get_position_label($node);
-
-    //SET THE CREW CONNECT REQUEST TITLE WITH THE PROJECT AND POSITION
-    $node->title = $project->title . ": " . $position['label'];
-
     //WE WILL LOOP THROUGH ALL THE FUNCTION THAT DEFINE OUR HOOK
-    //WE AREN'T USING module_invoke or drupal_alter because we want to
-    //alter an array AND pass in mulitple variables
     $hook_name = "crew_request_presave";
     foreach (module_implements($hook_name) as $module) {
       $function = $module . '_' . $hook_name;
       $function($node, $project, $position);
     } 
+
+    $position = cm_crew_connect_get_position_label($node);
+
+    //SET THE CREW CONNECT REQUEST TITLE WITH THE PROJECT AND POSITION
+    $node->title = $project->title . ": " . $position['label'];
     
     //SEE IF WE HAVE A CIVI EVENT
     $event_id = 
@@ -82,10 +80,7 @@ function cm_crew_connect_node_presave($node) {
 		      'template_id' => $template_id,
 		      'is_public' => "1",
 		      );
-
       //WE WILL LOOP THROUGH ALL THE FUNCTION THAT DEFINE OUR HOOK
-      //WE AREN'T USING module_invoke or drupal_alter because we want to
-      //alter an array AND pass in mulitple variables
       $hook_name = "event_creation_args";
       foreach (module_implements($hook_name) as $module) {
 	$function = $module . '_' . $hook_name;

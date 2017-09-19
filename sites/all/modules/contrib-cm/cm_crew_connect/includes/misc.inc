@@ -1,3 +1,4 @@
+
 <?
 /**
  * File will return the label for the Position on the Crew Connect
@@ -28,8 +29,7 @@ function cm_crew_connect_get_position_label(&$request) {
       $value =
 	cm_crew_connect_get_single_field_value($request,
 					       'field_crew_positions',
-					       'tid');
-
+					       'value');
       $position_field = field_info_field('field_crew_positions');   
       $allowed_values = list_allowed_values($position_field);
       
