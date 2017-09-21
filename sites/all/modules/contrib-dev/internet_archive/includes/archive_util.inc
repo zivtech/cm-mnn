@@ -737,8 +737,11 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
 
     unset($derivatives);
     $derivatives = internet_archive_get_derivatives($archive_data);
+    $embed = internet_archive_embed_from_archive_data($archive_data);
 
-    if ($derivatives && (count($derivatives) >= $expected_derivatives)) {
+    //FIXME: not considered fully derived unless its embeddable. Might be a problem
+    //if some items shoudl be considered derived without being embeddable
+    if ($derivatives && (count($derivatives) >= $expected_derivatives) && $embed) {
       $archive_data['status'] = ARCHIVE_DERIVED;
       $archive_data['derivatives'] = serialize($derivatives);
       
