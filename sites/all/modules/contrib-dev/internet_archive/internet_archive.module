@@ -195,7 +195,7 @@ function internet_archive_menu() {
 	  );
   $items['ia/validate'] =
     array(
-	  'title' => 'Validate and Transfer Archive Item',
+	  'title' => 'Validate and Derive Archive Item',
 	  'page callback' => 'internet_archive_validate_and_derive',
 	  'page arguments' => array(2),
 	  'access arguments' => array('administer internet_archive'),

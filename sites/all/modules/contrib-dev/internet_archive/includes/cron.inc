@@ -4,6 +4,10 @@
  * Implements hook_cron().
  */
 function internet_archive_cron() {
+  global $user;
+  $original_user = $user;
+
+  $user = user_load(1);
   //validate previous transfers
   internet_archive_validate_transfers();
 
@@ -14,6 +18,8 @@ function internet_archive_cron() {
   
   //Check for new derivations to update.
   internet_archive_store_derivatives();
+
+  $user = $original_user;
 }
 
 

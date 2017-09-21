@@ -88,10 +88,9 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
       
       //if our file has already been transferred and is in a positive state
       //we will give links to view the item on archive.org or download it
-      if ($archive_data && ($archive_data['status'] == ARCHIVE_VALIDATED ||
-			    $archive_data['status'] == ARCHIVE_DERIVED)) {
+      if ($archive_data && ($archive_data['status'] == ARCHIVE_DERIVED)) {
 	$html .= "<li>";
-        $html .=l(t("View Item on Archive.org"), $path);
+	$html .=l(t("View Item on Archive.org"), $path);
 	$html .= "</li><li>";
 	$html .=l(t("Download from Archive.org"),$archive_data['archive_url']);
 	$html .= "</li>";
@@ -102,6 +101,27 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
 	$html .= "</li>";
 	
       }
+      //if our file has already been transferred and validated but not yet fully
+      //derived --most likely because processing on archive.org side--
+      //we will give links to recheck the status on archive.org, view the item on
+      //archive.org or download it
+      else if ($archive_data && ($archive_data['status'] == ARCHIVE_VALIDATED)) {
+	$html .= "<li>";
+	$html .=l(t("Recheck status for Incomplete Upload"),
+		  'ia/validate/'. $archive_data['nid']);        
+	$html .= "</li><li>";
+        $html .=l(t("View Incomplete Item on Archive.org"), $path);
+	$html .= "</li><li>";
+	$html .=l(t("Download from Archive.org"),$archive_data['archive_url']);
+	$html .= "</li>";
+	$html .= "<li>";
+	$html .= l(t("Delete Files on Archive.org"),
+		   "node/". $archive_data['nid'] ."/ia/delete-files/" .
+		   $archive_data['tid']);
+	$html .= "</li>";
+	
+      }
+
       //if we have data from teh internet archive table and we are queued
       //offer a link to see it in the internet_archive_send_file queue 
       else if ($archive_data && ($archive_data['status'] == ARCHIVE_QUEUED)) {
