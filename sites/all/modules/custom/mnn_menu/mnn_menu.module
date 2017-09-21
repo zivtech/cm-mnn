@@ -61,6 +61,10 @@ function mnn_menu_menu() {
 	  array('title'=>t('Add Show/Tape'),
 		'menu_alias'=>'add',
 		'path'=>'node/add/cm-show'),
+	  array('title'=>t('View Archive.org Transfers'),
+		'menu_alias'=>'transfers',
+		'path'=>'admin/structure/internet_archive/transfers'),
+	  
     );
 
     $reservations_block = 
