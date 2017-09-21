@@ -734,22 +734,21 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
     if (internet_archive_is_archive_format($archive_data['file_name'])) {
       $expected_derivatives = $expected_derivatives - 1;
     }
-
+    
     unset($derivatives);
     $derivatives = internet_archive_get_derivatives($archive_data);
-    $embed = internet_archive_embed_from_archive_data($archive_data);
-
+    if ($derivatives) {
+      $archive_data['derivatives'] = serialize($derivatives);
+      $embed = internet_archive_embed_from_archive_data($archive_data);
+    }
     //FIXME: not considered fully derived unless its embeddable. Might be a problem
     //if some items shoudl be considered derived without being embeddable
     if ($derivatives && (count($derivatives) >= $expected_derivatives) && $embed) {
-      $archive_data['status'] = ARCHIVE_DERIVED;
-      $archive_data['derivatives'] = serialize($derivatives);
-      
+      $archive_data['status'] = ARCHIVE_DERIVED;           
       internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'derived');
     }
     else if ($derivatives && (count($derivatives) > 0)) {
-      $archive_data['derivatives'] = serialize($derivatives);
       internet_archive_update_archive_data($archive_data);
     }
     elseif ((REQUEST_TIME - $archive_data['date']) > 172800) {
