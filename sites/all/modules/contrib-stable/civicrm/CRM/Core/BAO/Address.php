@@ -542,10 +542,10 @@ class CRM_Core_BAO_Address extends CRM_Core_DAO_Address {
 
       $addresses[$count] = $values;
 
-      //unset is_primary after first block. Due to some bug in earlier version
-      //there might be more than one primary blocks, hence unset is_primary other than first
+      //There should never be more than one primary blocks, hence set is_primary = 0 other than first
+      // Calling functions expect the key is_primary to be set, so do not unset it here!
       if ($count > 1) {
-        unset($addresses[$count]['is_primary']);
+        $addresses[$count]['is_primary'] = 0;
       }
 
       $count++;
@@ -569,6 +569,7 @@ class CRM_Core_BAO_Address extends CRM_Core_DAO_Address {
       'street_address' => $this->street_address,
       'supplemental_address_1' => $this->supplemental_address_1,
       'supplemental_address_2' => $this->supplemental_address_2,
+      'supplemental_address_3' => $this->supplemental_address_3,
       'city' => $this->city,
       'state_province_name' => isset($this->state_name) ? $this->state_name : "",
       'state_province' => isset($this->state) ? $this->state : "",
@@ -971,6 +972,7 @@ SELECT is_primary,
       'postal_code_suffix',
       'supplemental_address_1',
       'supplemental_address_2',
+      'supplemental_address_3',
     );
 
     foreach ($fields as $name => & $values) {

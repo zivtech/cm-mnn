@@ -5,7 +5,7 @@
     pageTitle = 'CiviCRM',
     documentTitle = 'CiviCRM';
 
-  angular.module('crmUi', [])
+  angular.module('crmUi', CRM.angRequires('crmUi'))
 
     // example <div crm-ui-accordion crm-title="ts('My Title')" crm-collapsed="true">...content...</div>
     // WISHLIST: crmCollapsed should support two-way/continuous binding
@@ -576,6 +576,7 @@
     .directive('crmUiSelect', function ($parse, $timeout) {
       return {
         require: '?ngModel',
+        priority: 1,
         scope: {
           crmUiSelect: '='
         },
@@ -588,7 +589,12 @@
               $timeout(function () {
                 // ex: msg_template_id adds new item then selects it; use $timeout to ensure that
                 // new item is added before selection is made
-                element.select2('val', ngModel.$modelValue);
+                var newVal = _.cloneDeep(ngModel.$modelValue);
+                // Fix possible data-type mismatch
+                if (typeof newVal === 'string' && element.select2('container').hasClass('select2-container-multi')) {
+                  newVal = newVal.length ? newVal.split(',') : [];
+                }
+                element.select2('val', newVal);
               });
             };
           }
@@ -606,7 +612,6 @@
             element.crmSelect2(scope.crmUiSelect || {});
             if (ngModel) {
               element.on('change', refreshModel);
-              $timeout(ngModel.$render);
             }
           }
 
@@ -631,7 +636,12 @@
             $timeout(function () {
               // ex: msg_template_id adds new item then selects it; use $timeout to ensure that
               // new item is added before selection is made
-              element.select2('val', ngModel.$modelValue);
+              var newVal = _.cloneDeep(ngModel.$modelValue);
+              // Fix possible data-type mismatch
+              if (typeof newVal === 'string' && element.select2('container').hasClass('select2-container-multi')) {
+                newVal = newVal.length ? newVal.split(',') : [];
+              }
+              element.select2('val', newVal);
             });
           };
           function refreshModel() {
@@ -680,7 +690,8 @@
       return {
         restrict: 'EA',
         scope: {
-          crmUiTabSet: '@'
+          crmUiTabSet: '@',
+          tabSetOptions: '@'
         },
         templateUrl: '~/crmUi/tabset.html',
         transclude: true,
@@ -1000,7 +1011,7 @@
               // If the CMS has already added title markup to the page, use it
               $('h1').not('.crm-container h1').each(function() {
                 if (_.trim($(this).html()) === pageTitle) {
-                  $(this).html(newPageTitle);
+                  $(this).addClass('crm-page-title').html(newPageTitle);
                   $el.hide();
                 }
               });

@@ -76,13 +76,6 @@ class CRM_Price_BAO_PriceSet extends CRM_Price_DAO_PriceSet {
     else {
       $priceSetID = CRM_Utils_Array::value('id', $params);
     }
-    // CRM-16189
-    if ($validatePriceSet && !empty($params['financial_type_id'])) {
-      CRM_Financial_BAO_FinancialAccount::validateFinancialType(
-        $params['financial_type_id'],
-        $priceSetID
-      );
-    }
     $priceSetBAO = new CRM_Price_BAO_PriceSet();
     $priceSetBAO->copyValues($params);
     if (self::eventPriceSetDomainID()) {
@@ -845,6 +838,8 @@ WHERE  id = %1";
         $params['amount_level'] = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR, $amount_level) . $displayParticipantCount . CRM_Core_DAO::VALUE_SEPARATOR;
       }
     }
+    // @todo this was a fix for CRM-16460 but is too deep in the system for formatting
+    // and probably causes negative amounts to save as $0 depending on server config.
     $params['amount'] = CRM_Utils_Money::format($totalPrice, NULL, NULL, TRUE);
     $params['tax_amount'] = $totalTax;
     if ($component) {
@@ -987,7 +982,7 @@ WHERE  id = %1";
           $autoRenewMembershipTypes[] = $membershiptTypeValue['id'];
         }
       }
-      foreach ($form->_priceSet['fields'] as &$field) {
+      foreach ($form->_priceSet['fields'] as $field) {
         if (array_key_exists('options', $field) && is_array($field['options'])) {
           foreach ($field['options'] as $option) {
             if (!empty($option['membership_type_id'])) {
@@ -1054,14 +1049,16 @@ WHERE  id = %1";
         if (!is_array($options) || !in_array($id, $validPriceFieldIds)) {
           continue;
         }
-        CRM_Price_BAO_PriceField::addQuickFormElement($form,
-          'price_' . $field['id'],
-          $field['id'],
-          FALSE,
-          CRM_Utils_Array::value('is_required', $field, FALSE),
-          NULL,
-          $options
-        );
+        if (!empty($options)) {
+          CRM_Price_BAO_PriceField::addQuickFormElement($form,
+            'price_' . $field['id'],
+            $field['id'],
+            FALSE,
+            CRM_Utils_Array::value('is_required', $field, FALSE),
+            NULL,
+            $options
+          );
+        }
       }
     }
   }
@@ -1344,11 +1341,11 @@ INNER JOIN  civicrm_price_set pset    ON ( pset.id = field.price_set_id )
    */
   public static function getMembershipCount($ids) {
     $queryString = "
-SELECT       count( pfv.id ) AS count, pfv.id AS id
+SELECT       count( pfv.id ) AS count, mt.member_of_contact_id AS id
 FROM         civicrm_price_field_value pfv
 INNER JOIN    civicrm_membership_type mt ON mt.id = pfv.membership_type_id
 WHERE        pfv.id IN ( $ids )
-GROUP BY     mt.member_of_contact_id";
+GROUP BY     mt.member_of_contact_id ";
 
     $crmDAO = CRM_Core_DAO::executeQuery($queryString);
     $count = array();

@@ -120,16 +120,10 @@ class CRM_Core_BAO_Setting extends CRM_Core_DAO_Setting {
     if (!empty($settingsToReturn) && !is_array($settingsToReturn)) {
       $settingsToReturn = array($settingsToReturn);
     }
-    $reloadConfig = FALSE;
 
     $fields = $result = array();
     $fieldsToGet = self::validateSettingsInput(array_flip($settingsToReturn), $fields, FALSE);
     foreach ($domains as $domainID) {
-      if ($domainID != CRM_Core_Config::domainID()) {
-        $reloadConfig = TRUE;
-        CRM_Core_BAO_Domain::setDomain($domainID);
-      }
-      $config = CRM_Core_Config::singleton($reloadConfig, $reloadConfig);
       $result[$domainID] = array();
       foreach ($fieldsToGet as $name => $value) {
         $contactID = CRM_Utils_Array::value('contact_id', $params);
@@ -140,7 +134,6 @@ class CRM_Core_BAO_Setting extends CRM_Core_DAO_Setting {
           $result[$domainID][$name] = $setting;
         }
       }
-      CRM_Core_BAO_Domain::resetDomain();
     }
     return $result;
   }
@@ -206,6 +199,10 @@ class CRM_Core_BAO_Setting extends CRM_Core_DAO_Setting {
     $fieldsToSet = self::validateSettingsInput($params, $fields);
 
     foreach ($fieldsToSet as $settingField => &$settingValue) {
+      if (empty($fields['values'][$settingField])) {
+        Civi::log()->warning('Deprcated Path There is a setting (' . $settingField . ') not correctly defined. You may see unpredictabilitiy due to this, CRM_Core_Setting::setItems', array('civi.tag' => 'deprecated'));
+        $fields['values'][$settingField] = array();
+      }
       self::validateSetting($settingValue, $fields['values'][$settingField]);
     }
 
@@ -293,7 +290,7 @@ class CRM_Core_BAO_Setting extends CRM_Core_DAO_Setting {
    * @return bool
    * @throws \api_Exception
    */
-  public static function validateSetting(&$value, $fieldSpec) {
+  public static function validateSetting(&$value, array $fieldSpec) {
     if ($fieldSpec['type'] == 'String' && is_array($value)) {
       $value = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR, $value) . CRM_Core_DAO::VALUE_SEPARATOR;
     }

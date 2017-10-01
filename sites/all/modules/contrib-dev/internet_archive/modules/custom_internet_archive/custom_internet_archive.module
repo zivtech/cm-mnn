@@ -1,0 +1,103 @@
+<?php
+
+/**
+ * Implements hook_views_api().
+ * @return Array with Views API version.
+ *
+ * This module currently defines a view to harvest files on drupal nodes
+ * and a view to display an embedded video block on nodes and page of 
+ * recently uploaded videos
+ */
+function custom_internet_archive_views_api() {
+  return array(
+	       'api' => 3,
+	       'path' => 
+	       drupal_get_path('module', 
+			       'custom_internet_archive').'/includes'
+	       );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function custom_internet_archive_menu() {
+  $items['admin/config/internet_archive/custom_internet_archive'] = array(
+    'title' => 'Custom Metadata and Harvest Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('custom_internet_archive_admin_form'),
+    'access arguments' => array('administer internet_archive'),
+    'weight' => 17,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive MNN metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function custom_internet_archive_admin_form($form, &$form_state) {
+  $form['header'] = array(
+			  '#markup' =>
+			  "No settings at this time, just a place holder",
+			  );
+			 
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_internet_archive_metadata().
+ */
+function custom_internet_archive_internet_archive_metadata($node = NULL,
+							   $file_name) {
+  $metadata = array();
+
+  if ($node) {
+    $metadata['title'] = $node->title;
+    
+    if (isset($node->body)) {
+      $metadata['description'] = $node->body;
+    }
+    $metadata['date'] = date("Y-m-d", $node->created);
+
+    $user = user_load($node->uid);
+    $metadata['creator'] = $user->name; 
+  }
+  $data = array($metadata);
+  return $data;
+}
+
+/**
+ * Implements hook_internet_archive_process_remote_files()
+ *
+ * This function will look in the remote directory
+ */
+function custom_internet_archive_internet_archive_process_remote($files){
+  foreach($files as $file) {
+    $pathinfo = pathinfo($file);
+    $nid = $pathinfo['filename'];
+    if ($nid && is_numeric($nid)) {
+      $node = node_load($nid);
+      if ($node) {
+	$name = 'field_internet_archive_remote';
+	$value = field_get_items('node', $node, $name);
+	$value = isset($value[0]['value']) ? $value[0]['value'] : NULL;
+
+	if (!$value) {
+	  $node->field_internet_archive_remote[LANGUAGE_NONE][0]['value'] =
+	    $file;
+	  node_save($node);
+	}
+      }
+    }
+  }	
+}
+
+/**
+ * Implements hook_internet_archive().
+ */
+function custom_internet_archive_internet_archive(&$archive_data, $op) {
+  //implementing this hook will allow you to take actions on $archive_data
+  //before it is writtent to the db.
+}

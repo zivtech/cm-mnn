@@ -8,18 +8,32 @@ function cma_program_import_process_csv($import_node) {
   $fid = $import_node->field_uploader_file[LANGUAGE_NONE][0]['fid'];
 
   $file_record = file_load($fid);
+  $file_handle = fopen($file_record->uri, 'r');
 
-  $file_uri = $file_record->uri;
-  $file_path = str_replace('public://', '', $file_uri);
-  $file_dir_path = variable_get('file_directory_path', conf_path() .'/files');
-  $base_path = $_SERVER['DOCUMENT_ROOT'];
+  $keys = fgetcsv($file_handle);
+  while ($line = fgetcsv($file_handle)) {
+    $line_array = array();
+    foreach ($keys as $key) {
+      $text = array_shift($line);
+      $strlen = strlen( $text );
+      $safe_text = '';
+      for( $i = 0; $i <= $strlen; $i++ ) {
+	$char = substr( $text, $i, 1 );
+	if (!ctype_space($char) && !ctype_alnum($char) && !ctype_punct($char)){
+	  $safe_text .= '|';
+	}
+	else {
+	  $safe_text .= $char;
+	}
+      }
+      $safe_text = str_replace('|||', "'", $safe_text);
+      $safe_text = str_replace('|', "", $safe_text);
+      $line_array[$key] = $safe_text;
+    }
+    $csv_array[] = $line_array;
+  }
 
-  $file_path_full = $base_path."/".$file_dir_path."/".$file_path;
-
-  include_once "/var/www/cm-stage.mnn.org/sites/all/libraries/csv2array.php";
-  $csvArray = ImportCSV2Array($file_path_full);
-
-  return($csvArray);
+  return($csv_array);
 
 }
 

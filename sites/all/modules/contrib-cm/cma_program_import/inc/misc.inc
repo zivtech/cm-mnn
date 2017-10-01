@@ -1,4 +1,55 @@
 <?php
+
+/**
+ * Function will set the project title suffix and all the field names for 
+ * each kind of import
+ */
+function cma_program_import_get_variables($import_type) {
+  $variables = array();
+  $variables['type'] = $import_type;
+  
+  if ($import_type == 'fstv') {
+    $variables['suffix']= ' [FSTV]';
+    $variables['project'] = 'Program EPG Title';
+    $variables['duration'] = 'Schedule Item Duration';
+    $variables['date'] = 'Schedule Item Log Date';
+    $variables['start'] = 'Schedule Item Log Time';
+    $variables['time_type'] = 'h:m:s';
+    $variables['show'] = 'Program EPG Title';
+    $variables['show_subtitle'] = '';
+    $variables['show_separator'] = '';
+    $variables['narrative'] = 'Program EPG Text';
+    $variables['external_link'] = '';
+    $variables['external_id'] = 'Program Episode Number';
+    $variables['reuse_show'] = FALSE;
+    $variables['channel_tid'] = 1686;
+    $variables['airing_type'] = 969;
+    $variables['limit_shows_per_day'] = TRUE;
+  }
+  else if ($import_type == 'nyxt') {
+    $variables['suffix'] .= ' [NYXT]';
+    $variables['project'] = 'Produced By (Organization Name)';
+    $variables['duration'] = 'Length';
+    $variables['date'] = 'Date';
+    $variables['start'] = 'Start Time';
+    $variables['time_type'] = 'milliseconds'; 
+    $variables['show'] = 'Segment Title';
+    $variables['short_description'] = 'Sub Title';
+    $variables['show_separator'] = ' - ';
+    $variables['narrative'] = '';
+    $variables['external_link'] = 'Source';
+    $variables['external_id'] = 'id';
+    $variables['reuse_show'] = TRUE;
+    $variables['channel_tid'] = 1689;
+    $variables['airing_type'] = 969;
+    $variables['limit_shows_per_day'] = FALSE;
+  }
+  else {
+    drupal_set_message("Error Code 194683 cannot set variables for ".
+		       $import_type, 'error');
+  }
+  return $variables;
+}
 /**
   * Helper function to get a single value off of a entity 
  */

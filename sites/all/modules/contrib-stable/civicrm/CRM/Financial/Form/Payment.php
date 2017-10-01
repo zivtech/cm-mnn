@@ -37,12 +37,19 @@ class CRM_Financial_Form_Payment extends CRM_Core_Form {
    */
   protected $_paymentProcessorID;
   protected $currency;
+
   public $_values = array();
 
   /**
    * @var array
    */
   public $_paymentProcessor;
+
+  /**
+   * @var bool
+   */
+  public $isBackOffice = FALSE;
+
   /**
    * Set variables up before form is built.
    */
@@ -55,6 +62,9 @@ class CRM_Financial_Form_Payment extends CRM_Core_Form {
       TRUE);
     $this->currency = CRM_Utils_Request::retrieve('currency', 'String', CRM_Core_DAO::$_nullObject,
       TRUE);
+
+    $this->paymentInstrumentID = CRM_Utils_Request::retrieve('payment_instrument_id', 'Integer');
+    $this->isBackOffice = CRM_Utils_Request::retrieve('is_back_office', 'Integer');
 
     $this->assignBillingType();
 
@@ -98,16 +108,18 @@ class CRM_Financial_Form_Payment extends CRM_Core_Form {
    * Add JS to show icons for the accepted credit cards.
    *
    * @param int $paymentProcessorID
+   * @param string $region
    */
-  public static function addCreditCardJs($paymentProcessorID = NULL) {
-    $creditCards = array();
+  public static function addCreditCardJs($paymentProcessorID = NULL, $region = 'billing-block') {
     $creditCards = CRM_Financial_BAO_PaymentProcessor::getCreditCards($paymentProcessorID);
     $creditCardTypes = CRM_Core_Payment_Form::getCreditCardCSSNames($creditCards);
     CRM_Core_Resources::singleton()
-      ->addScriptFile('civicrm', 'templates/CRM/Core/BillingBlock.js', 10)
+      // CRM-20516: add BillingBlock script on billing-block region
+      //  to support this feature in payment form snippet too.
+      ->addScriptFile('civicrm', 'templates/CRM/Core/BillingBlock.js', 10, $region, FALSE)
       // workaround for CRM-13634
       // ->addSetting(array('config' => array('creditCardTypes' => $creditCardTypes)));
-      ->addScript('CRM.config.creditCardTypes = ' . json_encode($creditCardTypes) . ';');
+      ->addScript('CRM.config.creditCardTypes = ' . json_encode($creditCardTypes) . ';', '-9999', $region);
   }
 
 }

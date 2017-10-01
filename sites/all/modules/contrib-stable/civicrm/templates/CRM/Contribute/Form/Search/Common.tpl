@@ -47,6 +47,14 @@
       {$form.contribution_check_number.label} <br />
       {$form.contribution_check_number.html}
     </div>
+    <div class="float-left" id="financial_trxn_card_type_id_wrapper">
+      {$form.financial_trxn_card_type_id.label} <br />
+      {$form.financial_trxn_card_type_id.html}
+    </div>
+    <div class="float-left" id="pan_truncation_wrapper">
+      {$form.financial_trxn_pan_truncation.label} <br />
+      {$form.financial_trxn_pan_truncation.html}
+    </div>
   </td>
   <td>
     {$form.contribution_trxn_id.label} <br />
@@ -63,8 +71,8 @@
     </div>
   </td>
   <td>
-    {$form.invoice_id.label} <br />
-    {$form.invoice_id.html}
+    {$form.invoice_number.label} <br />
+    {$form.invoice_number.html}
   </td>
 </tr>
 <tr>

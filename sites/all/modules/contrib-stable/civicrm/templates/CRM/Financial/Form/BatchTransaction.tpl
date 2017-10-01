@@ -75,6 +75,7 @@
         <th class="crm-contact-name">{ts}Name{/ts}</th>
         <th class="crm-amount">{ts}Amount{/ts}</th>
         <th class="crm-trxnID">{ts}Trxn ID{/ts}</th>
+        <th class="crm-trxn_date">{ts}Transaction Date{/ts}</th>
         <th class="crm-received">{ts}Received{/ts}</th>
         <th class="crm-payment-method">{ts}Pay Method{/ts}</th>
         <th class="crm-status">{ts}Status{/ts}</th>
@@ -188,6 +189,7 @@ function buildTransactionSelectorAssign(filterSearch) {
   "bDestroy"   : true,
   "bFilter"    : false,
   "bAutoWidth" : false,
+  "lengthMenu": [ 10, 25, 50, 100, 250, 500, 1000, 2000 ],
   "aaSorting"  : [[5, 'desc']],
   "aoColumns"  : [
     {sClass:'crm-transaction-checkbox', bSortable:false},
@@ -195,6 +197,7 @@ function buildTransactionSelectorAssign(filterSearch) {
     {sClass:'crm-contact-name'},
     {sClass:'crm-amount'},
     {sClass:'crm-trxnID'},
+    {sClass:'crm-trxn_date'},
     {sClass:'crm-received'},
     {sClass:'crm-payment-method'},
     {sClass:'crm-status'},
@@ -269,6 +272,7 @@ function buildTransactionSelectorRemove( ) {
     {sClass:'crm-contact-name'},
     {sClass:'crm-amount'},
     {sClass:'crm-trxnID'},
+    {sClass:'crm-trxn_date'},
     {sClass:'crm-received'},
     {sClass:'crm-payment-method'},
     {sClass:'crm-status'},

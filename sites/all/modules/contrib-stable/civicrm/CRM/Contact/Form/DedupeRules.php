@@ -155,6 +155,13 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
         break;
       }
     }
+    if (empty($fields['threshold'])) {
+      // CRM-20607 - Don't validate the threshold of hard-coded rules
+      if (!(CRM_Utils_Array::value('is_reserved', $fields) &&
+        CRM_Utils_File::isIncludable("CRM/Dedupe/BAO/QueryBuilder/{$self->_defaultValues['name']}.php"))) {
+        $errors['threshold'] = ts('Threshold weight cannot be empty or zero.');
+      }
+    }
 
     if (!$fieldSelected) {
       $errors['_qf_default'] = ts('Please select at least one field.');

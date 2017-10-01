@@ -23,26 +23,28 @@ function cma_program_import_node_validate($node, $form, &$form_state){
       form_set_error('field_uploader_file', $err_msg);
       return;
     }
-    
-    
+
+    $variables = cma_program_import_get_variables($import_type);
+    if (!$variables) {
+      $err_msg = "Error Code #90011 No Variables defined for $import_type";
+      form_set_error('field_uploader_file', $err_msg);
+      return;
+    }
     //loop through all the results from the data array
     $projects = array();
     $project_errors = array();
     foreach($data_array as $key => $values) {
-      $title = $values['Program EPG Title'];
-
+      $title = $values[$variables['project']];
       if ($title == 'The Thom Hartmann Program' ||
 	  $title == 'The Stephanie Miller Show') {
 	$data_array[$key]['project_show_merge'] = 'true';
       }
-      if ($import_type == 'fstv') {
-	$title .= ' [FSTV]';
-      }
+      $title .= $variables['suffix'];
       
       $project = $projects[$title];
 
       if (!$project) {
-	$project = cma_program_import_project_lookup($import_type, $title);
+	$project = cma_program_import_project_lookup($title);
 
 	if (!$project) {
 	  $err_msg .=

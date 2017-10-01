@@ -225,36 +225,6 @@ function setting_getfields_expectedresult() {
         'description' => '',
         'help_text' => '',
       ),
-      'financial_account_bal_enable' => array(
-        'group_name' => 'Contribute Preferences',
-        'group' => 'contribute',
-        'name' => 'financial_account_bal_enable',
-        'type' => 'Integer',
-        'html_type' => 'checkbox',
-        'quick_form_type' => 'Element',
-        'default' => 0,
-        'add' => '4.7',
-        'title' => 'Enable Financial Account Balances',
-        'is_domain' => 1,
-        'is_contact' => 0,
-        'description' => '',
-        'help_text' => '',
-      ),
-      'prior_financial_period' => array(
-        'group_name' => 'Contribute Preferences',
-        'group' => 'contribute',
-        'name' => 'prior_financial_period',
-        'type' => 'activityDate',
-        'quick_form_type' => 'Date',
-        'html_type' => 'Date',
-        'default' => '',
-        'add' => '4.7',
-        'title' => 'Prior Financial Period',
-        'is_domain' => 1,
-        'is_contact' => 0,
-        'description' => '',
-        'help_text' => '',
-      ),
       'always_post_to_accounts_receivable' => array(
         'group_name' => 'Contribute Preferences',
         'group' => 'contribute',
@@ -268,6 +238,21 @@ function setting_getfields_expectedresult() {
         'is_domain' => 1,
         'is_contact' => 0,
         'description' => '',
+        'help_text' => '',
+      ),
+      'update_contribution_on_membership_type_change' => array(
+        'group_name' => 'Contribute Preferences',
+        'group' => 'contribute',
+        'name' => 'update_contribution_on_membership_type_change',
+        'type' => 'Integer',
+        'html_type' => 'checkbox',
+        'quick_form_type' => 'Element',
+        'default' => 0,
+        'add' => '4.7',
+        'title' => 'Automatically update related contributions when Membership Type is changed',
+        'is_domain' => 1,
+        'is_contact' => 0,
+        'description' => 'Enabling this setting will update related contribution of membership(s) except if the membership is paid for with a recurring contribution.',
         'help_text' => '',
       ),
       'contact_view_options' => array(
@@ -364,6 +349,7 @@ function setting_getfields_expectedresult() {
 {contact.street_address}
 {contact.supplemental_address_1}
 {contact.supplemental_address_2}
+{contact.supplemental_address_3}
 {contact.city}{, }{contact.state_province}{ }{contact.postal_code}
 {contact.country}',
         'add' => '4.1',
@@ -383,6 +369,7 @@ function setting_getfields_expectedresult() {
 {contact.street_address}
 {contact.supplemental_address_1}
 {contact.supplemental_address_2}
+{contact.supplemental_address_3}
 {contact.city}{, }{contact.state_province}{ }{contact.postal_code}
 {contact.country}',
         'add' => '4.1',

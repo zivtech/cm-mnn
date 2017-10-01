@@ -29,10 +29,13 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2017
- * $Id$
- *
  */
 class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
+
+  /**
+   * @var array
+   */
+  protected $tree;
 
   /**
    * Class constructor.
@@ -63,7 +66,9 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
   }
 
   /**
-   * @param null $usedFor
+   * Get tag tree.
+   *
+   * @param string $usedFor
    * @param bool $excludeHidden
    *
    * @return mixed
@@ -76,7 +81,9 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
   }
 
   /**
-   * Build a nested array from hierarchical tags. Supports infinite levels of nesting.
+   * Build a nested array from hierarchical tags.
+   *
+   * Supports infinite levels of nesting.
    * @param null $usedFor
    * @param bool $excludeHidden
    */
@@ -97,7 +104,7 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
 
     $sql .= " ORDER BY parent_id,name";
 
-    $dao = CRM_Core_DAO::executeQuery($sql, CRM_Core_DAO::$_nullArray, TRUE, NULL, FALSE, FALSE);
+    $dao = CRM_Core_DAO::executeQuery($sql, array(), TRUE, NULL, FALSE, FALSE);
 
     $refs = array();
     $this->tree = array();
@@ -119,6 +126,8 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
   }
 
   /**
+   * Get tags used for the given entity/entities.
+   *
    * @param array $usedFor
    * @param bool $buildSelect
    * @param bool $all
@@ -324,7 +333,10 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
    */
   public static function getColorTags($usedFor = NULL, $allowSelectingNonSelectable = FALSE, $exclude = NULL) {
     $params = array(
-      'options' => array('limit' => 0),
+      'options' => array(
+        'limit' => 0,
+        'sort' => "name ASC",
+      ),
       'is_tagset' => 0,
       'return' => array('name', 'description', 'parent_id', 'color', 'is_selectable', 'used_for'),
     );
@@ -402,6 +414,20 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
     $id = CRM_Utils_Array::value('id', $params, CRM_Utils_Array::value('tag', $ids));
     if (!$id && !self::dataExists($params)) {
       return NULL;
+    }
+
+    // Check permission to create or modify reserved tag
+    if (!empty($params['check_permissions']) && !CRM_Core_Permission::check('administer reserved tags')) {
+      if (!empty($params['is_reserved']) || ($id && CRM_Core_DAO::getFieldValue('CRM_Core_DAO_Tag', $id, 'is_reserved'))) {
+        throw new CRM_Core_Exception('Insufficient permission to administer reserved tag.');
+      }
+    }
+
+    // Check permission to create or modify tagset
+    if (!empty($params['check_permissions']) && !CRM_Core_Permission::check('administer Tagsets')) {
+      if (!empty($params['is_tagset']) || ($id && CRM_Core_DAO::getFieldValue('CRM_Core_DAO_Tag', $id, 'is_tagset'))) {
+        throw new CRM_Core_Exception('Insufficient permission to administer tagset.');
+      }
     }
 
     $tag = new CRM_Core_DAO_Tag();
@@ -520,6 +546,42 @@ class CRM_Core_BAO_Tag extends CRM_Core_DAO_Tag {
     }
 
     return $tags;
+  }
+
+  /**
+   * Get child tags IDs
+   *
+   * @return array $childTagIDs
+   *   associated array of child tags in Array('Parent Tag ID' => Array('Child Tag 1', ...)) format
+   */
+  public static function getChildTags() {
+    $childTagIDs = array();
+
+    // only fetch those tags which has child tags
+    $getChildGroupSQL = "SELECT parent.id as parent_id, GROUP_CONCAT(child.id) as child_id
+        FROM civicrm_tag parent,
+        civicrm_tag child
+        WHERE parent.is_tagset <> 1 AND child.parent_id = parent.id
+        GROUP BY parent.id
+    ";
+    $dao = CRM_Core_DAO::executeQuery($getChildGroupSQL);
+    while ($dao->fetch()) {
+      $childTagIDs[$dao->parent_id] = (array) explode(',', $dao->child_id);
+    }
+
+    // check if child tag has any childs, if found then include those child tags inside parent tag
+    //  i.e. format Array('parent_tag' => array('child_tag_1', ...), 'child_tag_1' => array(child_tag_1_1, ..), ..)
+    //  to Array('parent_tag' => array('child_tag_1', 'child_tag_1_1'...), ..)
+    foreach ($childTagIDs as $parentTagID => $childTags) {
+      foreach ($childTags as $childTag) {
+        // if $childTag has any child tag of its own
+        if (array_key_exists($childTag, $childTagIDs)) {
+          $childTagIDs[$parentTagID] = array_merge($childTagIDs[$parentTagID], $childTagIDs[$childTag]);
+        }
+      }
+    }
+
+    return $childTagIDs;
   }
 
 }

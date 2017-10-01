@@ -727,7 +727,7 @@ FROM civireport_activity_temp_target tar
 GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     $select = 'AS addtogroup_contact_id';
     $query = str_ireplace('AS civicrm_contact_contact_target_id', $select, $query);
-    $dao = CRM_Core_DAO::executeQuery($query);
+    $dao = $this->executeReportQuery($query);
 
     $contactIDs = array();
     // Add resulting contacts to group
@@ -779,6 +779,8 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
       $this->_formValues["activity_date_time_relative"] = NULL;
     }
     $this->beginPostProcess();
+    $activityContacts = CRM_Core_OptionGroup::values('activity_contacts', FALSE, FALSE, FALSE, NULL, 'name');
+    $sourceID = CRM_Utils_Array::key('Activity Source', $activityContacts);
 
     //Assign those recordtype to array which have filter operator as 'Is not empty' or 'Is empty'
     $nullFilters = array();
@@ -804,7 +806,7 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     $insertCols = implode(',', $this->_selectAliases);
     $tempQuery = "CREATE TEMPORARY TABLE civireport_activity_temp_target {$this->_databaseAttributes} AS
 {$this->_select} {$this->_from} {$this->_where} ";
-    CRM_Core_DAO::executeQuery($tempQuery);
+    $this->executeReportQuery($tempQuery);
 
     // 2. add new columns to hold assignee and source results
     // fixme: add when required
@@ -819,7 +821,7 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
   ADD COLUMN civicrm_phone_contact_source_phone VARCHAR(128),
   ADD COLUMN civicrm_email_contact_assignee_email VARCHAR(128),
   ADD COLUMN civicrm_email_contact_source_email VARCHAR(128)";
-    CRM_Core_DAO::executeQuery($tempQuery);
+    $this->executeReportQuery($tempQuery);
 
     // 3. fill temp table with assignee results
     $this->buildACLClause(array('civicrm_contact_assignee'));
@@ -831,7 +833,7 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     $tempQuery = "INSERT INTO civireport_activity_temp_target ({$insertCols})
 {$this->_select}
 {$this->_from} {$this->_where}";
-    CRM_Core_DAO::executeQuery($tempQuery);
+    $this->executeReportQuery($tempQuery);
 
     // 4. fill temp table with source results
     $this->buildACLClause(array('civicrm_contact_source'));
@@ -843,7 +845,7 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     $tempQuery = "INSERT INTO civireport_activity_temp_target ({$insertCols})
 {$this->_select}
 {$this->_from} {$this->_where}";
-    CRM_Core_DAO::executeQuery($tempQuery);
+    $this->executeReportQuery($tempQuery);
 
     // 5. show final result set from temp table
     $rows = array();
@@ -860,9 +862,22 @@ GROUP BY civicrm_activity_id $having {$this->_orderBy}";
     }
     $this->limit();
     $groupByFromSelect = CRM_Contact_BAO_Query::getGroupByFromSelectColumns($this->_selectClauses, 'civicrm_activity_id');
+
+    $this->_where = " WHERE (1)";
+    $this->buildPermissionClause();
+    if ($this->_aclWhere) {
+      $this->_where .= " AND {$this->_aclWhere} ";
+    }
+
     $sql = "{$this->_select}
-FROM civireport_activity_temp_target tar
-{$groupByFromSelect} {$this->_having} {$this->_orderBy} {$this->_limit}";
+      FROM civireport_activity_temp_target tar
+      INNER JOIN civicrm_activity {$this->_aliases['civicrm_activity']} ON {$this->_aliases['civicrm_activity']}.id = tar.civicrm_activity_id
+      INNER JOIN civicrm_activity_contact {$this->_aliases['civicrm_activity_contact']} ON {$this->_aliases['civicrm_activity_contact']}.activity_id = {$this->_aliases['civicrm_activity']}.id
+      AND {$this->_aliases['civicrm_activity_contact']}.record_type_id = {$sourceID}
+      LEFT JOIN civicrm_contact contact_civireport ON contact_civireport.id = {$this->_aliases['civicrm_activity_contact']}.contact_id
+      {$this->_where} {$groupByFromSelect} {$this->_having} {$this->_orderBy} {$this->_limit}";
+
+    $this->addToDeveloperTab($sql);
     $this->buildRows($sql, $rows);
 
     // format result set.
@@ -1079,7 +1094,7 @@ FROM civireport_activity_temp_target tar
 
       // initialize array of total counts
       $totals = array();
-      $dao = CRM_Core_DAO::executeQuery($query);
+      $dao = $this->executeReportQuery($query);
       while ($dao->fetch()) {
         // let $this->_alterDisplay translate any integer ids to human-readable values.
         $rows[0] = $dao->toArray();

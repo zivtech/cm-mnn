@@ -57,6 +57,11 @@ abstract class CRM_Import_Form_DataSource extends CRM_Core_Form {
     $config = CRM_Core_Config::singleton();
 
     $uploadFileSize = CRM_Utils_Number::formatUnitSize($config->maxFileSize . 'm', TRUE);
+
+    //Fetch uploadFileSize from php_ini when $config->maxFileSize is set to "no limit".
+    if (empty($uploadFileSize)) {
+      $uploadFileSize = CRM_Utils_Number::formatUnitSize(ini_get('upload_max_filesize'), TRUE);
+    }
     $uploadSize = round(($uploadFileSize / (1024 * 1024)), 2);
 
     $this->assign('uploadSize', $uploadSize);
@@ -76,10 +81,7 @@ abstract class CRM_Import_Form_DataSource extends CRM_Core_Form {
     $this->setDefaults(array('fieldSeparator' => $config->fieldSeparator));
 
     //get the saved mapping details
-    $mappingArray = CRM_Core_BAO_Mapping::getMappings(CRM_Core_OptionGroup::getValue('mapping_type',
-      'Import ' . static::IMPORT_ENTITY,
-      'name'
-    ));
+    $mappingArray = CRM_Core_BAO_Mapping::getMappings('Import ' . static::IMPORT_ENTITY);
     $this->assign('savedMapping', $mappingArray);
     $this->add('select', 'savedMapping', ts('Mapping Option'), array('' => ts('- select -')) + $mappingArray);
 

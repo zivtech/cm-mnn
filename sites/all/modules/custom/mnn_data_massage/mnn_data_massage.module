@@ -64,13 +64,14 @@ function mnn_data_massage_page($function) {
 		     //"reservation_deleter",
 		     //"producer_role_check",
 		     //"producer_role_update",
-		     "duplicate_inventory",
-		     "items_missing_status_update",
+		     //"duplicate_inventory",
+		     //"items_missing_status_update",
+		     //"update_project_internet_archive_opt_out",
 		     );
-
   $ret = "";
   if ($function && in_array($function, $functions)) {
     $html = call_user_func("mnn_data_massage_".$function);
+    dsm("mnn_data_massage_".$function, 'yo');
     if ($html) {
       return $html;
     }
@@ -84,9 +85,24 @@ function mnn_data_massage_page($function) {
   return $ret;
 }
 function mnn_data_massage_function_tester() {
-  dsm("hi mom!");
 
-  internet_archive_cron();
+
+  dsm("hi mom!");
+  //drupal_cron_run();
+  
+  //internet_archive_cron();
+  
+  //$node = node_load(701208);
+  //dsm($node, 'node');
+  //$metadata =
+  //  internet_archive_mnn_metadata_internet_archive_metadata($node, '');
+
+  
+  //dsm($metadata, 'metadata');
+  //drupal_cron_run();
+
+  
+  
   //mnn_airing_replication_replicate_quarterly_airings();
   return;
   // $project = node_load(6);
@@ -3237,6 +3253,128 @@ WHERE (( (node.status = '1') AND (node.type NOT IN  ('civicrm_multiday_event', '
 
 }
 
+function mnn_data_massage_update_project_internet_archive_opt_out() {
+  //see formats listed below in arrays
+  $opt_out_tids = array(//all tids from inactive taxonomy
+			784,785,1151,786,1150,787,
+			//tids from project type
+			763,
+			//intervals
+			1617,
+			);
+
+  $formats = array(
+		   766 => "1/2",
+		   1142 => "Archival",
+		   767 => "DV",
+		   768 => "DVD",
+		   769 => "LIVE",
+		   770 => "MPEG2",
+		   1062 => "Other",
+		   );
+  
+  $intervals = array(
+		     780 => "Once",
+		     775 => "Monthly",
+		     774 => "Every Two Weeks",
+		     781 => "Weekly",
+		     771 => "Every Weekday",
+		     1617 => "Promo",
+		     );
+  
+  $inactive_status = array(
+			   784 => "Cancelled",
+			   785 => "Completed",
+			   1151 => "Inactive",
+			   786 => "Incomplete",
+			   1150 => "Pilot",
+			   787 => "Withdrawn",
+			   );
+  
+  $runtimes = array(
+		    850 => "28 mins",
+		    851 => "58 mins",
+		    852 => "88 mins",
+		    853 => "118 mins",
+		    854 => "Other",
+		    );
+  
+  $project_types = array(
+			 764 => "Archival",
+			 762 => "Fill",
+			 763 => "Promo",
+			 765 => "Rental",
+			 1 => "Series",
+			 2 => "Special",
+			 );
+
+  $available_tids = $formats + $intervals + $inactive_status +
+    $runtimes + $project_types;
+
+  $limit = 20;  
+
+  $sql = "SELECT nid FROM node WHERE type='cm_project' ORDER BY nid DESC ";
+  
+  if ($limit) {
+    $sql .= " LIMIT $limit ";
+  }
+
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $pnid = $result->nid;
+    $project = node_load($pnid);
+    dsm('-------------------');
+    dsm($project->title, 'Project Title:');
+
+    $field = "field_internet_archive_opt_out";
+    $opt_out = mnn_internet_archive_get_single_field_value($project, $field);
+
+    if ($opt_out == 1) {
+      dsm("already opted out");
+      continue;
+    }
+    if ($project->status != 1) {
+      $opt_out = 1;
+    }
+    else {
+      $fields = array(
+		      "field_format",
+		      "field_interval",
+		      "field_reason_not_active",
+		      "field_runtime",
+		      "taxonomy_cm_project_types",
+		      );
+      $tids = array();
+      foreach($fields as $field) {
+	$tid = 	  mnn_internet_archive_get_single_field_value($project, $field, 'tid');
+	if ($tid) {
+	  $tids[] = $tid;
+	}
+      }
+
+      dsm(implode(',',$tids), 'project tids');
+      $intersect = array_intersect($tids, $opt_out_tids);
+
+      if (count($intersect) > 0) {
+	$opt_out = 1;
+	foreach($intersect as $tid) {
+	  dsm('opt out because: ' . $available_tids[$tid]);
+	}
+      }
+    }
+
+    if ($opt_out == 1) {
+     
+      $project->field_internet_archive_opt_out[LANGUAGE_NONE][0]
+	['value'] = 1;
+      dsm($project, 'proj');
+      node_save($project);
+    }
+  
+    
+  }
+}
 function mnn_data_massage_log_query($sql, $args) {
   $ms = str_replace('{', '', $sql);
   $ms = str_replace('}', '', $ms);

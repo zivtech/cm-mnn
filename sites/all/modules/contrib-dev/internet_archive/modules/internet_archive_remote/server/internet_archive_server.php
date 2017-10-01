@@ -24,15 +24,19 @@ function internet_archive_server_authenticate() {
  */
 function internet_archive_server_check_requirements() {
   // Check for CURL
-  if (extension_loaded('curl') && !@dl(PHP_SHLIB_SUFFIX == 'so' ? 'curl.so' : 'php_curl.dll')) {
+  if (extension_loaded('curl') &&
+      !@dl(PHP_SHLIB_SUFFIX == 'so' ? 'curl.so' : 'php_curl.dll')) {
   }else{
-    print 'No CURL support found, please make sure CURL is installed properly.<br />';
+    print 'No CURL support found, please make sure CURL is installed ' .
+      'properly.<br />';
     exit();
   }
 
   if (version_compare(phpversion(), '5') >= 0) {
-  }else{
-    print 'PHP version on remote server is too old. This module requires at least PHP5, the server is currently running '.phpversion();
+  }
+  else{
+    print 'PHP version on remote server is too old. This module requires ' .
+      'at least PHP5, the server is currently running '. phpversion();
     exit();
   }
 }
@@ -46,7 +50,8 @@ function testConnection() {
   if(internet_archive_server_authenticate()) {
     $log->lwrite('Connection Test Successful');
     return 'archive-server-authenticated';
-  }else{
+  }
+  else{
     $log->lwrite('Connection Test Failed Authentication');
     return 'Authentication failed, invalid token.';
   }
@@ -77,10 +82,12 @@ function putObject($request) {
     require_once 'archive_remote.php';
 
     $s3 = new S3($request['key'], $request['skey']);
-    $response = $s3->putObjectFile($filepath, $bucket, $uri, $headers, $mimetype);
+    $response = $s3->putObjectFile($filepath, $bucket, $uri, $headers,
+				   $mimetype);
 
     return $response;
-  }else{
+  }
+  else{
     $log->lwrite('Failed Authentication, quitting');
     return;
   }

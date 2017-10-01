@@ -51,7 +51,7 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
         'fa-server'
       );
     }
-    elseif (version_compare(phpversion(), CRM_Upgrade_Incremental_General::MIN_DEFECT_PHP_VER) >= 0) {
+    elseif (version_compare(phpversion(), CRM_Upgrade_Incremental_General::PREVIOUS_MIN_RECOMMENDED_PHP_VER) >= 0) {
       $messages[] = new CRM_Utils_Check_Message(
         __FUNCTION__,
         ts('This system uses PHP version %1. While this meets the minimum requirements for CiviCRM to function, upgrading to PHP version %2 or newer is recommended for maximum compatibility.',
@@ -66,13 +66,22 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
       );
     }
     else {
+      $date = '';
+      $dateFormat = Civi::Settings()->get('dateformatshortdate');
+      if (version_compare(phpversion(), 5.4) < 0) {
+        $date = CRM_Utils_Date::customFormat('2017-12-31', $dateFormat);
+      }
+      elseif (version_compare(phpversion(), 5.5) < 0) {
+        $date = CRM_Utils_Date::customFormat('2018-02-28', $dateFormat);
+      }
       $messages[] = new CRM_Utils_Check_Message(
         __FUNCTION__,
-        ts('This system uses PHP version %1. CiviCRM can be installed on this version, but some specific features are known to fail or degrade. Version %3 is the bare minimum to avoid known issues, and version %2 is recommended.',
+        ts('This system uses PHP version %1. CiviCRM can be installed on this version. However PHP version %1 will not work in releases published after %2, and version %3 is recommended. For more explanation see <a href="%4"> the announcement</a>',
           array(
             1 => phpversion(),
-            2 => CRM_Upgrade_Incremental_General::MIN_RECOMMENDED_PHP_VER,
-            3 => CRM_Upgrade_Incremental_General::MIN_DEFECT_PHP_VER,
+            2 => $date,
+            3 => CRM_Upgrade_Incremental_General::MIN_RECOMMENDED_PHP_VER,
+            4 => 'https://civicrm.org/blog/totten/end-of-zombies-php-53-and-54',
           )),
         ts('PHP Out-of-Date'),
         \Psr\Log\LogLevel::WARNING,
@@ -139,11 +148,9 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
    * @return array
    */
   public function checkDebug() {
-    $messages = array();
-
     $config = CRM_Core_Config::singleton();
     if ($config->debug) {
-      $messages[] = new CRM_Utils_Check_Message(
+      $message = new CRM_Utils_Check_Message(
         __FUNCTION__,
         ts('Warning: Debug is enabled in <a href="%1">system settings</a>. This should not be enabled on production servers.',
           array(1 => CRM_Utils_System::url('civicrm/admin/setting/debug', 'reset=1'))),
@@ -151,9 +158,16 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
         \Psr\Log\LogLevel::WARNING,
         'fa-bug'
       );
+      $message->addAction(
+        ts('Disable Debug Mode'),
+        ts('Disable debug mode now?'),
+        'api3',
+        array('Setting', 'create', array('debug_enabled' => 0))
+      );
+      return array($message);
     }
 
-    return $messages;
+    return array();
   }
 
   /**
@@ -716,23 +730,28 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
 
 
   /**
-   * Checks if extensions are set up properly
+   * Checks if there are pending extension upgrades.
+   *
    * @return array
    */
   public function checkExtensionUpgrades() {
-    $messages = array();
-
     if (CRM_Extension_Upgrades::hasPending()) {
-      $messages[] = new CRM_Utils_Check_Message(
+      $message = new CRM_Utils_Check_Message(
         __FUNCTION__,
-        ts('Extension upgrades are pending.  Please visit <a href="%1">the upgrade page</a> to run them.',
-          array(1 => CRM_Utils_System::url('civicrm/admin/extensions/upgrade', 'reset=1'))),
-        ts('Run Extension Upgrades'),
+        ts('Extension upgrades should be run as soon as possible.'),
+        ts('Extension Upgrades Pending'),
         \Psr\Log\LogLevel::ERROR,
         'fa-plug'
       );
+      $message->addAction(
+        ts('Run Upgrades'),
+        ts('Run extension upgrades now?'),
+        'href',
+        array('path' => 'civicrm/admin/extensions/upgrade', 'query' => array('reset' => 1, 'destination' => CRM_Utils_System::url('civicrm/a/#/status')))
+      );
+      return array($message);
     }
-    return $messages;
+    return array();
   }
 
   /**

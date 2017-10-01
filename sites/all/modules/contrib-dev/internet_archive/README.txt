@@ -1,6 +1,14 @@
-NOTE: THESE INSTRUCTIONS ARE OUT OF DATE -- for the latest documentation please install the advanced help module. After enabling it, documentation links (when available) will appear at the top of the various configuration and management pages.
+This is the internet archive module hosted as part of the Community Media Advanced (CMA) Gitub Project. For more info about CMA go see http://cmadvanced.org/
 
-This is the internet archive module.
+To see the CMA Internet Archive repository go to https://github.com/cm-advanced/internet_archive.
+
+This module allows drupal fields to be linked to Archive.org Bucket Items. Video can be uploaded from the local server or a remote server. Once uploaded, thummbnails and embedded video can be displayed in views using the provided custom view field formatters. Cron tasks and admin tools allow files to be "harvested" and added to the upload queue. Subsequent cron jobs will pass each file upload through its various workflow statuses until its validated, i.e. successfully uploaded and synched. This harvesting can happen on a local or remote server. Only one remote serverlocation can be used per site.
+
+This module originates on Drupal.org. The last working version was for Drupal Version 6. You can see the original project here https://www.drupal.org/project/internet_archive.
+
+Please note: taking advantage of advanced features of this module --like custom metadata and harvesting files for a queue via cron both locally and remotely -- sometimes require creation of new views or even sometimes code changes. Code changes will be done by changing code in an included template module -- internet/archive/modules/custom_internet_archive -- or creating a new  new custom module using the internet_archive/modules/custom_internet_archive module as a template/example. 
+
+Please note #2: This module has only been tested on fields on nodes. Fields on other entities may or may not work. Also, this module has not been tested with the media module. Having both modules turned on could potentially cause issues, or not. Just beware.
 
 ---------------
 INSTALLATION
@@ -8,7 +16,7 @@ INSTALLATION
 1. Make sure you have CURL installed on your server
 2. Install the internet archive module directory under sites/all/modules or 
    sites/yoursite/modules
-3. Enable the module at admin > build > modules
+3. Enable the module via drush or via the module admin page
 
 ---------------
 BASIC CONFIGURATION
@@ -16,32 +24,23 @@ BASIC CONFIGURATION
 1. If you do not already have an account on archive.org, create one
 2. If you do not already have an S3 key on archive.org, visit 
    http://www.archive.org/account/s3.php while logged in.
-3. Visit the internet archive settings page at: 
-   admin > site configuration > internet archive
-4. Choose a unique default item name to test your connection with (it can be 
-   changed at any time, and can be overridden using the "Use node title for item name" 
-   or with a module implementing hook_metadata. Item names must consist only of 
-   alphanumeric characters (dashes are ok as well). For testing purposes, it is 
-   important that this item be unique -- you can check if an item exists by 
-   visiting http://www.archive.org/details/itemnamehere
-5. Install the internet archive module directory under sites/all/modules or 
-   sites/yoursite/modules
+3. Choose a unique default bucket item name to test your connection. When saved, a machine friendly version of the bucket item title will be created by swapping all non alphanumeric characters with underscores. This machine friendly version must be unique on Archive.org. You can check if the machine friendly bucket item title is available by entering the following URL with the "my_bucket_item_name" part replaced by your desired bucket item name
+    http://www.archive.org/details/my_bucket_item_name    
+4. Go to the config page, <your site>/admin/config/internet_archive/default   
 6. Enter your S3 Access & Secret keys from step #2
-7. Save the configuration, you should get a "tested successfully" message, if 
+7. Enter your "Default Archive.org Bucket Item" name form step #3
+8. Save the configuration, you should get a "tested successfully" message, if 
    not please check that your account credentials are correct. If the problem 
    persists, check the "Enable Debug Mode" box on the settings form and then 
    check the watchdog for any obvious issues / where applicable report issues 
-   to the issue queue at http://drupal.org/project/internet_archive
+   to the issue queue at https://github.com/cm-advanced/internet_archive/issues
+
 
 ---------------
 USING WITH A CONTENT TYPE / FIELD
 ---------------
-1. Add a filefield, textfield or custom emfield to your content type if not 
-   already in place. If using a textfield or emfield, it must contain a local 
-   path to the files you wish to send to archive.org, 
-   example: sites/default/files/botp-cc.mov, unless you have configured the
-   internet_archive_remote module
-2. Go to admin > site configuration > internet archive
+1. Decide what field(s) you would like to push files from. Either add a new filefield or a textfield to your content type or choose an already exiting field. If using a textfield for a locally hosted file, it must contain a local path to the files you wish to send to archive.org, example: sites/default/files/botp-cc.mov. Remote files will rely on remote configurations.
+2. Go to <your site>/admin/config/internet_archive/default   
 3. Under "Field Integration" select the fields you wish to be able to integrate 
    with archive.org.
 4. To test, visit a node containing one of the fields you enabled -- you should 

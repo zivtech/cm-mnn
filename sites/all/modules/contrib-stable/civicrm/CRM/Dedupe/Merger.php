@@ -1058,8 +1058,8 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     $qfZeroBug = 'e8cddb72-a257-11dc-b9cc-0016d3330ee9';
     $fields = self::getMergeFieldsMetadata();
 
-    $main = self::getMergeContactDetails($mainId, 'main');
-    $other = self::getMergeContactDetails($otherId, 'main');
+    $main = self::getMergeContactDetails($mainId);
+    $other = self::getMergeContactDetails($otherId);
     $specialValues['main'] = self::getSpecialValues($main);
     $specialValues['other'] = self::getSpecialValues($other);
 
@@ -1165,7 +1165,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
         $values = civicrm_api3($blockName, 'get', $searchParams);
         if ($values['count']) {
           $cnt = 0;
-          foreach ($values['values'] as $index => $value) {
+          foreach ($values['values'] as $value) {
             $locations[$moniker][$blockName][$cnt] = $value;
             // Fix address display
             if ($blockName == 'address') {
@@ -1383,7 +1383,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     $mainTree = CRM_Core_BAO_CustomGroup::getTree($main['contact_type'], NULL, $mainId, -1,
       CRM_Utils_Array::value('contact_sub_type', $main), NULL, TRUE, NULL, TRUE, $checkPermissions
     );
-    $otherTree = CRM_Core_BAO_CustomGroup::getTree($main['contact_type'], CRM_Core_DAO::$_nullObject, $otherId, -1,
+    $otherTree = CRM_Core_BAO_CustomGroup::getTree($main['contact_type'], NULL, $otherId, -1,
       CRM_Utils_Array::value('contact_sub_type', $other), NULL, TRUE, NULL, TRUE, $checkPermissions
     );
     CRM_Core_DAO::freeResult();
@@ -1515,14 +1515,11 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     // fix custom fields so they're edible by createProfileContact()
     static $treeCache = array();
     if (!array_key_exists($migrationInfo['main_details']['contact_type'], $treeCache)) {
-      $treeCache[$migrationInfo['main_details']['contact_type']] = CRM_Core_BAO_CustomGroup::getTree($migrationInfo['main_details']['contact_type'],
-        CRM_Core_DAO::$_nullObject, NULL, -1
-      );
+      $treeCache[$migrationInfo['main_details']['contact_type']] = CRM_Core_BAO_CustomGroup::getTree($migrationInfo['main_details']['contact_type'], NULL, NULL, -1);
     }
-    $cgTree = &$treeCache[$migrationInfo['main_details']['contact_type']];
 
     $cFields = array();
-    foreach ($cgTree as $key => $group) {
+    foreach ($treeCache[$migrationInfo['main_details']['contact_type']] as $key => $group) {
       if (!isset($group['fields'])) {
         continue;
       }
@@ -1570,18 +1567,19 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
             if (!empty($customfieldValues[$key])) {
               $existingValue = explode(CRM_Core_DAO::VALUE_SEPARATOR, $customfieldValues[$key]);
               if (is_array($existingValue) && !empty($existingValue)) {
-                $mergeValue = $submmtedCustomValue = array();
+                $mergeValue = $submittedCustomValue = array();
                 if ($value == 'null') {
                   // CRM-19074 if someone has deliberately chosen to overwrite with 'null', respect it.
                   $submitted[$key] = $value;
                 }
                 else {
                   if ($value) {
-                    $submmtedCustomValue = explode(CRM_Core_DAO::VALUE_SEPARATOR, $value);
+                    $submittedCustomValue = explode(CRM_Core_DAO::VALUE_SEPARATOR, $value);
                   }
 
-                  //hack to remove null and duplicate values from array.
-                  foreach (array_merge($submmtedCustomValue, $existingValue) as $k => $v) {
+                  // CRM-19653: overwrite or add the existing custom field value with dupicate contact's
+                  // custom field value stored at $submittedCustomValue.
+                  foreach ($submittedCustomValue as $k => $v) {
                     if ($v != '' && !in_array($v, $mergeValue)) {
                       $mergeValue[] = $v;
                     }
@@ -1646,13 +1644,11 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       $dao = CRM_Core_DAO::executeQuery($sql);
       while ($dao->fetch()) {
         $fileIds[$dao->entity_id] = $dao->file_id;
+        if ($dao->entity_id == $mainId) {
+          CRM_Core_BAO_File::deleteFileReferences($fileIds[$mainId], $mainId, $customId);
+        }
       }
       $dao->free();
-
-      // delete the main contact's file
-      if (!empty($fileIds[$mainId])) {
-        CRM_Core_BAO_File::deleteFileReferences($fileIds[$mainId], $mainId, $customId);
-      }
 
       // move the other contact's file to main contact
       //NYSS need to INSERT or UPDATE depending on whether main contact has an existing record
@@ -1993,13 +1989,12 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * Get the details of the contact to be merged.
    *
    * @param int $contact_id
-   * @param string $moniker
    *
    * @return array
    *
    * @throws CRM_Core_Exception
    */
-  public static function getMergeContactDetails($contact_id, $moniker) {
+  public static function getMergeContactDetails($contact_id) {
     $params = array(
       'contact_id' => $contact_id,
       'version' => 3,
@@ -2009,9 +2004,8 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
     // CRM-18480: Cancel the process if the contact is already deleted
     if (isset($result['values'][$contact_id]['contact_is_deleted']) && !empty($result['values'][$contact_id]['contact_is_deleted'])) {
-      throw new CRM_Core_Exception(ts('Cannot merge because the \'%1\' contact (ID %2) has been deleted.', array(
-        1 => $moniker,
-        2 => $contact_id,
+      throw new CRM_Core_Exception(ts('Cannot merge because one contact (ID %1) has been deleted.', array(
+        1 => $contact_id,
       )));
     }
 
