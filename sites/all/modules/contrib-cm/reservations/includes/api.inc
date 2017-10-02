@@ -141,7 +141,7 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
       $overdue_items_array = reservations_overdue_items($type, $start, $node->nid);
       
  	  
- 	  if (reservations_type_setting($type) == 'bucket') {
+      if (reservations_type_setting($type) == 'bucket') {
          $items_overdue_currently = count($overdue_items_array);
          $available_bucket_items_count = $inventory_count[$type] - $items_overdue_currently;
          if ($available_bucket_items_count < 1) {
@@ -159,16 +159,29 @@ function reservations_validate_reservations_selected_items($form, &$form_state) 
          }
        }else{
          if (!empty($overdue_items_array)) {
-           $messages[$did] = '<div> ' . t("%name is not available because it is still checked out by:", array('%name' => $title)) . '</div>';
-           foreach ($overdue_items_array as $reservations) {
-             foreach (array_keys($reservations) as $nid) {
-               $overdue = node_load($nid);
-               $messages[$did] .= '<div> ' . l($overdue->title, 'node/' . $overdue->nid) . '</div>';
-             }
-            }
-           form_set_error("reservations_reservation_items][$did][reservations_item_nid", $messages[$did]);
-           continue;
-          }
+	   $has_overlap = FALSE;
+	   $msg_detail = '';
+           foreach ($overdue_items_array as
+		    $reserved_item_nid => $reservations) {
+	     if ($reserved_item_nid == $item_nid) {
+	       $has_overlap = TRUE;
+	       foreach (array_keys($reservations) as $nid) {
+		 $overdue = node_load($nid);
+		 $msg_detail .= '<div> ' .
+		   l($overdue->title, 'node/' . $overdue->nid) . '</div>';
+	       }
+	     }
+	   }
+	   if ($has_overlap) {
+	     $messages[$did] = '<div> ' .
+	       t("%name is not available because it is still checked out by:",
+		 array('%name' => $title)) . '</div>' . $msg_detail;
+
+	     form_set_error("reservations_reservation_items][$did]".
+			    "[reservations_item_nid", $messages[$did]);
+	     continue;
+	   }
+	 }
        }
  
        $count = 
