@@ -1177,7 +1177,7 @@ function internet_archive_embed_from_archive_data($archive_data, $width = 470,
   $url = internet_archive_derivative_url($archive_data, 'mp4');
 
   if ($url) {
-    $embed = internet_archive_create_embed($url, $width, $height);
+    $embed = internet_archive_create_embed($archive_data, $width, $height);
   }
   else {
     return FALSE;
@@ -1215,27 +1215,15 @@ function internet_archive_derivative_url($item, $extension) {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function internet_archive_create_embed($url, $width = 470, $height = 371) {
-  $embed = '';
-  $pathinfo = pathinfo($url);
-  $base_url = $pathinfo['dirname'] . '/';
-  $file_name = $pathinfo['basename'];
+function internet_archive_create_embed($archive_data,
+				       $width = 470, $height = 371) {
 
-  //$embed = '<object width="'.$width.'" height="'.$height.'"
-  //classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000">';
-  $embed .= '<param value="true" name="allowfullscreen"/>';
-  $embed .= '<param value="always" name="allowscriptaccess"/>';
-  $embed .= '<param value="high" name="quality"/>';
-  $embed .= '<param value="true" name="cachebusting"/>';
-  $embed .= '<param value="#000000" name="bgcolor"/>';
-  $embed .= '<param name="movie" ' .
-    'value="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" />';
-
-  $embed .= "<param value=\"config={'key':'#\$aa4baff94a9bdcafce8','playlist':['format=Thumbnail?.jpg',{'autoPlay':false,'url':'" . $file_name . "'}],'clip':{'autoPlay':true,'baseUrl':'" . $base_url . "','scaling':'fit','provider':'h264streaming'},'canvas':{'backgroundColor':'#000000','backgroundGradient':'none'},'plugins':{'controls':{'playlist':false,'fullscreen':true,'height':26,'backgroundColor':'#000000','autoHide':{'fullscreenOnly':true}},'h264streaming':{'url':'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf'}, 'sharing':{'url':'http://www.denveropenmedia.org/sites/all/plugins/flowplayer/flowplayer.sharing-3.2.1.swf'}},'contextMenu':[{},'-','Flowplayer v3.2.1']}\" name=\"flashvars\"/>";
-
-  $embed .= '<embed src="http://www.archive.org/flow/flowplayer.commercial-3.2.1.swf" type="application/x-shockwave-flash" width="' . $width . '" height="' . $height . '" allowfullscreen="true" allowscriptaccess="always" cachebusting="true" bgcolor="#000000" quality="high" flashvars="config={\'key\':\'#$aa4baff94a9bdcafce8\',\'playlist\':[\'format=Thumbnail?.jpg\',{\'autoPlay\':false,\'url\':\'' . $file_name . '\'}],\'clip\':{\'autoPlay\':true,\'baseUrl\':\'' . $base_url . '\',\'scaling\':\'fit\',\'provider\':\'h264streaming\'},\'canvas\':{\'backgroundColor\':\'#000000\',\'backgroundGradient\':\'none\'},\'plugins\':{\'controls\':{\'playlist\':false,\'fullscreen\':true,\'height\':26,\'backgroundColor\':\'#000000\',\'autoHide\':{\'fullscreenOnly\':true}},\'h264streaming\':{\'url\':\'http://www.archive.org/flow/flowplayer.pseudostreaming-3.2.1.swf\'}},\'contextMenu\':[{},\'-\',\'Flowplayer v3.2.1\']}"></embed>';
-  //$embed .= '</object>';
-
+  $embed .=
+    '<iframe src="https://archive.org/embed/' . $archive_data['item'] . '" '.
+    'width="' . $width . '" height="' . $height . '" frameborder="0" '.
+    'webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen>'.
+    '</iframe>';
+  
   return $embed;
 }
 
