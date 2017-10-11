@@ -95,7 +95,7 @@ function internet_archive_menu() {
 	    );
     $items['admin/reports/internet_archive/default'] =
       array(
-	    'title' => 'Uploads',
+	    'title' => 'Queue',
 	    'page callback' => 'internet_archive_reports_log',
 	    'access arguments' => array('administer internet_archive'),
 	    'type' => MENU_DEFAULT_LOCAL_TASK,
@@ -117,15 +117,15 @@ function internet_archive_menu() {
 	  'type' => MENU_LOCAL_TASK,
 	  'weight' => 50,
 	  );
-
-  $items['admin/structure/internet_archive'] =
+  $items['admin/reports/internet_archive'] =
     array(
-	  'title' => 'Internet Archive Queues',
-	  'description' => t('View file transfer queues'),
+	  'title' => 'Internet Archive Reports and Tools',
+	  'description' =>t('View Reports and tools for Queues and Transfers'),
 	  'page callback' => 'internet_archive_queues_home',
 	  'access arguments' => array('administer internet_archive'),
 	  'type' => MENU_NORMAL_ITEM,
 	  );
+  
   $items['admin/structure/internet_archive/default'] =
     array(
 	  'title' => 'Upload Queue',

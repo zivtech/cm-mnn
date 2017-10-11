@@ -273,7 +273,7 @@ function internet_archive_views_default_views() {
 
   /* Display: Page */
   $handler = $view->new_display('page', 'Page', 'page');
-  $handler->display->display_options['path'] = 'admin/structure/internet_archive/transfers';
+  $handler->display->display_options['path'] = 'admin/reports/internet_archive/transfers';
   $handler->display->display_options['menu']['type'] = 'tab';
   $handler->display->display_options['menu']['title'] = 'Transfers';
   $handler->display->display_options['menu']['weight'] = '0';
