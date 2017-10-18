@@ -143,7 +143,7 @@ function internet_archive_remote_test_connection() {
  */
 function internet_archive_remote_put_object($file_name, $bucket, $uri,
 					    $headers, $mimetype) {
-
+  ini_set('default_socket_timeout',-1);
   $prefix = variable_get('internet_archive_remote_prefix', FALSE);
   $append = variable_get('internet_archive_remote_append', FALSE);
   $remote_file_name = $prefix . $file_name . $append;
@@ -170,6 +170,7 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
  * files, i.e. what what node and what field to put them on
  */
 function internet_archive_remote_internet_archive_harvest_remote_files() {
+
   if (!variable_get('internet_archive_harvest_remote', FALSE)) {
     return;
   }
@@ -186,7 +187,6 @@ function internet_archive_remote_internet_archive_harvest_remote_files() {
 
   //grab all file names from directory
   $html = file_get_contents($remote_file_directory_url);
-  
   //parse the html
   $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
 			  $html, $files);
@@ -198,7 +198,6 @@ function internet_archive_remote_internet_archive_harvest_remote_files() {
       $harvested_files[] = $file;
     } 
   }
-
   if ($harvested_files) {
     module_invoke_all('internet_archive_process_remote',
 		      $harvested_files);
