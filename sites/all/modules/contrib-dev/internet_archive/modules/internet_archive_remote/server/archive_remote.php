@@ -292,14 +292,74 @@ class S3 {
   */
   public static function inputFile($file, $md5sum = true) {
     if (!file_exists($file) || !is_file($file) || !is_readable($file)) {
-      trigger_error('S3::inputFile(): Unable to open input file: '.$file, E_USER_WARNING);
+      trigger_error('S3::inputFile(): Unable to open input file: '.
+		    $file, E_USER_WARNING);
       return false;
     }
-    return array('file' => $file, 'size' => filesize($file),
-    'md5sum' => $md5sum !== false ? (is_string($md5sum) ? $md5sum :
-    base64_encode(md5_file($file, true))) : '');
-  }
 
+    $size = self::realFileSize($file);
+    
+    if (!$md5sum) {
+      $md5sum = '';
+    }
+    else if (is_string($md5sum)) {
+      $md5sum = $md5sum;
+    }
+    else {
+      $md5raw = shell_exec('md5sum -b ' . escapeshellarg($file));
+      $md5sum = substr($md5raw, 0, strpos($md5raw, ' '));
+    }
+    
+    return array('file' => $file, 'size' => $size, 'md5sum' => $md5sum);
+  }
+  /**
+   * Return file size (even for file > 2 Gb)
+   * For file size over PHP_INT_MAX (2 147 483 647), PHP filesize function loops
+   * from -PHP_INT_MAX to PHP_INT_MAX.
+   *
+   * @param string $path Path of the file
+   * @return mixed File size or false if error
+   */
+  public static function realFileSize($path)
+  {
+    if (!file_exists($path)) {
+      return false;
+    }
+    
+    $size = filesize($path);
+
+    if (!($file = fopen($path, 'rb')))
+      return false;
+
+    if ($size >= 0) {//Check if it really is a small file (< 2 GB)
+      if (fseek($file, 0, SEEK_END) === 0) {//It really is a small file
+	fclose($file);
+	return $size;
+      }
+    }
+
+    //Quickly jump the first 2 GB with fseek. After that fseek is not
+    //working on 32 bit php (it uses int internally)
+    $size = PHP_INT_MAX - 1;
+    if (fseek($file, PHP_INT_MAX - 1) !== 0)
+      {
+	fclose($file);
+	return false;
+      }
+
+    $length = 1024 * 1024;
+    while (!feof($file))
+      {//Read the file until end
+	$read = fread($file, $length);
+	$size = bcadd($size, $length);
+      }
+    $size = bcsub($size, $length);
+    $size = bcadd($size, strlen($read));
+
+    fclose($file);
+    return $size;
+  }
+  
 
   /**
   * Create input array info for putObject() with a resource
@@ -331,6 +391,10 @@ class S3 {
   * @return boolean
   */
   public static function putObject($input, $bucket, $uri, $metaHeaders = array(), $requestHeaders = array()) {
+    $log = new Logging();	    	   
+    set_time_limit(0);
+    ini_set('default_socket_timeout', -1);	
+
     if ($input === false) return false;
     $rest = new S3Request('PUT', $bucket, $uri);
 
@@ -376,41 +440,31 @@ class S3 {
     // We need to post with Content-Length and Content-Type, MD5 is optional
     if ($rest->size >= 0 && ($rest->fp !== false || $rest->data !== false)) {
       $rest->setHeader('Content-Type', $input['type']);
-      if (isset($input['md5sum'])) $rest->setHeader('Content-MD5', $input['md5sum']);
+      if (isset($input['md5sum'])) {
+	$rest->setHeader('Content-MD5', $input['md5sum']);
+      }
       //BRIAN changed metadata tag to archives version
       foreach ($metaHeaders as $h => $v) $rest->setAmzHeader($h, $v);
+
+      $log->lwrite('==============================================');
+      $log->lwrite($uri.' STARTING FILE PUSH!!!');
+      $log->lwrite($uri. " File Info: \n".print_r($input, TRUE));
+      $log->lwrite($uri. " Metadata: \n" . print_r($metaHeaders, TRUE));
+      $log->lwrite($uri. " Pre Response Rest Object: \n".print_r($rest, TRUE));
+      $log->lclose();		    
+    
       $rest = $rest->getResponse();
+    
+      $log->lwrite($uri." Post Response Rest Object: \n".print_r($rest, TRUE));
+      $log->lwrite($uri.' COMPLETED REQUEST!!!');
+      $log->lclose();		    
     } 
     else {
-      //watchdog('internet_archive', 'Unable to put file: '.$uri.', missing input parameters.',NULL, WATCHDOG_ERROR);      
+      $log->lwrite($uri . ' Unable to grab file.');
+      $log->lclose();		    	  
       return false;
     }
     
-    /** 
-    switch ($rest->code) {
-      case 200:
-        if (variable_get('internet_archive_debug', FALSE)) {
-           watchdog('internet_archive', 'File: ' . $uri . ' created successfully (http 200)',NULL, WATCHDOG_NOTICE); }
-        break;
-      case 201:
-        if (variable_get('internet_archive_debug', FALSE)) {
-           watchdog('internet_archive', 'File: ' . $uri . ' created successfully (http 201)',NULL, WATCHDOG_NOTICE); }
-        break;
-      case 400:
-        watchdog('internet_archive', 'File: ' . $uri . ' could not be created, (http 400). Bad request can suggest a problem with the metadata being attached to the file.',NULL, WATCHDOG_ERROR);
-        return false;
-        break;
-      case 409:
-        //TODO: add support to check if item is owned with S3 credentials, if not append number to item name and try again.
-        watchdog('internet_archive', 'File: ' . $uri . ' already exists, unable to create (http 409).',NULL, WATCHDOG_ERROR);
-        return false;
-        break;
-      case 403:
-        watchdog('internet_archive', 'File: ' . $uri . ' could not be created, (http 403). Access denied can suggest a problem with your S3 credentials or metadata being attached to the file.',NULL, WATCHDOG_ERROR);
-        return false;
-        break;
-    }**/
-
     return true;
   }
 

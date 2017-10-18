@@ -23,9 +23,10 @@ function internet_archive_server_authenticate() {
  * Check some minimum requirements and print to screen if fail.
  */
 function internet_archive_server_check_requirements() {
-  // Check for CURL
-  if (extension_loaded('curl') &&
-      !@dl(PHP_SHLIB_SUFFIX == 'so' ? 'curl.so' : 'php_curl.dll')) {
+
+// Check for CURL
+//  if (extension_loaded('curl') && !@dl(PHP_SHLIB_SUFFIX == 'so' ? 'curl.so' : 'php_curl.dll')) {
+    if (function_exists('curl_version')) {
   }else{
     print 'No CURL support found, please make sure CURL is installed ' .
       'properly.<br />';
@@ -39,6 +40,7 @@ function internet_archive_server_check_requirements() {
       'at least PHP5, the server is currently running '. phpversion();
     exit();
   }
+
 }
 
 /**
@@ -49,10 +51,12 @@ function testConnection() {
   $log->lwrite('==============================================');
   if(internet_archive_server_authenticate()) {
     $log->lwrite('Connection Test Successful');
+    $log->lclose();		    
     return 'archive-server-authenticated';
   }
   else{
     $log->lwrite('Connection Test Failed Authentication');
+    $log->lclose();		    
     return 'Authentication failed, invalid token.';
   }
 }
@@ -61,8 +65,7 @@ function testConnection() {
  * SOAP function, executs putObject via the internet archive s3 library
  */
 function putObject($request) {
-  $log = new Logging();
-  $log->lwrite('==============================================');
+
 
   if(internet_archive_server_authenticate()) {
     $request = unserialize($request);
@@ -72,11 +75,7 @@ function putObject($request) {
     $headers = $request['headers'];
     $mimetype = $request['mimetype'];
     
-    $log->lwrite('Filepath:'.$filepath);
-    $log->lwrite('Bucket:'.$bucket);
-    $log->lwrite('URI:'.$uri);
-    $log->lwrite('Headers:'.print_r($headers, TRUE));
-    $log->lwrite('Mimetype:'.$mimetype);
+
 
     //include our Archive.org S3 class
     require_once 'archive_remote.php';
@@ -89,6 +88,7 @@ function putObject($request) {
   }
   else{
     $log->lwrite('Failed Authentication, quitting');
+    $log->lclose();		    		 
     return;
   }
 }

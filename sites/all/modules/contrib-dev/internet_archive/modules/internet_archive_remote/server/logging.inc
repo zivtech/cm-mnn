@@ -6,11 +6,13 @@
  */
 
 /**
- * Logging class, credit to Darko Bunić @ http://www.redips.net/php/write-to-log-file/
+ * Logging class, credit to:
+ * Darko Bunić @ http://www.redips.net/php/write-to-log-file/
  * - contains lopen and lwrite methods
  * - lwrite will write message to the log file
  * - first call of the lwrite will open log file implicitly
- * - message is written with the following format: hh:mm:ss (script name) message
+ * - message is written with the following format: 
+ *   hh:mm:ss (script name) message
  */
 class Logging {
   // define log file
@@ -39,8 +41,14 @@ class Logging {
     $lfile = $this->log_file;
     // define the current date (it will be appended to the log file name)
     $today = date('Y-m-d');
-    // open log file for writing only; place the file pointer at the end of the file
-    // if the file does not exist, attempt to create it
+    // open log file for writing only; place the file pointer at the end of 
+    // the file if the file does not exist, attempt to create it
     $this->fp = fopen($lfile . '_' . $today, 'a') or ("Can't open $lfile!");
+  }
+
+  public function lclose() {
+    if ($this->fp)
+     fclose($this->fp);
+     $this->fp = NULL;
   }
 }
