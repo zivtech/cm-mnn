@@ -407,7 +407,9 @@ function internet_archive_update_node_metadata($node) {
 function internet_archive_delete_node_files($node, $tid) {
   if ($archive_data = internet_archive_load_data_tid($tid)) {
     internet_archive_delete_files($archive_data);
-
+    internet_archive_delete_metadata($archive_data);
+    internet_archive_delete_item($archive_data);
+    
     db_delete('internet_archive')
       ->condition('tid', $tid)
       ->execute();

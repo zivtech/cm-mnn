@@ -69,6 +69,7 @@ function internet_archive_delete_archive_item_action(&$node, $context){
   while($result = $results->fetchAssoc()) {
     $archive_data = internet_archive_load_data_tid($result['tid']);
     internet_archive_delete_files($archive_data);
+    internet_archive_delete_metadata($archive_data);
     internet_archive_delete_item($archive_data);
 
     db_delete('internet_archive')

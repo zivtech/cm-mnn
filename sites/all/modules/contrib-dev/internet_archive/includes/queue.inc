@@ -367,14 +367,14 @@ function internet_archive_transfer_queue_items() {
   }
 
   if (count($items) > $limit) {
-    $msg = t('Completed transfering @count files and reached limit of @limit.',
+    $msg =t('Completed transferring @count files and reached limit of @limit.',
 	     array('@count' => $internet_archive_queue_count - 1,
 		   '@limit' => $limit)) ;
     drupal_set_message($msg, 'warning');
     return;
   }
 
-  drupal_set_message(t('Completed transfering @count files.',
+  drupal_set_message(t('Completed transferring @count files.',
 		       array('@count' => count($items))), 'warning');
   return;
 
@@ -421,7 +421,13 @@ function internet_archive_harvest_files() {
       $file_names = array_merge($reprocess_file_names, $file_names);
     }
   }
-  
+
+  $transferring_files = internet_archive_harvest_overdue_transferring();
+
+  if ($transferring_files) {
+    $file_names = array_merge($transferring_files, $file_names);
+  }
+
   $transfer_queue = DrupalQueue::get('internet_archive_send_file');
 
   if ($file_names) {
@@ -462,8 +468,7 @@ function internet_archive_harvest_files() {
 	
       }
 
-      if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRING
-	  && $status != ARCHIVE_TRANSFERRED &&
+      if ($status != ARCHIVE_QUEUED && $status != ARCHIVE_TRANSFERRED &&
 	  $status != ARCHIVE_VALIDATED && $status != ARCHIVE_DERIVED) {
 	if ($file_info['file_location'] == ARCHIVE_FILE_LOCATION_LOCAL &&
 	    is_readable($file_name)) {
@@ -511,6 +516,46 @@ function internet_archive_harvest_files() {
   }
 }
 
+
+/**
+ * Harvests files that have been in state ARCHIVE_TRANSFERRRING for too long
+ * and returns them to the queue. The length of time is determined by the 
+ * configuration setting on admin/config/internet_archive/default
+ */
+function internet_archive_harvest_overdue_transferring(){
+  $allowed_transfer_time =
+    variable_get('internet_archive_remote_allowed_upload_time', 24);
+
+  $result =
+    db_query("SELECT * FROM {internet_archive} " .
+	     "WHERE status = :status ",
+	     array(':status' => ARCHIVE_TRANSFERRING));
+
+  $file_names = array();
+  while ($archive_data = $result->fetchAssoc()) {
+    internet_archive_store_derivatives($archive_data['nid']);
+    $archive_data = internet_archive_load_data_tid($archive_data['tid']);
+
+    if ($archive_data['status'] == ARCHIVE_TRANSFERRING) {
+      //EXPIRE TIME IS DETERMINED FROM ADDING $allowed_transfer_time TO
+      //THE TIMESTAMP OF WHEN THE TRANSFER WAS INITIATED
+      $expire_time = $archive_data['transfer_initiated'] +
+	($allowed_transfer_time * 60 * 60);
+
+      //IF THE CURRENT TIME IS GREATER THAN THE EXPIRE TIME, THEN CONSIDER
+      //IT FAILED. IF SETTINGS ARE CORRECT IT WILL BE REHARVESTED
+      //INTO THE QUEUE
+      if (REQUEST_TIME > $expire_time) {
+	$file_names[$archive_data['in_path']] =
+	  array(
+		'field_name' => $archive_data['field_name'],
+		'file_location' => $archive_data['file_location'],
+	      );
+      }
+    }
+  }
+  return $file_names;
+}
 
 /**
  * Harvests failed files and adds them back to the transfer queue
@@ -810,9 +855,11 @@ function internet_archive_transfer_item_out_of_queue($tid) {
 		      );
 
   $transfer_status = internet_archive_transfer_file_worker($queue_item);
+  $archive_data = internet_archive_load_data_tid($tid);
   if (!$transfer_status) {
-    $msg =t("!filename could not be transferred and marked as 'failed'.",
-	    array('!filename' => $archive_data['file_name']));
+    $msg=t("!filename transfer was interrupted. Status changed to  '!status'.",
+	   array('!filename' => $archive_data['file_name'],
+		 '!status' => $archive_data['status']));
     drupal_set_message($msg, 'error');
   }
   $sql = "DELETE FROM queue WHERE data=:data";

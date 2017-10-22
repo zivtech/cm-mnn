@@ -90,6 +90,26 @@ function internet_archive_remote_admin_form($form, &$form_state) {
     '#description' => t("Append text to the end of stored paths"),
   );
 
+    $description =
+      t('Sometimes SOAP connections to the remote server are unexpectedly ' .
+	'terminated. Sometimes those connections are cut after the remote '.
+	'server begins to upload the remote file and the file actually ends '.
+	'up uploading successfully. When we catch the connection termination '.
+	'exception, we set the status to ARCHIVE_TRANSFERRING,  and later '.
+	'cron runs will try to validate and derive the transfer. This '.
+	'setting will say how long in HOURS  we should continue to check ' .
+	'before we mark it ARCHIVE_FAILED and reharvest it into the queue.');
+  
+  $form['internet_archive']['internet_archive_remote_allowed_upload_time'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Allowed Upload Time (Hours)'),
+	  '#default_value' =>
+	  variable_get('internet_archive_remote_allowed_upload_time', 24),
+	  '#description' => $description,
+	  '#size' => 5,
+  );
+
   return system_settings_form($form);
 }
 
@@ -158,8 +178,15 @@ function internet_archive_remote_put_object($file_name, $bucket, $uri,
   );
 
   $client = internet_archive_remote_new_client();
-  $response = $client->putObject(serialize($settings));
-  //$response = $response ? unserialize($response) : '';
+  try {
+    $response = $client->putObject(serialize($settings));
+  }
+  catch (Exception $e) {
+    drupal_set_message("SOAP Connection died while uploading " . $file_name .
+		       " due to: " . $e->getMessage(), 'error');
+    return FALSE;    
+  }
+  return TRUE;
 }
 
 /**

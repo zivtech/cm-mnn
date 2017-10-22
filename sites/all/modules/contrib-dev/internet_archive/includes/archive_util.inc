@@ -292,34 +292,48 @@ function internet_archive_send($config, $file_info) {
 					 $config['internet_archive_bucket'],
 					 basename($file_name), $headers,
 					 $mimetype);
-    //TODO MAKE internet_archive_remote_put_object RETURN A STATUS AND IF
-    //FAILED RETURN FALSE
-    //return FALSE;
   }
   //PUTTING UP A LOCAL FILE
   else {
     $status = $s3->putObjectFile($file_name,$config['internet_archive_bucket'],
 				 basename($file_name), $headers, $mimetype);
-    //IF WE HAD A HARD FAIL ON PUTTING UP THE FILE
-    if (!$status) {
-      $archive_data['status'] = ARCHIVE_FAILED;
-      
-      //UPDATE internet_archive TABLE WITH FAILURE INFO
-      if (isset($archive_data['tid'])) {
-	internet_archive_update_archive_data($archive_data);
-      }
-      else {
-	$archive_data['tid'] =
-	  internet_archive_insert_archive_data($archive_data);
-      }
-      
+  }
+
+  //HANDLE NEGATIVE STATUSES FROM TRYING TO PUT UP FILE
+  if (!$status) {
+    //this maybe a SOAP connection timeout issue and not a failed upload
+    if ($file_location == ARCHIVE_FILE_LOCATION_REMOTE) {
+      $archive_data['status'] = ARCHIVE_TRANSFERRING;
+      internet_archive_invoke_internet_archive($archive_data, 'transferring');
       $error =
-	t('File transfer to Archive.org failed, transfer marked as failed.');
-
-      watchdog('internet_archive', $error, NULL, WATCHDOG_ERROR);
-
-      return FALSE;
+	t('Remote Connection for File transfer was terminated unexpectedly. '.
+	  'However, if the connection was cut after the file upload was ' .
+	  'initiated, the file may still be successfully uploading to '.
+	  'Archive.org. Subsequent Cron Runs will check to see if the file '.
+	  'successfully uploads. If the Cron Runs never find a successful '.
+	  'upload and we are past the configurable "Allowed Upload Time" the '.
+	  'file will be marked as Failed and then possibly harvested again '.
+	  'for the queue.');
     }
+    //FAILURE WAS ON LOCAL MACHINE, THEREFORE MOST LIKELY A REAL ERROR,
+    //IF CONFIGURED CORRECTLY THOUGH, THIS ITEM COULD BE REHARVESTED INTO
+    //THE QUEUE
+    else {
+      $archive_data['status'] = ARCHIVE_FAILED;
+      $error = t('Remote File transfer to Archive.org failed, transfer ' .
+		 'marked as failed.');
+    }
+    //UPDATE internet_archive TABLE WITH FAILURE INFO
+    if (isset($archive_data['tid'])) {
+      internet_archive_update_archive_data($archive_data);
+    }
+    else {
+      $archive_data['tid'] =
+	internet_archive_insert_archive_data($archive_data);
+    }
+
+    watchdog('internet_archive', $error, NULL, WATCHDOG_ERROR);    
+    return FALSE;
   }
 
   // SUCCESS! NOW MARK THE $archive_data AS TRANSFERRED AND ADD OR UPDATE
@@ -399,14 +413,21 @@ function internet_archive_insert_archive_data($archive_data) {
  * @param $file_name
  *   A source file_name of a file transferred to archive.org
  */
-function internet_archive_update_item($node, $archive_data) {
+function internet_archive_update_item($node, $archive_data,
+				      $is_delete = FALSE) {
 
   //grab all the necessary information
   $config = internet_archive_default_config();
 
   if (variable_get('internet_archive_debug', FALSE)) {
-    watchdog('internet_archive', 'Updating item: ' .
-	     $archive_data['item'], NULL, WATCHDOG_NOTICE);
+    if ($is_delete) {
+      watchdog('internet_archive', 'Updating item: ' .
+	       $archive_data['item'], NULL, WATCHDOG_NOTICE);
+    }
+    else {
+      watchdog('internet_archive', 'Wiping Metadata From Item: ' .
+	       $archive_data['item'], NULL, WATCHDOG_NOTICE);
+    }
   }
 
   // load the S3 class
@@ -421,6 +442,27 @@ function internet_archive_update_item($node, $archive_data) {
 
   $headers = internet_archive_process_metadata($metadata);
 
+  //IF WE ARE DELETING, WIPE METADATA
+  if ($is_delete) {
+    $keys = array_keys($headers);
+    foreach ($keys as $key) {
+      switch ($key) {
+      case 'x-amz-meta-title':
+	$headers[$key] = 'REMOVED';
+	break;
+      case 'x-amz-meta-date':
+	$headers[$key] = '1969-01-01';
+	break;
+      case 'x-amz-meta01-collection':
+      case 'x-amz-meta-mediatype':
+	//do nothing
+	break;
+      DEFAULT:
+	$headers[$key] = '';
+      }
+    }
+  }
+  
   //this tells archive.org to destroy original metadata
   $headers['x-amz-ignore-preexisting-bucket'] = 1;
 
@@ -468,6 +510,23 @@ function internet_archive_delete_item($archive_data) {
 
 
 /**
+ * Delete/Anonymize all metadata for an item at archive.org
+ *
+ * @param $archive_data
+ * An array of archive.org information from one of the 
+ * internet_archive_load_data functions.
+ */
+function internet_archive_delete_metadata($archive_data) {
+  $node = isset($archive_data['nid']) ? node_load($archive_data['nid']) :
+    NULL;
+  if ($node) {
+    internet_archive_update_item($node, $archive_data, TRUE);
+  }
+    
+}
+
+
+/**
  * Deletes all files in an item at archive.org
  *
  * @param $archive_data
@@ -475,7 +534,6 @@ function internet_archive_delete_item($archive_data) {
  * internet_archive_load_data functions.
  */
 function internet_archive_delete_files($archive_data) {
-
   //grab all the necessary information
   $config = internet_archive_default_config();
 
@@ -490,6 +548,16 @@ function internet_archive_delete_files($archive_data) {
 
   $s3->deleteFiles($config['internet_archive_bucket'],
 		   $archive_data['file_name']);
+
+  $node = isset($archive_data['nid']) ? node_load($archive_data['nid']) :
+    NULL;
+
+  //DELETE REFERENCES TO REMOTE FILES
+  if ($node && $archive_data['file_location'] == ARCHIVE_FILE_LOCATION_REMOTE){
+    //remove the field on the node
+    $node->{$archive_data['field_name']} = array();
+    field_attach_update('node', $node);
+  }
 }
 
 /**
@@ -700,13 +768,14 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
     // only grab items that have already been successfully uploaded
     $sql =
       "SELECT * FROM {internet_archive} " .
-      "WHERE status = :status " .
+      "WHERE (status = :status1 OR status = :status2) " .
       "AND nid = :nid ".
       "AND (derivatives IS NULL OR derivatives <> :derivatives) " .
       "ORDER BY date ASC ";
       $args = array(
 		    ':nid' => $nid,
-		    ':status' => ARCHIVE_VALIDATED,
+		    ':status1' => ARCHIVE_VALIDATED,
+		    ':status2' => ARCHIVE_TRANSFERRING,
 		    ':derivatives' => 'failed',
 		    );
   }
@@ -714,10 +783,11 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
     // only grab items that have already been successfully uploaded
     $sql =
       "SELECT * FROM {internet_archive} " .
-      "WHERE status = :status " .
+      "WHERE (status = :status1 OR status = :status2) " .
       "AND (derivatives IS NULL OR derivatives <> :derivatives) " .
       "ORDER BY date ASC ";
-    $args = array(':status' => ARCHIVE_VALIDATED,
+    $args = array(':status1' => ARCHIVE_VALIDATED,
+		  ':status2' => ARCHIVE_TRANSFERRING,
 		  ':derivatives' => 'failed',
 		  );
   }
@@ -741,9 +811,11 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
       $archive_data['derivatives'] = serialize($derivatives);
       $embed = internet_archive_embed_from_archive_data($archive_data);
     }
-    //FIXME: not considered fully derived unless its embeddable. Might be a problem
-    //if some items shoudl be considered derived without being embeddable
-    if ($derivatives && (count($derivatives) >= $expected_derivatives) && $embed) {
+    //FIXME: not considered fully derived unless its embeddable. Might be a
+    //problem if some items should be considered derived without being
+    //embeddable
+    if ($derivatives && (count($derivatives) >= $expected_derivatives) &&
+	$embed) {
       $archive_data['status'] = ARCHIVE_DERIVED;           
       internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'derived');
@@ -760,7 +832,7 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
 	$archive_data['status'] = ARCHIVE_FAILED;
 	$archive_data['error'] = 
 	t('Validation failed, source file does not exist at Archive.org ' .
-	  'after 8 hours. Marked as failed.');
+	  'after 2 days. Marked as failed.');
 	
 	internet_archive_update_archive_data($archive_data);
         internet_archive_invoke_internet_archive($archive_data, 'failed');
