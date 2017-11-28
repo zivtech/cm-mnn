@@ -58,7 +58,7 @@ function reservations_inventory_menu() {
       continue;
     }
     $i++;
-    $position = ($i < $half) ? 'left' : 'right';
+    $position = ($i < $half) ? 'right' : 'left';
     // Adds Block of Menu Options for Each Active Inventory
     $items['admin/reservations/' . $term->tid] = array(
       'title' => $term->name . ' Inventory',
