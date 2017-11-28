@@ -47,6 +47,16 @@ function reservations_inventory_menu() {
   $half = round(count($tree)/2);
   
   foreach ($tree as $term) {
+    $term = taxonomy_term_load($term->tid);
+    if ($term->field_inventory_show_on_menu &&
+	$term->field_inventory_show_on_menu[LANGUAGE_NONE] &&
+	$term->field_inventory_show_on_menu[LANGUAGE_NONE][0] &&
+	$term->field_inventory_show_on_menu[LANGUAGE_NONE][0]['value'] &&
+	$term->field_inventory_show_on_menu[LANGUAGE_NONE][0]['value'] == 1) {
+    }
+    else {
+      continue;
+    }
     $i++;
     $position = ($i < $half) ? 'left' : 'right';
     // Adds Block of Menu Options for Each Active Inventory
