@@ -44,7 +44,7 @@ function reservations_inventory_menu() {
   $vid = variable_get('reservations_inventory_vid', 0); 
   $tree = taxonomy_get_tree($vid);
   $half = round(count($tree)/2);
-  
+  $position == 'left';
   foreach ($tree as $term) {
     $term = taxonomy_term_load($term->tid);
     if ($term->field_inventory_show_on_menu &&
@@ -56,7 +56,7 @@ function reservations_inventory_menu() {
     else {
       continue;
     }
-    $position = ($position == 'left') ? 'left' : 'right';
+    $position = ($position == 'right') ? 'left' : 'right';
     // Adds Block of Menu Options for Each Active Inventory
     $items['admin/reservations/' . $term->tid] = array(
       'title' => $term->name . ' Inventory',
