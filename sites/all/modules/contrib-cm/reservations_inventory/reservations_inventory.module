@@ -24,7 +24,7 @@ function reservations_inventory_permission() {
  * Implements hook_menu().
  */
 function reservations_inventory_menu() {
-  $i = 0;
+  $i = 1;
   // Standard Administration settings.
   $items['admin/config/reservations/inventory'] = array(
     'title' => 'Reservations Inventory',
@@ -58,7 +58,7 @@ function reservations_inventory_menu() {
       continue;
     }
     $i++;
-    $position = ($i < $half) ? 'right' : 'left';
+    $position = ($i < $half) ? 'left' : 'right';
     // Adds Block of Menu Options for Each Active Inventory
     $items['admin/reservations/' . $term->tid] = array(
       'title' => $term->name . ' Inventory',
