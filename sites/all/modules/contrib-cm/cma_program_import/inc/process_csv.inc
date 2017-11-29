@@ -15,6 +15,13 @@ function cma_program_import_process_csv($import_node) {
     $line_array = array();
     foreach ($keys as $key) {
       $text = array_shift($line);
+
+      $text = str_replace('&quot;', '"', $text);
+      $text = str_replace('&#39;', "'", $text);
+      $text = str_replace('&lt;', '<', $text);
+      $text = str_replace('&gt;', '>', $text);
+      $text = str_replace('&amp;', '&', $text);
+
       $strlen = strlen( $text );
       $safe_text = '';
       for( $i = 0; $i <= $strlen; $i++ ) {
