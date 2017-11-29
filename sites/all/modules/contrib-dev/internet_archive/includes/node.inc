@@ -143,6 +143,9 @@ function internet_archive_theme_field_display($field_name, $field, $value_key){
 	      ($archive_data['status'] == ARCHIVE_TRANSFERRED ||
 	       $archive_data['status'] == ARCHIVE_TRANSFERRING)) {
 	$html .= "<li>";
+	$html .= l(t("View Partially Transferred Item on Archive.org"), $path);
+	$html .= "</li>";
+	$html .= "<li>";
 	$html .= l(t("Recheck Status for Incomplete Upload."),
 		   "/ia/validate/" . $archive_data['nid']);
 	$html .= "</li>";

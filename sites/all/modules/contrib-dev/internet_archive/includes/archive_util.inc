@@ -122,6 +122,7 @@ function internet_archive_admin_validate($element, &$form_state) {
  *   A string containing the itemname/file_name
  */
 function internet_archive_send($config, $file_info) {
+  set_time_limit(0);
   $file_name = $file_info['file_name'];
   $field_name = $file_info['field_name'];
   $file_location = $file_info['file_location'];
@@ -247,7 +248,7 @@ function internet_archive_send($config, $file_info) {
   $index = 0;
   $bucket_exists = FALSE;
   $start = strtotime('now');
-  $max_run_time = 35;
+  $max_run_time = 60 * 10;
     
   // There is a delay on archive.org regarding bucket creation.. so we check
   // every x seconds
@@ -274,7 +275,7 @@ function internet_archive_send($config, $file_info) {
     }
 
     $msg = t("Error Code #23244 Bucket could not be found for !file_name, ".
-	     "maybe bump up execution time from !max.",
+	     "maybe bump up execution time from !max seconds.",
 	     array('!file_name' => $file_name,
 		   '!max' => $max_run_time));
     
@@ -763,7 +764,7 @@ function internet_archive_is_archive_format($file_name) {
  *   archive.org
  */
 function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
-
+  
   if ($nid) {
     // only grab items that have already been successfully uploaded
     $sql =
@@ -1248,6 +1249,10 @@ function internet_archive_embed_from_archive_data($archive_data, $width = 470,
 						  $height = 371) {
   $url = internet_archive_derivative_url($archive_data, 'mp4');
 
+  if (!$url) {
+    $url = internet_archive_derivative_url($archive_data, 'm4v');
+  }
+
   if ($url) {
     $embed = internet_archive_create_embed($archive_data, $width, $height);
   }
@@ -1269,10 +1274,10 @@ function internet_archive_derivative_url($item, $extension) {
       $pathinfo = pathinfo($key);
       if ($pathinfo['extension'] == $extension) {
         $file_name = $key;
+	break;
       }
     }
   }
-
   if ($file_name) {
     $url = 'http://www.archive.org/download/' . $item['item'] . '/' .
       $file_name;
