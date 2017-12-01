@@ -63,7 +63,7 @@ function mnn_menu_menu() {
 		'path'=>'node/add/cm-show'),
 	  array('title'=>t('View Archive.org Transfers'),
 		'menu_alias'=>'transfers',
-		'path'=>'admin/structure/internet_archive/transfers'),
+		'path'=>'admin/reports/internet_archive/transfers'),
 	  
     );
 
