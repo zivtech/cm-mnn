@@ -339,7 +339,7 @@ class CRM_Activity_Page_AJAX {
       $targetContacts = array_unique(explode(',', $params['targetContactIds']));
     }
 
-    $activityContacts = CRM_Core_OptionGroup::values('activity_contacts', FALSE, FALSE, FALSE, NULL, 'name');
+    $activityContacts = CRM_Activity_BAO_ActivityContact::buildOptions('record_type_id', 'validate');
     $sourceID = CRM_Utils_Array::key('Activity Source', $activityContacts);
     $assigneeID = CRM_Utils_Array::key('Activity Assignees', $activityContacts);
     $targetID = CRM_Utils_Array::key('Activity Targets', $activityContacts);
@@ -361,8 +361,8 @@ class CRM_Activity_Page_AJAX {
       CRM_Activity_BAO_ActivityContact::create($targ_params);
     }
 
-    // typically this will be empty, since assignees on another case may be completely different
-    $assigneeContacts = array();
+    //CRM-21114 retrieve assignee contacts from original case; allow overriding from params
+    $assigneeContacts = CRM_Activity_BAO_ActivityContact::retrieveContactIdsByActivityId($params['activityID'], $assigneeID);
     if (!empty($params['assigneeContactIds'])) {
       $assigneeContacts = array_unique(explode(',', $params['assigneeContactIds']));
     }
