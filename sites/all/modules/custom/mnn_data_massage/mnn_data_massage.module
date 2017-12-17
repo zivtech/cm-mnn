@@ -67,6 +67,7 @@ function mnn_data_massage_page($function) {
 		     //"duplicate_inventory",
 		     //"items_missing_status_update",
 		     //"update_project_internet_archive_opt_out",
+		     "delete_program_import_shows_and_airings", 
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3253,6 +3254,52 @@ WHERE (( (node.status = '1') AND (node.type NOT IN  ('civicrm_multiday_event', '
 
 }
 
+function mnn_data_massage_delete_program_import_shows_and_airings() {
+  dsm("hi mom");
+  $nids = array(963612, 963657);
+  dsm(date('r'), 'start');
+  foreach ($nids as $nid) {
+    $sql =
+      "SELECT cm_airing.airing_id " .
+      "FROM cm_airing cm_airing " .
+      "INNER JOIN field_data_field_uploader_airingref afield  " .
+      "ON cm_airing.airing_id = afield.field_uploader_airingref_target_id  ".
+      "AND (afield.entity_type = 'node' AND afield.deleted = '0') " .
+      "INNER JOIN node n ON afield.entity_id = n.nid " .
+      "WHERE n.nid = $nid";
+
+    dsm($sql);
+
+    $results  = db_query($sql);
+    $counter = 0;
+    while ($result = $results->fetchObject()) {
+      entity_delete('airing', $result->airing_id);
+      $counter ++;
+    }
+    dsm($counter, 'airing counter');
+
+    $sql =
+      "SELECT sfield.field_uploader_showref_target_id as show_id " .
+      "FROM field_data_field_uploader_showref sfield  " .
+      "INNER JOIN node n on n.nid = sfield.field_uploader_showref_target_id ".
+      "WHERE sfield.entity_type = 'node' AND sfield.deleted = '0' " .
+      "AND sfield.entity_id = $nid";
+
+    dsm($sql);
+
+    $results  = db_query($sql);
+    $counter = 0;
+    while ($result = $results->fetchObject()) {
+      $delete_id = $result->show_id;
+      node_delete($delete_id);
+      $counter ++;
+    }
+    
+    dsm($counter, 'show counter');
+
+  }
+  dsm(date('r'), 'end');
+}
 function mnn_data_massage_update_project_internet_archive_opt_out() {
   //see formats listed below in arrays
   $opt_out_tids = array(//all tids from inactive taxonomy
