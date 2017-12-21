@@ -1038,6 +1038,30 @@ function mnn_airing_date_view_field($row) {
 }
 
 /**
+ * PHP field for this view admin/structure/views/view/cm_cm_show_airings
+ */
+function mnn_airing_conflict_date_view_field($airing_id) {
+ 
+  $airings = entity_load('airing', array($airing_id));
+
+  if ($airings) {
+    $airing = array_shift($airings);
+    if ($airing) {
+      $start = $airing->field_airing_date[LANGUAGE_NONE][0]['value'];
+      $start = strtotime($start);
+      $start = date('h:i:sa', $start);
+      
+      $end = $airing->field_airing_date[LANGUAGE_NONE][0]['value2'];
+      $end = strtotime($end);
+      $end = date('h:i:sa', $end);
+
+      return $start . " - " . $end;
+    }
+  }
+  return '';
+}
+
+/**
  * PHP field for this view admin/structure/views/view/airing_detail_for_grid
  */
 function mnn_airing_grid_detail_date_view_field($row) {
