@@ -906,9 +906,20 @@ function computed_field_field_airing_grid_link_compute(&$entity_field,
 						       $field, $instance, 
 						       $langcode, $items) {
 
-  $entity_field[0]['value'] = l(t("View on Grid"), "admin/manage/scheduling", 
-				array('query'=>
-				      array('airing_id'=>$entity->airing_id)));
+  
+  $link = l(t("View on Grid"), "admin/manage/scheduling", 
+	    array('query'=>
+		  array('airing_id'=>$entity->airing_id)));
+
+  $link =
+    str_replace('sites/all/modules/features/mnn_airing_replication/scripts/',
+		'/', $link);
+
+  $link =
+    str_replace('sites/all/modules/contrib-cm/cm_batch_airing_reservations'.
+		'/scripts/', '/', $link);
+
+  $entity_field[0]['value'] = $link;
 }
 
 /**
