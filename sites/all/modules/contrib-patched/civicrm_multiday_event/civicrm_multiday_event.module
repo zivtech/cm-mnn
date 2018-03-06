@@ -521,11 +521,11 @@ function civicrm_multiday_event_node_presave($node) {
 
         // manually insert the priceset, but only on new events
         // this is still required for CiviCRM 4.4
-	dsm($params, 'params');
-	dsm($result, 'result');
-	dsm($event_id, 'event id');
+//	dsm($params, 'params');
+//	dsm($result, 'result');
+//	dsm($event_id, 'event id');
         if ($params['price_set_id'] && $result['id'] != $event_id) {
-	  dsm('inserting');
+//	  dsm('inserting');
           db_insert('civicrm_price_set_entity')
             ->fields(array(
             'entity_table' => 'civicrm_event',
@@ -538,7 +538,7 @@ function civicrm_multiday_event_node_presave($node) {
             ->fields(array('mapping_id' => '3'))
             ->condition('civicrm_action_schedule.entity_value', $result['id'], '=')
             ->execute();
-          dsm($fixed_reminders);
+//          dsm($fixed_reminders);
         }
       }
     }
