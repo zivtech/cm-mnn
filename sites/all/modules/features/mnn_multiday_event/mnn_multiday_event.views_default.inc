@@ -467,5 +467,248 @@ function mnn_multiday_event_views_default_views() {
   $handler->display->display_options['tab_options']['weight'] = '0';
   $export['mnn_multiday_event_advanced_search'] = $view;
 
+  $view = new view();
+  $view->name = 'class_feed';
+  $view->description = '';
+  $view->tag = 'default';
+  $view->base_table = 'node';
+  $view->human_name = 'Class Feed';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['pager']['options']['offset'] = '0';
+  $handler->display->display_options['style_plugin'] = 'default';
+  $handler->display->display_options['row_plugin'] = 'fields';
+  /* Relationship: Content: Photo (field_generic_event_photo:fid) */
+  $handler->display->display_options['relationships']['field_generic_event_photo_fid']['id'] = 'field_generic_event_photo_fid';
+  $handler->display->display_options['relationships']['field_generic_event_photo_fid']['table'] = 'field_data_field_generic_event_photo';
+  $handler->display->display_options['relationships']['field_generic_event_photo_fid']['field'] = 'field_generic_event_photo_fid';
+  /* Field: Content: Path */
+  $handler->display->display_options['fields']['path']['id'] = 'path';
+  $handler->display->display_options['fields']['path']['table'] = 'node';
+  $handler->display->display_options['fields']['path']['field'] = 'path';
+  $handler->display->display_options['fields']['path']['label'] = 'url';
+  $handler->display->display_options['fields']['path']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['path']['absolute'] = TRUE;
+  /* Field: Content: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'node';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = 'title';
+  $handler->display->display_options['fields']['title']['alter']['word_boundary'] = FALSE;
+  $handler->display->display_options['fields']['title']['alter']['ellipsis'] = FALSE;
+  $handler->display->display_options['fields']['title']['link_to_node'] = FALSE;
+  /* Field: Content: Date of First Session */
+  $handler->display->display_options['fields']['field_date_of_first_session']['id'] = 'field_date_of_first_session';
+  $handler->display->display_options['fields']['field_date_of_first_session']['table'] = 'field_data_field_date_of_first_session';
+  $handler->display->display_options['fields']['field_date_of_first_session']['field'] = 'field_date_of_first_session';
+  $handler->display->display_options['fields']['field_date_of_first_session']['label'] = 'date';
+  $handler->display->display_options['fields']['field_date_of_first_session']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['field_date_of_first_session']['element_wrapper_type'] = '0';
+  $handler->display->display_options['fields']['field_date_of_first_session']['element_default_classes'] = FALSE;
+  $handler->display->display_options['fields']['field_date_of_first_session']['hide_empty'] = TRUE;
+  $handler->display->display_options['fields']['field_date_of_first_session']['type'] = 'date_plain';
+  $handler->display->display_options['fields']['field_date_of_first_session']['settings'] = array(
+    'format_type' => 'short',
+    'fromto' => 'both',
+    'multiple_number' => '',
+    'multiple_from' => '',
+    'multiple_to' => '',
+  );
+  /* Field: Content: Building */
+  $handler->display->display_options['fields']['field_building']['id'] = 'field_building';
+  $handler->display->display_options['fields']['field_building']['table'] = 'field_data_field_building';
+  $handler->display->display_options['fields']['field_building']['field'] = 'field_building';
+  $handler->display->display_options['fields']['field_building']['label'] = 'building';
+  $handler->display->display_options['fields']['field_building']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['field_building']['hide_empty'] = TRUE;
+  $handler->display->display_options['fields']['field_building']['type'] = 'taxonomy_term_reference_plain';
+  /* Field: Content: Event Type */
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['id'] = 'field_civicrm_multidayevent_type';
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['table'] = 'field_data_field_civicrm_multidayevent_type';
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['field'] = 'field_civicrm_multidayevent_type';
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['label'] = 'event type';
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['hide_empty'] = TRUE;
+  $handler->display->display_options['fields']['field_civicrm_multidayevent_type']['type'] = 'taxonomy_term_reference_plain';
+  /* Field: Content: Body */
+  $handler->display->display_options['fields']['body']['id'] = 'body';
+  $handler->display->display_options['fields']['body']['table'] = 'field_data_body';
+  $handler->display->display_options['fields']['body']['field'] = 'body';
+  $handler->display->display_options['fields']['body']['label'] = 'body';
+  $handler->display->display_options['fields']['body']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['body']['hide_empty'] = TRUE;
+  /* Field: Content: Body */
+  $handler->display->display_options['fields']['body_1']['id'] = 'body_1';
+  $handler->display->display_options['fields']['body_1']['table'] = 'field_data_body';
+  $handler->display->display_options['fields']['body_1']['field'] = 'body';
+  $handler->display->display_options['fields']['body_1']['label'] = 'summary';
+  $handler->display->display_options['fields']['body_1']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['body_1']['alter']['text'] = '[body_1-summary]';
+  $handler->display->display_options['fields']['body_1']['settings'] = array(
+    'trim_length' => '600',
+  );
+  /* Field: Content: Nid */
+  $handler->display->display_options['fields']['nid']['id'] = 'nid';
+  $handler->display->display_options['fields']['nid']['table'] = 'node';
+  $handler->display->display_options['fields']['nid']['field'] = 'nid';
+  $handler->display->display_options['fields']['nid']['label'] = 'nid';
+  /* Field: Content: Event ID */
+  $handler->display->display_options['fields']['field_civievent_id']['id'] = 'field_civievent_id';
+  $handler->display->display_options['fields']['field_civievent_id']['table'] = 'field_data_field_civievent_id';
+  $handler->display->display_options['fields']['field_civievent_id']['field'] = 'field_civievent_id';
+  $handler->display->display_options['fields']['field_civievent_id']['label'] = 'event-id';
+  $handler->display->display_options['fields']['field_civievent_id']['settings'] = array(
+    'thousand_separator' => '',
+    'prefix_suffix' => 0,
+  );
+  /* Field: File: Path */
+  $handler->display->display_options['fields']['uri']['id'] = 'uri';
+  $handler->display->display_options['fields']['uri']['table'] = 'file_managed';
+  $handler->display->display_options['fields']['uri']['field'] = 'uri';
+  $handler->display->display_options['fields']['uri']['relationship'] = 'field_generic_event_photo_fid';
+  $handler->display->display_options['fields']['uri']['label'] = 'photo';
+  $handler->display->display_options['fields']['uri']['hide_empty'] = TRUE;
+  $handler->display->display_options['fields']['uri']['file_download_path'] = TRUE;
+  /* Field: Content: Sessions */
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['id'] = 'field_civicrm_multiday_session';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['table'] = 'field_data_field_civicrm_multiday_session';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['field'] = 'field_civicrm_multiday_session';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['label'] = 'sessions';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['alter']['trim_whitespace'] = TRUE;
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['alter']['strip_tags'] = TRUE;
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['alter']['preserve_tags'] = '<br />';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['type'] = 'field_collection_fields';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['settings'] = array(
+    'view_mode' => 'full',
+  );
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['delta_offset'] = '0';
+  $handler->display->display_options['fields']['field_civicrm_multiday_session']['separator'] = '<br />';
+  /* Field: Sessions (cleaned up) */
+  $handler->display->display_options['fields']['php_1']['id'] = 'php_1';
+  $handler->display->display_options['fields']['php_1']['table'] = 'views';
+  $handler->display->display_options['fields']['php_1']['field'] = 'php';
+  $handler->display->display_options['fields']['php_1']['ui_name'] = 'Sessions (cleaned up)';
+  $handler->display->display_options['fields']['php_1']['label'] = 'sessions';
+  $handler->display->display_options['fields']['php_1']['use_php_setup'] = 0;
+  $handler->display->display_options['fields']['php_1']['php_output'] = '<?php
+  $dates = array();
+  if (isset($data->field_field_civicrm_multiday_session)) {
+    foreach ($data->field_field_civicrm_multiday_session as $session) {
+      $date = end($session[\'rendered\'][\'entity\'][\'field_collection_item\']);
+      $dates[] = strip_tags($date[\'field_session_date\'][0][\'#markup\']);
+    }
+  }
+  print implode(\'<br />\', $dates);
+  ?>';
+  $handler->display->display_options['fields']['php_1']['use_php_click_sortable'] = '0';
+  $handler->display->display_options['fields']['php_1']['php_click_sortable'] = '';
+  /* Field: Sold out */
+  $handler->display->display_options['fields']['php']['id'] = 'php';
+  $handler->display->display_options['fields']['php']['table'] = 'views';
+  $handler->display->display_options['fields']['php']['field'] = 'php';
+  $handler->display->display_options['fields']['php']['ui_name'] = 'Sold out';
+  $handler->display->display_options['fields']['php']['label'] = 'sold-out';
+  $handler->display->display_options['fields']['php']['use_php_setup'] = 0;
+  $handler->display->display_options['fields']['php']['php_output'] = '<?php
+
+  $id = \'\';
+  if (isset($data->field_field_civievent_id) && !empty($data->field_field_civievent_id)) {
+    $id = $data->field_field_civievent_id[0][\'raw\'][\'value\'];
+  }
+
+  // Occasionally civicrm_api3 seems to fail ungracefully.
+  try {
+    $event = civicrm_api3(\'event\', \'getsingle\', array(\'id\' => $id, \'return.is_full\' => 1));
+    if (isset($event[\'max_participants\']) && !empty($event[\'is_full\'])) {
+      print 1;
+    }
+    else {
+      print 0;
+    }
+  }
+  catch (Exception $e) {
+    print 0;
+  }
+  ?>';
+  $handler->display->display_options['fields']['php']['use_php_click_sortable'] = '0';
+  $handler->display->display_options['fields']['php']['php_click_sortable'] = '';
+  /* Field: Content: Language */
+  $handler->display->display_options['fields']['field_pbcore_languages']['id'] = 'field_pbcore_languages';
+  $handler->display->display_options['fields']['field_pbcore_languages']['table'] = 'field_data_field_pbcore_languages';
+  $handler->display->display_options['fields']['field_pbcore_languages']['field'] = 'field_pbcore_languages';
+  $handler->display->display_options['fields']['field_pbcore_languages']['label'] = 'language';
+  $handler->display->display_options['fields']['field_pbcore_languages']['type'] = 'taxonomy_term_reference_plain';
+  /* Sort criterion: Content: Post date */
+  $handler->display->display_options['sorts']['created']['id'] = 'created';
+  $handler->display->display_options['sorts']['created']['table'] = 'node';
+  $handler->display->display_options['sorts']['created']['field'] = 'created';
+  $handler->display->display_options['sorts']['created']['order'] = 'DESC';
+  /* Filter criterion: Content: Published */
+  $handler->display->display_options['filters']['status']['id'] = 'status';
+  $handler->display->display_options['filters']['status']['table'] = 'node';
+  $handler->display->display_options['filters']['status']['field'] = 'status';
+  $handler->display->display_options['filters']['status']['value'] = 1;
+  $handler->display->display_options['filters']['status']['group'] = 1;
+  $handler->display->display_options['filters']['status']['expose']['operator'] = FALSE;
+  /* Filter criterion: Content: Type */
+  $handler->display->display_options['filters']['type']['id'] = 'type';
+  $handler->display->display_options['filters']['type']['table'] = 'node';
+  $handler->display->display_options['filters']['type']['field'] = 'type';
+  $handler->display->display_options['filters']['type']['value'] = array(
+    'civicrm_multiday_event' => 'civicrm_multiday_event',
+  );
+  /* Filter criterion: Content: Date of First Session (field_date_of_first_session) */
+  $handler->display->display_options['filters']['field_date_of_first_session_value']['id'] = 'field_date_of_first_session_value';
+  $handler->display->display_options['filters']['field_date_of_first_session_value']['table'] = 'field_data_field_date_of_first_session';
+  $handler->display->display_options['filters']['field_date_of_first_session_value']['field'] = 'field_date_of_first_session_value';
+  $handler->display->display_options['filters']['field_date_of_first_session_value']['operator'] = '>=';
+  $handler->display->display_options['filters']['field_date_of_first_session_value']['default_date'] = 'now';
+  /* Filter criterion: Is Public */
+  $handler->display->display_options['filters']['php']['id'] = 'php';
+  $handler->display->display_options['filters']['php']['table'] = 'views';
+  $handler->display->display_options['filters']['php']['field'] = 'php';
+  $handler->display->display_options['filters']['php']['ui_name'] = 'Is Public';
+  $handler->display->display_options['filters']['php']['use_php_setup'] = 0;
+  $handler->display->display_options['filters']['php']['php_filter'] = '$id = \'\';
+  $node = node_load($row->nid);
+  if (isset($node->field_civievent_id)) {
+    $id = $node->field_civievent_id[LANGUAGE_NONE][0][\'value\'];
+  }
+
+  // Occasionally civicrm_api3 seems to fail ungracefully.
+  try {
+    $event = civicrm_api3(\'event\', \'getsingle\', array(\'id\' => $id));
+    if ($event[\'is_public\'] != \'1\') {
+      return TRUE;
+    }
+  }
+  catch (Exception $e) {
+  }';
+
+  /* Display: Data export */
+  $handler = $view->new_display('views_data_export', 'Data export', 'views_data_export_1');
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['pager']['options']['offset'] = '0';
+  $handler->display->display_options['style_plugin'] = 'views_data_export_xml';
+  $handler->display->display_options['style_options']['provide_file'] = 0;
+  $handler->display->display_options['style_options']['parent_sort'] = 0;
+  $handler->display->display_options['style_options']['transform'] = 1;
+  $handler->display->display_options['style_options']['root_node'] = 'nodes';
+  $handler->display->display_options['style_options']['item_node'] = 'node';
+  $handler->display->display_options['path'] = 'event-feed';
+  $export['class_feed'] = $view;
+
   return $export;
 }

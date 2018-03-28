@@ -67,7 +67,8 @@ function mnn_data_massage_page($function) {
 		     //"duplicate_inventory",
 		     //"items_missing_status_update",
 		     //"update_project_internet_archive_opt_out",
-		     "delete_program_import_shows_and_airings", 
+		     //"delete_program_import_shows_and_airings",
+		     "prune_replication_history",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3422,6 +3423,46 @@ function mnn_data_massage_update_project_internet_archive_opt_out() {
     
   }
 }
+function mnn_data_massage_prune_replication_history() {
+  dsm(date('h:i:s'));
+  $sql =
+    "SELECT entity_id as nid, field_replication_history_value as history
+     FROM field_data_field_replication_history 
+     ORDER by entity_id asc";
+
+  $results = db_query($sql);
+  $counter = 0;
+  while ($result = $results->fetchObject()) {
+    if ($result->history) {
+      $history = unserialize($result->history);
+      $new_history = array();
+      foreach($history as $quarter=>$airings) {
+	$dates = explode('--', $quarter);
+	$year = date('Y', strtotime($dates[1]));
+	$allowed_year = date('Y',strtotime('now')) - 1;
+
+	if ($year < $allowed_year) {
+	  continue;
+	}
+	$new_history[$quarter] = $airings;
+      }
+
+      $node = node_load($result->nid);
+
+      //dsm($node->field_replication_history[LANGUAGE_NONE][0], 'node1');
+
+      $node->field_replication_history[LANGUAGE_NONE][0] =
+	array('value' => serialize($new_history));
+      
+      //dsm($node->field_replication_history[LANGUAGE_NONE][0], 'node2');
+      node_save($node);
+    }
+    $counter ++;
+  }
+  dsm($counter ." results");
+  dsm(date('h:i:s'));
+}
+
 function mnn_data_massage_log_query($sql, $args) {
   $ms = str_replace('{', '', $sql);
   $ms = str_replace('}', '', $ms);

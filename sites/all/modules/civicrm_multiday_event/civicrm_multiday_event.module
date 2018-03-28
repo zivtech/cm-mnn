@@ -480,7 +480,7 @@ function civicrm_multiday_event_node_presave($node) {
     }
 
     $params['is_public'] = ($node->status) ? 1 : 0;
-
+    $params['template_id'] = $event_id;
     if (civicrm_initialize()) {
       $params['version'] = 3;
       //we never want new events to be templates
@@ -527,6 +527,12 @@ function civicrm_multiday_event_node_presave($node) {
             'price_set_id ' => $params['price_set_id'],
           ))->execute();
         }
+        if ($result['id'] != $event_id) {
+          $fixed_reminders = db_update('civicrm_action_schedule')
+            ->fields(array('mapping_id' => '3'))
+            ->condition('civicrm_action_schedule.entity_value', $result['id'], '=')
+            ->execute();
+	}    
       }
     }
 
@@ -705,8 +711,8 @@ function civicrm_multiday_event_lookup($id, $is_template = NULL) {
     require_once 'CRM/Price/BAO/Set.php';
     $params['price_set_id'] = CRM_Price_BAO_Set::getFor( 'civicrm_event', $id );
   } else {
-    require_once 'CRM/Price/BAO/PriceSet.php';
-    $params['price_set_id'] = CRM_Price_BAO_PriceSet::getFor( 'civicrm_event', $id );
+//    require_once 'CRM/Price/BAO/PriceSet.php';
+//    $params['price_set_id'] = CRM_Price_BAO_PriceSet::getFor( 'civicrm_event', $id );
   }
 
   return $params;
