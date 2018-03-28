@@ -104,7 +104,6 @@ function reservations_staff_load_user($post = NULL) {
  * Implements hook_form_FORM_ID_alter().
  */
 function reservations_staff_form_reservations_reservation_node_form_alter(&$form, &$form_state) {
- 
   if (user_access('manage reservations')) {
     
     //dsm($form);
@@ -182,7 +181,14 @@ function reservations_staff_form_reservations_reservation_node_form_alter(&$form
   // Add the current choices to the form.
   $reset = TRUE;
 
+  $options_cache = array();
   foreach (element_children($form['choice_wrapper']['reservations_reservation_items']) as $delta) {
+    if (isset($options_cache)) {
+      $options = $options_cache['options'];
+      $options_disabled = $options_cache['options_disabled'];
+      continue;
+    }
+
     if (is_numeric($delta)) {
       continue;
     }
@@ -318,12 +324,13 @@ function reservations_staff_form_reservations_reservation_node_form_alter(&$form
          }
 		    //disable item in list
 		  }
-	   }  
+	   }
     } // $inventroy include
   }
-
-  //dsm($options['options']);
-  
+  $options_cache[$reservable_type['type']] = array();
+  $options_cache[$reservable_type['type']]['options'] = $options;
+  $options_cache[$reservable_type['type']]['options_disabled'] = $options_disabled;
+	   
   // Remove grouping keys with no items.
   foreach ($terms as $term) {
     if (empty($options['options'][$term->name])) {
