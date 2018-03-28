@@ -5,13 +5,6 @@
  * @see http://drupal.org/node/1354
  */
 function internet_archive_validate_url($url) {
-  //turn off any SSL auth
-  stream_context_set_default( [
-			       'ssl' => [
-					 'verify_peer' => false,
-					 'verify_peer_name' => false,
-					 ],
-			       ]);
   $headers = get_headers($url, 1);
   if ($headers[0] != 'HTTP/1.1 200 OK' && $headers[1] != 'HTTP/1.1 200 OK') {
     return FALSE;
