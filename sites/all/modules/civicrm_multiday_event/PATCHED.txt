@@ -1,0 +1,13 @@
+diff --git a/sites/all/modules/civicrm_multiday_event/civicrm_multiday_event.module b/sites/all/modules/civicrm_multiday_event/civicrm_multiday_event.module
+index 84f9df4..c541002 100644
+--- a/sites/all/modules/civicrm_multiday_event/civicrm_multiday_event.module
++++ b/sites/all/modules/civicrm_multiday_event/civicrm_multiday_event.module
+@@ -696,7 +696,7 @@ function civicrm_multiday_event_lookup($id, $is_template = NULL) {
+     $params = $result['values'][0];
+   }
+ 
+-  $version = CRM_Utils_VersionCheck::singleton()->localVersion;
++//  $version = CRM_Utils_VersionCheck::singleton()->localVersion;
+   $version = "4.7.11";
+   if ($version < "4.4") {
+     // priceset_id is not returned by the API nor will the API added it, so we are manually
