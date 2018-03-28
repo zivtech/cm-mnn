@@ -126,7 +126,6 @@ function mnn_programming_exports_pebble_beach_content($results,$date_filter) {
 }
 
 function mnn_programming_exports_pebble_beach_xml($data) {
-
   $time = 
     '<schedule endType="Duration" endOffset="'.$data['duration'].
     '" startType="Fixed" startOffset="'.$data['start_offset'].
@@ -142,7 +141,7 @@ function mnn_programming_exports_pebble_beach_xml($data) {
      </event>
      
     ';
-
+  
   if (strtolower($data['format']) == 'live') {
     $livefeed_array = mnn_programming_exports_livefeed_array($data['channel']);
     $fixed_port = $livefeed_array[$data['livefeed']];
@@ -162,40 +161,10 @@ function mnn_programming_exports_pebble_beach_xml($data) {
            <switch>
              <source type="Fixed">';
     $output .= $fixed_port;
-    $output .= '       
-              </source>
-            </switch>
-          </properties>
-          <childEvents>
-            <event type="SecRecord" enabled="true" timerMarker="false" 
-                   uid="3497">
-              <properties>
-                  <schedule endType="+ParentEnd" startType="+ParentStart"/>
-                  <mediaStream som="00:00:00:00">
-                       <video jobType="Record" overwrite="false"/>
-                      <allocation type="ListStream">
-                          <listStream type="Fixed" listStreamNo="0"/>
-                      </allocation>
-                  </mediaStream>
-                 <media mediaType="Video" mediaName="mnn_'.$data['house_id'].'"/>
-                  <switch rate="Fast" transition="Cut">
-                    <source type="Auto">
-                      <auto type="Parent"/>
-                    </source>
-                    <backupSource type="Auto">
-                      <auto type="Parent"/>
-                    </backupSource>
-                    <destination type="Auto">
-                      <auto type="MediaStream"/>
-                    </destination>
-                    <backupDestination type="Auto">
-                      <auto type="MediaStream"/>
-                    </backupDestination>
-                  </switch>
-                <event title="'.$data['title'].'"/>
-              </properties>
-            </event>
-          </childEvents>          
+    $output .= 
+      '</source>
+                </switch>
+            </properties>
         </event>';
   }
   else {
@@ -217,12 +186,12 @@ function mnn_programming_exports_pebble_beach_xml($data) {
     
     $output .= $time;
     $output .= $house_id_info;
+
+
     $output .= 
       '
           </properties>
         </event>';
-
-
   }
   return $output;
   //return $data['title']." ".$data['project_id'].".".$data['episode']." ".
