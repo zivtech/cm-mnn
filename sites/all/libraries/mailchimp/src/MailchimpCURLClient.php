@@ -1,18 +1,18 @@
 <?php
 
-namespace Mailchimp\http;
+namespace Mailchimp;
 
 /**
- * An HTTP client for use with the MailChimp API using cURL.
+ * cURL client configured for use with the MailChimp API.
  *
  * @package Mailchimp
  */
-class MailchimpCurlHttpClient implements MailchimpHttpClientInterface {
+class MailchimpCURLClient {
 
   private $config;
 
   /**
-   * MailchimpCurlHttpClient constructor.
+   * MailchimpCURLClient constructor.
    *
    * @param array $config
    *   cURL configuration options.
@@ -23,9 +23,22 @@ class MailchimpCurlHttpClient implements MailchimpHttpClientInterface {
   }
 
   /**
-   * @inheritdoc
+   * Makes a request to the MailChimp API using cURL.
+   *
+   * @param string $method
+   *   The REST method to use when making the request.
+   * @param string $uri
+   *   The API URI to request.
+   * @param array $options
+   *   Request options. @see Mailchimp::request().
+   * @param array $parameters
+   *   Associative array of parameters to send in the request body.
+   *
+   * @return object
+   *
+   * @throws \Exception
    */
-  public function handleRequest($method, $uri = '', $options = [], $parameters = [], $returnAssoc = FALSE) {
+  public function request($method, $uri = '', $options = [], $parameters = []) {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_TIMEOUT, $this->config['timeout']);
@@ -77,12 +90,15 @@ class MailchimpCurlHttpClient implements MailchimpHttpClientInterface {
     $http_code = 0;
     $error = NULL;
 
-    // Check for cURL error before checking HTTP response code.
+    // curl_errno return a code which tell us how the curl request happened.
+    // It's not related with the http result. So we need to check this before
+    // testing the actual http result.
     if (curl_errno($ch)) {
+      // Handle errors.
       $error = curl_error($ch);
     }
     else {
-      // Check the HTTP response code.
+      // The http request was ok, so we can now test the HTTP status code.
       $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
       if ($http_code != 200) {
         $response_data = json_decode($response);
@@ -97,7 +113,7 @@ class MailchimpCurlHttpClient implements MailchimpHttpClientInterface {
       throw new \Exception($error, $http_code);
     }
 
-    return json_decode($response, $returnAssoc);
+    return $response;
   }
 
 }
