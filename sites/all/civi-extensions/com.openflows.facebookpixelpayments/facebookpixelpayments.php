@@ -10,7 +10,7 @@ use CRM_Facebookpixelpayments_ExtensionUtil as E;
 function facebookpixelpayments_civicrm_buildForm($formName, &$form) {
 #add a script to the page if it is an event registration page
   if($formName == 'CRM_Event_Form_Registration_Register') { 
-//    CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_start.js');
+   CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_start.js');
   }
 #add a script to the page if it the payment/confirmation page
   if($formName == 'CRM_Event_Form_Registration_Confirm') { 
