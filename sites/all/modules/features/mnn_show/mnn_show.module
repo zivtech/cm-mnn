@@ -195,6 +195,7 @@ function mnn_show_node_presave($node) {
       $project->title." Episode ".$episode_number.": ".$short_description :
       $project->title." Episode ".$episode_number;
 
+    $node->title = substr($node->title, 0, 254);
     //RESAVE ALL RELATED AIRINGS
     if ($node->nid) {
       $airings = mnn_show_airings_for_show($node->nid);
