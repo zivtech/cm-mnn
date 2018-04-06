@@ -1,0 +1,193 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function mnn_qnap_show_menu() {
+  $items['admin/config/internet_archive/update_shows_from_qnap'] = array(
+    'title' => 'Update Shows from data on QNAP',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mnn_qnap_show_update_page'),
+    'access arguments' => array('administer internet_archive'),
+    'weight' => 15,
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for the internet archive om metadata site settings form.
+ *
+ * @ingroup forms
+ */
+function mnn_qnap_show_update_page($form, &$form_state) {
+
+  //build url to the files directory
+  $prefix = "files/show_descriptions";
+  $remote_url = variable_get('internet_archive_server_url', FALSE);
+  if (!$remote_url) {
+    return;
+  }
+  
+  $url_parts = parse_url($remote_url);
+  $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
+
+  dsm($remote_file_directory_url, 'url');
+  //grab all file names from directory
+  $html = file_get_contents($remote_file_directory_url);
+  //parse the html
+  $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
+			  $html, $files);
+
+  $harvested_files = $bad_file_names = $bad_projects = array();
+  for ($i = 0; $i < $count; ++$i) {
+    $valid = $upos = $dpos = $pid = $date = $project = FALSE;
+    
+    $file = $files[1][$i];
+
+    $upos = strpos($file, '_');
+    if ($upos) {
+      $dpos = strpos($file, '.', $upos);
+      if ($dpos) {
+	$pid = substr($file, 0, $upos);
+	if (is_numeric($pid)) {
+	  $project = node_load($pid);
+	}
+	if (!$project || $project->type != 'cm_project') {
+	  $bad_projects[] = $file;
+	  $bad_file_names[] = $file;
+	  continue;
+	}
+	
+	
+	$month_day = substr($file, ($upos + 1), ($dpos-($upos+1)));
+	$date_length = strlen($month_day);
+	if ($date_length == 4 && is_numeric($month_day)) {
+	  $cur_year = date('Y');
+	  $prev_year = $cur_year - 1;
+	  $next_year = $cur_year + 1;
+	  $date_part = '-' . substr($month_day, 0, 2) . '-' .
+	    substr($month_day, 2, 2);
+
+	  $cur = strtotime($cur_year . $date_part);
+	  $prev = strtotime($prev_year . $date_part);
+	  $next = strtotime($next_year . $date_part);
+
+	  $dates = array($prev, $cur, $next);
+	  $now = strtotime('now');
+	  $low_diff = 365*24*60*60; //no valid diff will be less thana year
+
+	  foreach($dates as $date_ts) {
+	      
+	    if (abs($date_ts - $now) < $low_diff) {
+	      $low_diff = abs($date_ts - $now);
+	      $airdate = date('Y-m-d', $date_ts);
+	    }
+	  }
+
+	  //find airing for project for airdate
+	  $range_end = mnn_qnap_show_add_to_date(strtotime($airdate), 'day',1);
+	  $fill_tid = 970;
+	  $sql =
+	    "SELECT ad.entity_id as airing_id, " .
+	    "s.field_airing_show_ref_target_id as show_id ".
+	    "FROM field_data_field_airing_date ad " .
+	    "INNER JOIN field_data_field_airing_project_ref ap " .
+	    "ON ap.entity_id=ad.entity_id " .
+	    "INNER JOIN field_data_field_airing_show_ref s " .
+	    "ON s.entity_id=ad.entity_id " .
+	    "LEFT JOIN field_data_field_airing_type at " .
+	    "ON at.entity_id=ad.entity_id " .
+	    "WHERE ap.field_airing_project_ref_target_id = " . $pid . " " .
+	    "AND ad.field_airing_date_value >= '" . $airdate . "' " .
+	    "AND ad.field_airing_date_value < '" .
+	    date('Y-m-d 00:00:00', $range_end). "' " .
+	    "AND at.field_airing_type_tid != " . $fill_tid;
+
+	  dsm($sql, 'sql');
+             
+	  //execute query
+	  $results = db_query($sql);
+	  $shows = array();
+	  while ($result = $results->fetchObject()) {
+	    $shows[] = node_load($result->show_id);
+	    $text = file_get_contents($remote_file_directory_url .'/'. $file);
+	    dsm($text, 'text');
+	  }
+
+	  if (count($shows) != 1) {
+	    //handle error here
+	  }
+	  else {
+	    $show = array_pop($shows);
+
+	    
+	    $show->field_short_description[LANGUAGE_NONE][0]['value'] =
+	      $description;
+	  }
+	  //validate date above
+	  
+
+
+	  
+	  $harvested_files[$file] = array('pid' => $pid, 'date' => $airdate);
+	  $valid = TRUE;
+	}
+      }
+    }
+
+    if (!$valid) {
+      $bad_file_names[] = $file;
+    }
+
+  }
+  dsm($shows, 'shows');
+  dsm($bad_file_names, 'bad file names');
+  dsm($harvested_files, 'me files');
+  dsm($bad_projects, 'bad projects');
+  
+  $form['mnn_qnap_show_submit'] =
+    array(
+	  '#type' => 'submit',
+	  '#value' => t('Update Shows'),
+	  );
+  return $form;
+}
+
+
+/*
+ * This is a util funtion that allows you to add x amount of units to
+ * a date. I.e. i want to add 4 weeks or 3 days to a date.
+ * 
+ * The important thing in this function is it takes into affect
+ * DST so that if i add 1 week to Monday at 4pm, i get the next week at 
+ * 4pm regardless of if there was DST change within the week.
+ * 
+ * @param $time the time to which to add 
+ * @param $type will be either hour, day or week
+ * @param $multiplier the amount of hours, days, or weeks
+ */
+function mnn_qnap_show_add_to_date($time, $type, $multiplier) {
+   if (!$multiplier) {
+     $multiplier = 1;
+   }
+
+   if ($type == "week") {
+     $new_time = $time + $multiplier*7*24*60*60;
+   }
+   else if ($type == "hour") {
+     $new_time = $time + $multiplier*60*60;
+   }
+   else if ($type == "day") {
+     $new_time = $time + $multiplier*24*60*60;
+   }
+   if (date('I', $time) != date('I', $new_time)) {
+      if (date('I', $new_time)) {
+        $new_time = $new_time - 60*60;
+      }
+      else if (date('I', $time)) {
+        $new_time = $new_time + 60*60;
+      }
+   }
+   return $new_time;
+}
