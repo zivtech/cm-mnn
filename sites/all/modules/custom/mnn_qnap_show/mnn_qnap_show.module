@@ -21,16 +21,19 @@ function mnn_qnap_show_menu() {
 function mnn_qnap_show_update_page($form, &$form_state) {
 
   $harvested_files = $bad_file_names = $bad_projects = $found_shows =
-    $missing_shows = $multiples = array();
+    $missing_shows = $multiples = $already_updated = array();
 
   mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
-		     $found_shows, $missing_shows, $multiples);
+		     $found_shows, $missing_shows, $multiples,
+		     $already_updated);
 
   $_SESSION['mnn_qnap_found_shows'] = $found_shows;
   $_SESSION['mnn_qnap_multiples'] = $multiples;
+  $_SESSION['mnn_qnap_already_updated'] = $already_updated;
   
   $report = array('found_shows' => $found_shows,
-		  'multipiles' => $multiples,
+		  'multiples' => $multiples,
+		  'already_updated' => $already_updated,
 		  'missing_shows' => $missing_shows,
 		  'bad_file_names' => $bad_file_names,
 		  'harvested_file_names' => $harvested_files,
@@ -52,11 +55,8 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
   $found_shows = $_SESSION['mnn_qnap_found_shows'];
   $multiples = $_SESSION['mnn_qnap_multiples'];
 
-  dsm($found_shows, 'found_shows2');
-  dsm($multiples, 'multiples2');
-  return;
   if ($found_shows) {
-    foreach($found_shows as $info) {
+    foreach($found_shows as $file=>$info) {
       $show = node_load($info['show_id']);
       $show->field_short_description[LANGUAGE_NONE][0]['value'] =
 	$info['new'];
@@ -66,19 +66,25 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
 	$info['raw'];
       $show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
 	$info['original'];
-      //FIXME SET QUNAP FIELDS
+      dsm(l($file . ' ' .$show->title, 'node/'.$show->nid));
       node_save($show);	      
     }
   }
   if ($multiples) {
-    foreach($multiples as $info) {
-      $show = node_load($info['show_id']);
-      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
-      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
-      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
-	$info['raw'];
-      //FIXME SET QUNAP FIELDS
-      node_save($show);	      
+    foreach($multiples as $file => $airdates) {
+      foreach($airdates as $airdate => $info) {
+	$show = node_load($info['show_id']);
+	$raw = mnn_qnap_show_get_single_field_value($show,
+						    'field_qnap_file_contents',
+						    'value');
+	if (!$raw) {
+	  $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
+	  $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
+	  $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+	    $info['raw'];
+	  node_save($show);
+	}
+      }
     }
   }
 }
@@ -87,7 +93,8 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
  * REPORTS AND UPDATING
  */
 function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
-			    &$found_shows, &$missing_shows, &$multiples) {
+			    &$found_shows, &$missing_shows, &$multiples,
+			    &$already_updated) {
 
   //build url to the files directory
   $prefix = "files/show_descriptions";
@@ -111,7 +118,7 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
   for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = FALSE;
     
-    $file = $files[1][$i];
+    $file = urldecode($files[1][$i]);
 
     $upos = strpos($file, '_');
     if ($upos) {
@@ -198,10 +205,25 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	  else {
 	    $text = file_get_contents($remote_file_directory_url .'/'. $file);
 
-	    dsm($text, 'text');
-	    //FIXME
-	    $description = $text;
-	    
+	    $lines =  explode(PHP_EOL,$text);
+	    $description = '';
+	    $prev_line = '';
+	    foreach($lines as $line) {
+	      if (!trim($line) ||
+		  strpos($file, trim($line)) === 0 ||
+		  strpos($file, trim($line)) > 0) {
+		continue;
+	      }
+	      else if ($prev_line && trim($prev_line) == trim($line)) {
+		continue;
+	      }
+	      if ($description) {
+		$description .= ' ';
+	      }
+	      $description .= trim($line);
+	      $prev_line = $line;
+	    }
+	    $description = substr($description, 0, 255);
 	    $result_sql =
 	      "SELECT ad.entity_id as airing_id, " .
 	      "s.field_airing_show_ref_target_id as show_id, " .
@@ -218,9 +240,11 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 		  isset($multiples[$file][$result->airdate]) ?
 		  $multiples[$file][$result->airdate] : array();
 
-		$original = 
-		  $show->field_short_description[LANGUAGE_NONE][0]['value'];
-		
+		$current = $show->field_short_description[LANGUAGE_NONE]
+		  [0]['value'];
+
+		$original = $show->field_qnap_original_description
+		  [LANGUAGE_NONE][0]['value'];
 		$info = array(
 			      'title' => $show->title,
 			      'airdate' => $result->airdate,
@@ -228,6 +252,7 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 			      'show_id' => $result->show_id,
 			      'new' => $description,
 			      'raw' => $text,
+			      'current' => $current,
 			      'original' => $original);
 		$multiples[$file][$result->airdate] = $info;
 	      }
@@ -235,9 +260,12 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	    else {
 	      $result = $results->fetchObject();
 	      $show = node_load($result->show_id);
-	      $original = 
-		$show->field_short_description[LANGUAGE_NONE][0]['value'];
+	      $current = $show->field_short_description[LANGUAGE_NONE]
+		[0]['value'];
 
+	      $original = $show->field_qnap_original_description[LANGUAGE_NONE]
+		[0]['value'];
+	      
 	      $info = array(
 			    'title' => $show->title,
 			    'airdate' => $result->airdate,
@@ -245,8 +273,14 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 			    'show_id' => $result->show_id,
 			    'new' => $description,
 			    'raw' => $text,
+			    'current' => $current,
 			    'original' => $original);
-	      $found_shows[$file] = $info;
+	      if ($description == $current) {
+		$already_updated[$file] = $info;
+	      }
+	      else {
+		$found_shows[$file] = $info;
+	      }
 	    }
 	  }
 	  $harvested_files[$file] = array('pid' => $pid, 'date' => $airdate);
@@ -296,4 +330,20 @@ function mnn_qnap_show_add_to_date($time, $type, $multiplier) {
       }
    }
    return $new_time;
+}
+
+/**                                                                            
+ * Helper function to get a single value off of a entity  
+*/
+function mnn_qnap_show_get_single_field_value($entity, $field_name,
+						$index = 'value') {
+  if (isset($entity->{$field_name})) {
+    $field = $entity->{$field_name};
+    if (isset($field[LANGUAGE_NONE]) &&
+        isset($field[LANGUAGE_NONE][0]) &&
+        isset($field[LANGUAGE_NONE][0][$index])) {
+      return $field[LANGUAGE_NONE][0][$index];
+    }
+  }
+  return NULL;
 }
