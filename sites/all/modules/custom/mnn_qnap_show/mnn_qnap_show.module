@@ -16,9 +16,7 @@ function mnn_qnap_show_menu() {
 }
 
 /**
- * Form builder for the internet archive om metadata site settings form.
- *
- * @ingroup forms
+ * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page($form, &$form_state) {
 
@@ -28,14 +26,17 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
 		     $found_shows, $missing_shows, $multiples);
 
-  dsm($found_shows, 'found_shows');
-  dsm($multiples, 'multiples');
-  dsm($missing_shows, 'missing');
-  $errors = array('bad_file_names' => $bad_file_names,
-		  'harvested_files' => $harvested_files,
+  $_SESSION['mnn_qnap_found_shows'] = $found_shows;
+  $_SESSION['mnn_qnap_multiples'] = $multiples;
+  
+  $report = array('found_shows' => $found_shows,
+		  'multipiles' => $multiples,
+		  'missing_shows' => $missing_shows,
+		  'bad_file_names' => $bad_file_names,
+		  'harvested_file_names' => $harvested_files,
 		  'bad_projects' => $bad_projects );
 
-  dsm($errors, 'ignored file info');
+  dsm($report, 'report');
   
   $form['mnn_qnap_show_submit'] =
     array(
@@ -44,7 +45,43 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 	  );
   return $form;
 }
+/**
+ * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
+ */
+function mnn_qnap_show_update_page_submit($form, &$form_state) {
+  $found_shows = $_SESSION['mnn_qnap_found_shows'];
+  $multiples = $_SESSION['mnn_qnap_multiples'];
 
+  dsm($found_shows, 'found_shows2');
+  dsm($multiples, 'multiples2');
+  return;
+  if ($found_shows) {
+    foreach($found_shows as $info) {
+      $show = node_load($info['show_id']);
+      $show->field_short_description[LANGUAGE_NONE][0]['value'] =
+	$info['new'];
+      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
+      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 0;
+      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+	$info['raw'];
+      $show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
+	$info['original'];
+      //FIXME SET QUNAP FIELDS
+      node_save($show);	      
+    }
+  }
+  if ($multiples) {
+    foreach($multiples as $info) {
+      $show = node_load($info['show_id']);
+      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
+      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
+      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+	$info['raw'];
+      //FIXME SET QUNAP FIELDS
+      node_save($show);	      
+    }
+  }
+}
 /**
  * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
  * REPORTS AND UPDATING
@@ -177,25 +214,39 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	      
 	      while ($result = $results->fetchObject()) {
 		$show = node_load($result->show_id);
-		//FIXME SET QUNAP FIELDS
-		node_save($show);
-
 		$multiples[$file][$result->airdate] =
 		  isset($multiples[$file][$result->airdate]) ?
 		  $multiples[$file][$result->airdate] : array();
+
+		$original = 
+		  $show->field_short_description[LANGUAGE_NONE][0]['value'];
 		
-		$multiples[$file][$result->airdate][] = $show;
+		$info = array(
+			      'title' => $show->title,
+			      'airdate' => $result->airdate,
+			      'airing_id' => $result->airing_id,
+			      'show_id' => $result->show_id,
+			      'new' => $description,
+			      'raw' => $text,
+			      'original' => $original);
+		$multiples[$file][$result->airdate] = $info;
 	      }
 	    }
 	    else {
 	      $result = $results->fetchObject();
 	      $show = node_load($result->show_id);
-	      $show->field_short_description[LANGUAGE_NONE][0]['value'] =
-		$description;
-	      //FIXME SET QUNAP FIELDS
-	      node_save($show);
-	      
-	      $found_shows[$file] = $show;
+	      $original = 
+		$show->field_short_description[LANGUAGE_NONE][0]['value'];
+
+	      $info = array(
+			    'title' => $show->title,
+			    'airdate' => $result->airdate,
+			    'airing_id' => $result->airing_id,
+			    'show_id' => $result->show_id,
+			    'new' => $description,
+			    'raw' => $text,
+			    'original' => $original);
+	      $found_shows[$file] = $info;
 	    }
 	  }
 	  $harvested_files[$file] = array('pid' => $pid, 'date' => $airdate);
