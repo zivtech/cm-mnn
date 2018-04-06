@@ -52,6 +52,7 @@ function mnn_qnap_show_update_page($form, &$form_state) {
  * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page_submit($form, &$form_state) {
+  dsm(date('h:i:s'));
   $found_shows = $_SESSION['mnn_qnap_found_shows'];
   $multiples = $_SESSION['mnn_qnap_multiples'];
 
@@ -66,7 +67,6 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
 	$info['raw'];
       $show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
 	$info['original'];
-      dsm(l($file . ' ' .$show->title, 'node/'.$show->nid));
       node_save($show);	      
     }
   }
@@ -74,19 +74,22 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
     foreach($multiples as $file => $airdates) {
       foreach($airdates as $airdate => $info) {
 	$show = node_load($info['show_id']);
-	$raw = mnn_qnap_show_get_single_field_value($show,
+	if ($show) {
+	  $raw = mnn_qnap_show_get_single_field_value($show,
 						    'field_qnap_file_contents',
-						    'value');
-	if (!$raw) {
-	  $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
-	  $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
-	  $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
-	    $info['raw'];
-	  node_save($show);
+						      'value');
+	  if (!$raw) {
+	    $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
+	    $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
+	    $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+	      $info['raw'];
+	    node_save($show);
+	  }
 	}
       }
     }
   }
+  dsm(date('h:i:s'));
 }
 /**
  * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
@@ -223,7 +226,8 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	      $description .= trim($line);
 	      $prev_line = $line;
 	    }
-	    $description = substr($description, 0, 255);
+	    $description = substr($description, 0, 200);
+
 	    $result_sql =
 	      "SELECT ad.entity_id as airing_id, " .
 	      "s.field_airing_show_ref_target_id as show_id, " .
