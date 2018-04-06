@@ -22,6 +22,36 @@ function mnn_qnap_show_menu() {
  */
 function mnn_qnap_show_update_page($form, &$form_state) {
 
+  $harvested_files = $bad_file_names = $bad_projects = $found_shows =
+    $missing_shows = $multiples = array();
+
+  mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
+		     $found_shows, $missing_shows, $multiples);
+
+  dsm($found_shows, 'found_shows');
+  dsm($multiples, 'multiples');
+  dsm($missing_shows, 'missing');
+  $errors = array('bad_file_names' => $bad_file_names,
+		  'harvested_files' => $harvested_files,
+		  'bad_projects' => $bad_projects );
+
+  dsm($errors, 'ignored file info');
+  
+  $form['mnn_qnap_show_submit'] =
+    array(
+	  '#type' => 'submit',
+	  '#value' => t('Update Shows'),
+	  );
+  return $form;
+}
+
+/**
+ * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
+ * REPORTS AND UPDATING
+ */
+function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
+			    &$found_shows, &$missing_shows, &$multiples) {
+
   //build url to the files directory
   $prefix = "files/show_descriptions";
   $remote_url = variable_get('internet_archive_server_url', FALSE);
@@ -38,9 +68,9 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
 			  $html, $files);
 
-  $harvested_files = $bad_file_names = $bad_projects = $found_shows =
-    $missing_shows = $multiples = array();
+  
 
+  
   for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = FALSE;
     
@@ -179,24 +209,7 @@ function mnn_qnap_show_update_page($form, &$form_state) {
     }
 
   }
-  dsm($found_shows, 'found_shows');
-  dsm($multiples, 'multiples');
-  dsm($missing_shows, 'missing');
-  $errors = array('bad_file_names' => $bad_file_names,
-		  'harvested_files' => $harvested_files,
-		  'bad_projects' => $bad_projects );
-
-  dsm($errors, 'ignored file info');
-  
-  $form['mnn_qnap_show_submit'] =
-    array(
-	  '#type' => 'submit',
-	  '#value' => t('Update Shows'),
-	  );
-  return $form;
 }
-
-
 /*
  * This is a util funtion that allows you to add x amount of units to
  * a date. I.e. i want to add 4 weeks or 3 days to a date.
