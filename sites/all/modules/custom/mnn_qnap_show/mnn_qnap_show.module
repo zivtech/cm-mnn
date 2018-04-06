@@ -111,20 +111,27 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 	  $shows = array();
 	  while ($result = $results->fetchObject()) {
 	    $shows[] = node_load($result->show_id);
+	  }
+
+	  if ($shows) {
 	    $text = file_get_contents($remote_file_directory_url .'/'. $file);
-	    dsm($text, 'text');
-	  }
 
-	  if (count($shows) != 1) {
-	    //handle error here
-	  }
-	  else {
-	    $show = array_pop($shows);
-
+	    //FIXME
+	    $description = $text;
 	    
-	    $show->field_short_description[LANGUAGE_NONE][0]['value'] =
-	      $description;
+	    dsm($text, 'text');
+	    if (count($shows) != 1) {
+	      //handle error here
+	    }
+	    else {
+	      $show = $shows[0];
+	      dsm($show, 'wtf');
+	      $show->field_short_description[LANGUAGE_NONE][0]['value'] =
+		$description;
+	      node_save($show);
+	    }
 	  }
+
 	  //validate date above
 	  
 
