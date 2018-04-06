@@ -32,15 +32,16 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   $url_parts = parse_url($remote_url);
   $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
 
-  dsm($remote_file_directory_url, 'url');
   //grab all file names from directory
   $html = file_get_contents($remote_file_directory_url);
   //parse the html
   $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
 			  $html, $files);
 
-  $harvested_files = $bad_file_names = $bad_projects = array();
-  for ($i = 0; $i < $count; ++$i) {
+  $harvested_files = $bad_file_names = $bad_projects = $found_shows =
+    $missing_shows = $multiples = array();
+
+  for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = FALSE;
     
     $file = $files[1][$i];
@@ -54,43 +55,58 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 	  $project = node_load($pid);
 	}
 	if (!$project || $project->type != 'cm_project') {
-	  $bad_projects[] = $file;
+	  if (is_numeric($pid)) {
+	    $bad_projects[] = $file;
+	  }
 	  $bad_file_names[] = $file;
 	  continue;
 	}
 	
-	
 	$month_day = substr($file, ($upos + 1), ($dpos-($upos+1)));
+
 	$date_length = strlen($month_day);
 	if ($date_length == 4 && is_numeric($month_day)) {
+	  //check for valid month
+	  if ((substr($month_day, 0, 2) == '00') ||
+	      (((int)substr($month_day, 0, 2)) > 12)) {
+	    $bad_file_names[] = $file;
+	    continue;
+	  }
+	  //check for valid day
+	  if ((substr($month_day, 2, 2) == '00') ||
+	      (((int)substr($month_day, 2, 2)) > 31)) {
+	    $bad_file_names[] = $file;
+	    continue;
+	  }
+		  
 	  $cur_year = date('Y');
 	  $prev_year = $cur_year - 1;
 	  $next_year = $cur_year + 1;
-	  $date_part = '-' . substr($month_day, 0, 2) . '-' .
+	  
+	  $date_string_suffix = '-' . substr($month_day, 0, 2) . '-' .
 	    substr($month_day, 2, 2);
 
-	  $cur = strtotime($cur_year . $date_part);
-	  $prev = strtotime($prev_year . $date_part);
-	  $next = strtotime($next_year . $date_part);
+	  $cur = strtotime($cur_year . $date_string_suffix);
+	  $prev = strtotime($prev_year . $date_string_suffix);
+	  $next = strtotime($next_year . $date_string_suffix);
 
 	  $dates = array($prev, $cur, $next);
 	  $now = strtotime('now');
-	  $low_diff = 365*24*60*60; //no valid diff will be less thana year
+	  $low_diff = 365*24*60*60; //no valid diff will be less than a year
 
 	  foreach($dates as $date_ts) {
-	      
+	    //find the nearest date
 	    if (abs($date_ts - $now) < $low_diff) {
 	      $low_diff = abs($date_ts - $now);
+	      //last $airdate found will be our match
 	      $airdate = date('Y-m-d', $date_ts);
 	    }
 	  }
-
+	  
 	  //find airing for project for airdate
 	  $range_end = mnn_qnap_show_add_to_date(strtotime($airdate), 'day',1);
 	  $fill_tid = 970;
-	  $sql =
-	    "SELECT ad.entity_id as airing_id, " .
-	    "s.field_airing_show_ref_target_id as show_id ".
+	  $sql_prefix =
 	    "FROM field_data_field_airing_date ad " .
 	    "INNER JOIN field_data_field_airing_project_ref ap " .
 	    "ON ap.entity_id=ad.entity_id " .
@@ -104,39 +120,54 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 	    date('Y-m-d 00:00:00', $range_end). "' " .
 	    "AND at.field_airing_type_tid != " . $fill_tid;
 
-	  dsm($sql, 'sql');
-             
-	  //execute query
-	  $results = db_query($sql);
-	  $shows = array();
-	  while ($result = $results->fetchObject()) {
-	    $shows[] = node_load($result->show_id);
-	  }
+	  $count_sql = "SELECT count(1) " . $sql_prefix;
 
-	  if ($shows) {
+	  //execute query
+	  $count_shows = db_query($count_sql)->fetchField();
+
+	  if ($count_shows == 0) {
+	    $missing_shows[] = $file;
+	  }
+	  else {
 	    $text = file_get_contents($remote_file_directory_url .'/'. $file);
 
+	    dsm($text, 'text');
 	    //FIXME
 	    $description = $text;
 	    
-	    dsm($text, 'text');
-	    if (count($shows) != 1) {
-	      //handle error here
+	    $result_sql =
+	      "SELECT ad.entity_id as airing_id, " .
+	      "s.field_airing_show_ref_target_id as show_id, " .
+	      "ad.field_airing_date_value as airdate " . $sql_prefix;
+
+	    $results = db_query($result_sql);
+	    
+	    if ($count_shows > 1) {
+	      $multiples[$file] = array();
+	      
+	      while ($result = $results->fetchObject()) {
+		$show = node_load($result->show_id);
+		//FIXME SET QUNAP FIELDS
+		node_save($show);
+
+		$multiples[$file][$result->airdate] =
+		  isset($multiples[$file][$result->airdate]) ?
+		  $multiples[$file][$result->airdate] : array();
+		
+		$multiples[$file][$result->airdate][] = $show;
+	      }
 	    }
 	    else {
-	      $show = $shows[0];
-	      dsm($show, 'wtf');
+	      $result = $results->fetchObject();
+	      $show = node_load($result->show_id);
 	      $show->field_short_description[LANGUAGE_NONE][0]['value'] =
 		$description;
+	      //FIXME SET QUNAP FIELDS
 	      node_save($show);
+	      
+	      $found_shows[$file] = $show;
 	    }
 	  }
-
-	  //validate date above
-	  
-
-
-	  
 	  $harvested_files[$file] = array('pid' => $pid, 'date' => $airdate);
 	  $valid = TRUE;
 	}
@@ -148,10 +179,14 @@ function mnn_qnap_show_update_page($form, &$form_state) {
     }
 
   }
-  dsm($shows, 'shows');
-  dsm($bad_file_names, 'bad file names');
-  dsm($harvested_files, 'me files');
-  dsm($bad_projects, 'bad projects');
+  dsm($found_shows, 'found_shows');
+  dsm($multiples, 'multiples');
+  dsm($missing_shows, 'missing');
+  $errors = array('bad_file_names' => $bad_file_names,
+		  'harvested_files' => $harvested_files,
+		  'bad_projects' => $bad_projects );
+
+  dsm($errors, 'ignored file info');
   
   $form['mnn_qnap_show_submit'] =
     array(
