@@ -21,11 +21,11 @@ function mnn_qnap_show_menu() {
 function mnn_qnap_show_update_page($form, &$form_state) {
 
   $harvested_files = $bad_file_names = $bad_projects = $found_shows =
-    $missing_shows = $multiples = $already_updated = array();
+    $missing_shows = $multiples = $already_updated = $empty = array();
 
   mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
 		     $found_shows, $missing_shows, $multiples,
-		     $already_updated);
+		     $already_updated, $empty);
 
   $_SESSION['mnn_qnap_found_shows'] = $found_shows;
   $_SESSION['mnn_qnap_multiples'] = $multiples;
@@ -33,6 +33,7 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   
   $report = array('found_shows' => $found_shows,
 		  'multiples' => $multiples,
+		  'empty' => $empty, 
 		  'already_updated' => $already_updated,
 		  'missing_shows' => $missing_shows,
 		  'bad_file_names' => $bad_file_names,
@@ -52,7 +53,6 @@ function mnn_qnap_show_update_page($form, &$form_state) {
  * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page_submit($form, &$form_state) {
-  dsm(date('h:i:s'));
   $found_shows = $_SESSION['mnn_qnap_found_shows'];
   $multiples = $_SESSION['mnn_qnap_multiples'];
 
@@ -72,24 +72,26 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
   }
   if ($multiples) {
     foreach($multiples as $file => $airdates) {
-      foreach($airdates as $airdate => $info) {
-	$show = node_load($info['show_id']);
-	if ($show) {
-	  $raw = mnn_qnap_show_get_single_field_value($show,
-						    'field_qnap_file_contents',
-						      'value');
-	  if (!$raw) {
-	    $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
-	    $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
-	    $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
-	      $info['raw'];
-	    node_save($show);
+      foreach($airdates as $airdate => $airings) {
+	foreach ($airings as $show_id => $info) {
+	  $show = node_load($show_id);
+	  if ($show) {
+	    $raw =
+	      mnn_qnap_show_get_single_field_value($show,
+						   'field_qnap_file_contents',
+						   'value');
+	    if (!$raw) {
+	      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
+	      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
+	      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+		$info['raw'];
+	      node_save($show);
+	    }
 	  }
 	}
       }
     }
   }
-  dsm(date('h:i:s'));
 }
 /**
  * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
@@ -97,7 +99,7 @@ function mnn_qnap_show_update_page_submit($form, &$form_state) {
  */
 function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 			    &$found_shows, &$missing_shows, &$multiples,
-			    &$already_updated) {
+			    &$already_updated, &$empty) {
 
   //build url to the files directory
   $prefix = "files/show_descriptions";
@@ -226,29 +228,54 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	      $description .= trim($line);
 	      $prev_line = $line;
 	    }
-	    $description = substr($description, 0, 200);
-
-	    $result_sql =
-	      "SELECT ad.entity_id as airing_id, " .
-	      "s.field_airing_show_ref_target_id as show_id, " .
-	      "ad.field_airing_date_value as airdate " . $sql_prefix;
-
-	    $results = db_query($result_sql);
-	    
-	    if ($count_shows > 1) {
-	      $multiples[$file] = array();
+	    $description = substr(trim($description), 0, 200);
+	    if (!$description) {
+	      $valid = FALSE;
+	      $empty[$file] = $text;
+	    }
+	    else if ($description) { //we have found a description
+	      $result_sql =
+		"SELECT ad.entity_id as airing_id, " .
+		"s.field_airing_show_ref_target_id as show_id, " .
+		"ad.field_airing_date_value as airdate " . $sql_prefix;
 	      
-	      while ($result = $results->fetchObject()) {
+	      $results = db_query($result_sql);
+	      
+	      if ($count_shows > 1) {
+		$multiples[$file] = array();
+		
+		while ($result = $results->fetchObject()) {
+		  $show = node_load($result->show_id);
+		  $multiples[$file][$result->airdate] =
+		    isset($multiples[$file][$result->airdate]) ?
+		    $multiples[$file][$result->airdate] : array();
+		  
+		  $current = $show->field_short_description[LANGUAGE_NONE]
+		    [0]['value'];
+		
+		  $original = $show->field_qnap_original_description
+		    [LANGUAGE_NONE][0]['value'];
+		  $info = array(
+				'title' => $show->title,
+				'airdate' => $result->airdate,
+				'airing_id' => $result->airing_id,
+				'show_id' => $result->show_id,
+				'new' => $description,
+				'raw' => $text,
+				'current' => $current,
+				'original' => $original);
+		  $multiples[$file][$result->airdate][$show->nid] = $info;
+		}
+	      }
+	      else {
+		$result = $results->fetchObject();
 		$show = node_load($result->show_id);
-		$multiples[$file][$result->airdate] =
-		  isset($multiples[$file][$result->airdate]) ?
-		  $multiples[$file][$result->airdate] : array();
-
 		$current = $show->field_short_description[LANGUAGE_NONE]
 		  [0]['value'];
-
+		
 		$original = $show->field_qnap_original_description
 		  [LANGUAGE_NONE][0]['value'];
+		
 		$info = array(
 			      'title' => $show->title,
 			      'airdate' => $result->airdate,
@@ -258,37 +285,19 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 			      'raw' => $text,
 			      'current' => $current,
 			      'original' => $original);
-		$multiples[$file][$result->airdate] = $info;
+		if ($description == $current) {
+		  $already_updated[$file] = $info;
+		}
+		else {
+		  $found_shows[$file] = $info;
+		}
 	      }
-	    }
-	    else {
-	      $result = $results->fetchObject();
-	      $show = node_load($result->show_id);
-	      $current = $show->field_short_description[LANGUAGE_NONE]
-		[0]['value'];
-
-	      $original = $show->field_qnap_original_description[LANGUAGE_NONE]
-		[0]['value'];
-	      
-	      $info = array(
-			    'title' => $show->title,
-			    'airdate' => $result->airdate,
-			    'airing_id' => $result->airing_id,
-			    'show_id' => $result->show_id,
-			    'new' => $description,
-			    'raw' => $text,
-			    'current' => $current,
-			    'original' => $original);
-	      if ($description == $current) {
-		$already_updated[$file] = $info;
-	      }
-	      else {
-		$found_shows[$file] = $info;
-	      }
+	    
+	      $harvested_files[$file] = array('pid' => $pid,
+					      'date' => $airdate);
+	      $valid = TRUE;
 	    }
 	  }
-	  $harvested_files[$file] = array('pid' => $pid, 'date' => $airdate);
-	  $valid = TRUE;
 	}
       }
     }
