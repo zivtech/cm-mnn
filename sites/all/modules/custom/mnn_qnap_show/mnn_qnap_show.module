@@ -185,6 +185,7 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	  //find airing for project for airdate
 	  $range_end = mnn_qnap_show_add_to_date(strtotime($airdate), 'day',1);
 	  $fill_tid = 970;
+
 	  $sql_prefix =
 	    "FROM field_data_field_airing_date ad " .
 	    "INNER JOIN field_data_field_airing_project_ref ap " .
@@ -240,12 +241,28 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 		"ad.field_airing_date_value as airdate " . $sql_prefix;
 	      
 	      $results = db_query($result_sql);
-	      
+
+	      $result_shows = $filtered_results = array();
+	      while ($result = $results->fetchObject()) {
+		if (isset($result_shows[$result->show_id])) {
+		  continue;
+		}
+		$filtered_results[] = $result;
+		$result_shows[$result->show_id] = $result;
+
+	      }
+	      $count_shows = count($filtered_results);
+
 	      if ($count_shows > 1) {
 		$multiples[$file] = array();
-		
-		while ($result = $results->fetchObject()) {
+
+		foreach ($filtered_results as $result) {
 		  $show = node_load($result->show_id);
+		  if (!$show) {
+		    $missing_shows[] = $file;
+		    continue;
+		  }
+
 		  $multiples[$file][$result->airdate] =
 		    isset($multiples[$file][$result->airdate]) ?
 		    $multiples[$file][$result->airdate] : array();
@@ -268,8 +285,13 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 		}
 	      }
 	      else {
-		$result = $results->fetchObject();
+		$result = $filtered_results[0];
 		$show = node_load($result->show_id);
+		if (!$show) {
+		  $missing_shows[] = $file;
+		  continue;
+		}
+		
 		$current = $show->field_short_description[LANGUAGE_NONE]
 		  [0]['value'];
 		
