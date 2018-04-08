@@ -59,28 +59,27 @@ function mnn_qnap_show_update_page($form, &$form_state) {
  * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page_submit($form, &$form_state) {
-  mnn_qnap_update_shows();
+  $found_shows = $_SESSION['mnn_qnap_found_shows'];
+  $multiples = $_SESSION['mnn_qnap_multiples'];
+
+  mnn_qnap_update_shows($found_shows, $multiples);
 }
 
 function mnn_qnap_show_cron() {
-  //fixme, make work!
+  //FIXME REMOVE WHEN CRON IS READY
   return;
-  
   $harvested_files = $bad_file_names = $bad_projects = $found_shows =
     $missing_shows = $multiples = $already_updated = $empty = array();
 
   mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
 		     $found_shows, $missing_shows, $multiples,
 		     $already_updated, $empty);
-  mnn_qnap_update_shows();
+  mnn_qnap_update_shows($found_shows, $multiples);
 
   
 }
 
-function mnn_qnap_update_shows() {
-  $found_shows = $_SESSION['mnn_qnap_found_shows'];
-  $multiples = $_SESSION['mnn_qnap_multiples'];
-
+function mnn_qnap_update_shows($found_shows, $multiples) {
   if ($found_shows) {
     foreach($found_shows as $file=>$info) {
       $show = node_load($info['show_id']);
