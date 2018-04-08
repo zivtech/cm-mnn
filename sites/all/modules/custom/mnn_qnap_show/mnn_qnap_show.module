@@ -41,12 +41,18 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 		  'bad_projects' => $bad_projects );
 
   dsm($report, 'report');
+
   
   $form['mnn_qnap_show_submit'] =
     array(
 	  '#type' => 'submit',
 	  '#value' => t('Update Shows'),
 	  );
+
+    $form['mnn_qnap_show_header'] =
+    array('#markup' =>
+	  "</br><a href='/admin/reports/qnap/show_report'>See Report</a>");
+
   return $form;
 }
 /**
