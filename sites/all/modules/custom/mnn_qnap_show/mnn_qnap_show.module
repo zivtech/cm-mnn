@@ -50,7 +50,7 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   return $form;
 }
 /**
- * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
+ * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page_submit($form, &$form_state) {
   mnn_qnap_update_shows();
