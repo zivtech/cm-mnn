@@ -152,6 +152,16 @@ function cm_crew_connect_node_presave($node) {
 				    'is_public' => "1",
 				    ));
       $event_id = $result2['id'];
+      
+           //	fix for	scheduled message bug in civi core
+//      	  if ($result['id'] != $event_id) {
+	    $fixed_reminders = db_update('civicrm_action_schedule')
+              ->fields(array('mapping_id' => '3'))
+              ->condition('civicrm_action_schedule.entity_value', $result2['id'], '=')
+              ->execute();
+//          }
+      
+      
 //dsm("event created");
       //set the event to be volunteer enabled.   
       $result3 = civicrm_api3('VolunteerProject', 'create', 
