@@ -255,8 +255,8 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	    }
 	    $description = substr(trim($description), 0, 200);
 	    if (!$description) {
-	      $valid = FALSE;
 	      $empty[$file] = $text;
+	      continue;
 	    }
 	    else if ($description) { //we have found a description
 	      $result_sql =
