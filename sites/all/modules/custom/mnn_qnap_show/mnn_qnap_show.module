@@ -275,6 +275,10 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	    $description = substr(trim($description), 0, 200);
 	    if (!$description) {
 	      $empty[$file] = $text;
+	      $harvested_files[$file] = array('pid' => $pid,
+					      'date' => $airdate,
+					      'text' => $text);
+	      
 	      continue;
 	    }
 	    else if ($description) { //we have found a description
@@ -351,7 +355,15 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 			      'raw' => $text,
 			      'current' => $current,
 			      'original' => $original);
-		if ($description == $current) {
+		
+		$qnap_updated =
+		  mnn_qnap_show_get_single_field_value($show,
+						       'field_qnap_updated_',
+						       'value');
+		if ($qnap_updated) {
+		  $already_updated[$file] = $info;
+		}
+		else if ($description == $current) {
 		  $already_updated[$file] = $info;
 		}
 		else {
@@ -360,7 +372,8 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
 	      }
 	    
 	      $harvested_files[$file] = array('pid' => $pid,
-					      'date' => $airdate);
+					      'date' => $airdate,
+					      'text' => $text);
 	      $valid = TRUE;
 	    }
 	  }
