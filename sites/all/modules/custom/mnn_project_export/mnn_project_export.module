@@ -1,0 +1,328 @@
+<?php
+
+/**
+ * @file
+ * Module that exports project info as json data.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function mnn_project_export_menu() {
+  return array(
+    'project-services/project.json' => array(
+      'title' => 'Project Export',
+      'page callback' => 'mnn_project_export_project_page',
+      'access arguments' => array('access content'),
+      'menu_name' => 'project_export',
+      'type' => MENU_CALLBACK,
+    ),
+    'project-services/show.json' => array(
+      'title' => 'Show Export',
+      'page callback' => 'mnn_project_export_show_page',
+      'access arguments' => array('access content'),
+      'menu_name' => 'project_export',
+      'type' => MENU_CALLBACK,
+    ),
+  );
+}
+
+/**
+ * Page callback to show project data.
+ */
+function mnn_project_export_project_page() {
+  $page = isset($_GET['page']) ? (int) $_GET['page'] + 1 : 1;
+  $filters = array('page' => $page);
+  $hash = md5(json_encode($filters));
+  $cache_id = 'mnn_project_export:projects:' . $hash;
+  $cache = cache_get($cache_id, 'cache');
+  if (empty($cache) || $cache->expire < REQUEST_TIME) {
+    $projects = mnn_project_export_get_projects();
+    $data = array(
+      'results' => $projects,
+      'page' => $page,
+      'total_results' => (int) mnn_project_export_get_projects_count(),
+      'results_per_page' => variable_get('mnn_project_export_project_limit', 400),
+    );
+    // This is cached for 12 hours.
+    cache_set($cache_id, $data, 'cache', 43200);
+  }
+  else {
+    $data = $cache->data;
+  }
+  drupal_json_output($data);
+  drupal_exit();
+}
+
+/**
+ * Page callback to show show data.
+ */
+function mnn_project_export_show_page() {
+  $filters = array(
+    'date_modified' => 0,
+    'show_id' => NULL,
+    'project_id' => NULL,
+  );
+  $page = isset($_GET['page']) ? (int) $_GET['page'] + 1 : 1;
+  array_walk($filters, function(&$value, $key) {
+    $value = isset($_REQUEST[$key]) ? $_REQUEST[$key] : $value;
+  });
+
+  $hash = md5(json_encode($filters + array('page' => $page)));
+  $cache_id = 'mnn_project_export:shows:' . $hash;
+  if (empty($cache) || $cache->expire < REQUEST_TIME) {
+    $shows = mnn_project_export_get_shows($filters);
+    $data = array(
+      'results' => $shows,
+      'page' => $page,
+      'total_results' => (int) mnn_project_export_get_shows_count($filters),
+      'results_per_page' => variable_get('mnn_project_export_project_limit', 400),
+    );
+    // This is cached for 12 hours.
+    cache_set($cache_id, $data, 'cache', 43200);
+  }
+  else {
+    $data = $cache->data;
+  }
+  drupal_json_output($data);
+  drupal_exit();
+}
+
+/**
+ * Get a query to load project data for the expport.
+ *
+ * @return object
+ *  A db query object.
+ */
+function mnn_project_export_get_projects_query() {
+  $query = db_select('node', 'n');
+  $query->innerJoin('field_data_field_internet_archive_tos', 'tos', 'n.vid = tos.revision_id');
+
+  foreach (array(
+    'field_description',
+    'field_project_public_url',
+    'field_public_contact',
+    'field_public_facebook',
+    'field_instagram',
+    'field_public_twitter',
+    'field_public_vimeo',
+    'field_public_youtube',
+  ) as $field_name) {
+    $field = field_info_field($field_name);
+    $table_name = 'field_data_' . $field_name;
+    $query->leftJoin($table_name, $field_name, 'n.vid = ' . $field_name . '.revision_id');
+    if (!empty($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'][$table_name])) {
+      $column = reset($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'][$table_name]);
+      $query->addExpression($field_name . '.' . $column, $field_name);
+    }
+  }
+
+  $query->fields('n', array('nid', 'title', 'status', 'created', 'changed'))
+    ->condition('n.status', 1)
+    ->condition('n.type', 'cm_project')
+    ->condition('tos.field_internet_archive_tos_value', 1);
+  return $query;
+}
+
+/**
+ * Load up all project data.
+ *
+ * @return array
+ *  An array of project node data.
+ */
+function mnn_project_export_get_projects() {
+  $query = mnn_project_export_get_projects_query();
+  $projects = $query->orderBy('n.changed', 'ASC')
+    ->orderBy('n.nid', 'ASC')
+    ->extend('PagerDefault')
+    ->limit((int) variable_get('mnn_project_export_project_limit', 400))
+    ->execute()
+    ->fetchAllAssoc('nid');
+
+  if (!empty($projects)) {
+    $producers = mnn_project_export_get_producers(array_keys($projects));
+    if (!empty($producers['projects'])) {
+      foreach ($producers['projects'] as $producer) {
+        if (!empty($projects[$producer->gid])) {
+          $projects[$producer->gid]->producers[] = !empty($producers['names'][$producer->uid]) ? $producers['names'][$producer->uid] : $producer->name;
+        }
+      }
+    }
+  }
+
+  // Grabbing by nid ensures there are not duplicate results
+  // but json orders by keys in ways we don't like
+  // so we reset the keys.
+  $projects = array_values($projects);
+
+  return $projects;
+}
+
+/**
+ * Get total projects that will be returned by the service.
+ */
+function mnn_project_export_get_projects_count() {
+  $query = mnn_project_export_get_projects_query();
+  return $query->countQuery()
+    ->execute()
+    ->fetchField();
+}
+
+/**
+ * Load up producer info for the given project groups.
+ *
+ * @return array
+ *  An array of producer data.
+ */
+function mnn_project_export_get_producers($gids) {
+  // @todo: update node if og_membership info is updated?
+  $results = array();
+  $query = db_select('og_membership', 'ogm');
+  $query->innerJoin('users', 'u', 'ogm.etid = u.uid');
+
+  $results['projects'] = $query->fields('ogm', array())
+    ->fields('u', array())
+    ->condition('ogm.group_type', 'node')
+    ->condition('ogm.entity_type', 'user')
+    ->condition('ogm.field_name', array('og_group_ref', 'og_node'), 'IN')
+    ->condition('ogm.gid', $gids, 'IN')
+    ->orderBy('gid', 'ASC')
+    ->orderBy('ogm.id', 'ASC')
+    ->execute()
+    ->fetchAll();
+
+  // Get the actual display names from civicrm.
+  $uids = array_unique(array_map(function($producer) {
+    return $producer->uid;
+  }, $results['projects']));
+  $results['names'] = !empty($uids) ? mnn_project_get_producer_names($uids) : array();
+  return $results;
+}
+
+/**
+ * Get info about drupal users from civicrm.
+ *
+ * @param array $ids
+ *  A list of drupal uids.
+ *
+ * @return array
+ *  An array display names (uid => display name).
+ */
+function mnn_project_get_producer_names($ids) {
+  $results = array();
+  civicrm_initialize();
+  $sql = "SELECT c.id, c.contact_type, c.display_name, um.*
+          FROM civicrm_uf_match um
+          INNER JOIN civicrm_contact c ON um.contact_id = c.id
+          WHERE um.uf_id IN (" . implode(', ', $ids) . ")";
+  $dao = CRM_Core_DAO::executeQuery($sql);
+  while ($dao->fetch()) {
+    $results[$dao->uf_id] = $dao->display_name;
+  }
+  $dao->free();
+  return $results;
+}
+
+/**
+ * Load up all show data.
+ *
+ * @return array
+ *  An array of show node data.
+ */
+function mnn_project_export_get_shows($filters) {
+  $query = mnn_project_export_get_shows_query($filters);
+  $shows = $query->orderBy('cm_show.changed', 'ASC')
+    ->orderBy('cm_show.nid', 'ASC')
+    ->extend('PagerDefault')
+    ->limit((int) variable_get('mnn_project_export_project_limit', 400))
+    ->execute()
+    ->fetchAllAssoc('nid');
+
+  // Grabbing by nid ensures there are not duplicate results
+  // but json orders by keys in ways we don't like
+  // so we reset the keys.
+  $shows = array_values($shows);
+
+  return $shows;
+}
+
+/**
+ * Get total shows that will be returned by the service.
+ */
+function mnn_project_export_get_shows_count($filters) {
+  $query = mnn_project_export_get_shows_query($filters);
+  return $query->countQuery()
+    ->execute()
+    ->fetchField();
+}
+
+/**
+ * Get a query to load show data for the expport.
+ *
+ * @return object
+ *  A db query object.
+ */
+function mnn_project_export_get_shows_query($filters) {
+  // get all public shows related to a project that is listed and not unpublished
+  $query = db_select('og_membership', 'ogm');
+  $query->innerJoin('node', 'project', 'ogm.gid = project.nid');
+  $query->innerJoin('node', 'cm_show', 'ogm.etid = cm_show.nid');
+  $query->innerJoin('field_data_field_internet_archive_tos', 'tos', 'project.vid = tos.revision_id');
+
+  foreach (array(
+    'field_episode_number',
+    'field_short_description',
+  ) as $field_name) {
+    $field = field_info_field($field_name);
+    $table_name = 'field_data_' . $field_name;
+    $query->leftJoin($table_name, $field_name, 'cm_show.vid = ' . $field_name . '.revision_id');
+    if (!empty($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'][$table_name])) {
+      $column = reset($field['storage']['details']['sql']['FIELD_LOAD_CURRENT'][$table_name]);
+      $query->addExpression($field_name . '.' . $column, $field_name);
+    }
+  }
+  foreach (array(
+    'field_pbcore_languages',
+    'field_pbcore_genres',
+    'field_pbcore_fcc_ratings',
+  ) as $field_name) {
+    $table_name = 'field_data_' . $field_name;
+    $term_table_name = $field_name . '_terms';
+    $query->leftJoin($table_name, $field_name, 'cm_show.vid = ' . $field_name . '.revision_id');
+    $query->leftJoin('taxonomy_term_data', $term_table_name, $field_name . '.' . $field_name . '_tid = ' . $term_table_name . '.tid');
+    $query->addExpression($term_table_name . '.name', $field_name);
+  }
+
+  // Note: if this starts producing duplicate results then we can
+  // use a 2nd query to them in the same way we do for projects
+  // and producers.
+  // @todo: check on how the files are going to be setup
+  // to see if this could be a problem.
+  $query->innerJoin('internet_archive', 'arch', 'cm_show.nid = arch.nid');
+  $query->addExpression('arch.item', 'archive_item_name');
+
+  // Allow filtering
+  if (!empty($filters['date_modified'])) {
+    $query->condition('cm_show.changed', $filters['date_modified'], '>=');
+  }
+  if (isset($filters['show_id'])) {
+    $query->condition('cm_show.nid', $filters['show_id']);
+  }
+  else if (isset($filters['project_id'])) {
+    $query->condition('project.nid', $filters['project_id']);
+  }
+
+  $query->addExpression('project.nid', 'project_id');
+  $query->fields('cm_show', array('nid', 'title', 'status', 'created', 'changed'))
+    ->condition('project.status', 1)
+    ->condition('cm_show.status', 1)
+    ->condition('project.type', 'cm_project')
+    ->condition('cm_show.type', 'cm_show')
+    ->condition('ogm.group_type', 'node')
+    ->condition('ogm.entity_type', 'node')
+    ->condition('ogm.field_name', 'og_node2')
+    ->condition('arch.field_name', array('field_internet_archive_remote', 'field_internet_archive_local'), 'IN')
+    ->isNotNull('arch.item')
+    ->condition('tos.field_internet_archive_tos_value', 1);
+  return $query;
+}
