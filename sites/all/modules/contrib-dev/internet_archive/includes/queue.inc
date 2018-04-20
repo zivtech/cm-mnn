@@ -102,6 +102,26 @@ function internet_archive_queue_settings_form($form, &$form_state) {
 	  '#description' => $description,
 	  '#size' => 5,
   );
+
+  $description =
+    "Sometimes the connection is dropped while uploading a file but the " .
+    "file still can upload. However, we only want to wait a certain amount " .
+    "of time before we consider it a real failure. Setting this value will " .
+    "determine how many hours until the file is marked as failed and can " .
+    "possibly re-enter the queue if there are still attempts remaining";
+  
+  $form['internet_archive_queue']['internet_archive_wait_hours_for_file'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' =>
+	  t('How many hours should we wait for a file to transfer before ' .
+	    'marking it failed. '),
+	  '#default_value' =>
+	  variable_get('internet_archive_wait_hours_for_file',  24),
+	  '#description' => $description,
+	  '#size' => 5,
+  );
+
   $description =
     t('This is not generally necessary but may be helpful if you are '.
       'transferring very large files and are seeing some files never '.

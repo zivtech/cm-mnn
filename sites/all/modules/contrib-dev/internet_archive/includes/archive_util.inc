@@ -567,7 +567,7 @@ function internet_archive_delete_files($archive_data) {
  */
 function internet_archive_validate_transfers($nid = null) {
   //how many times should we attempt to transfer failed files
-  $attempts = variable_get('internet_archive_queue_attempts', 0) + 1;
+  $attempts = variable_get('internet_archive_queue_attempts', 0);
 
   if ($nid) {
     //only grab 10 at a time to avoid pounding archive.org
@@ -800,6 +800,10 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
     $expected_derivatives =
       variable_get('internet_archive_derivatives', 3) + 1;
 
+    $wait_time =
+      variable_get('internet_archive_wait_hours_for_file', 24);
+    $wait_time = $wait_time * 60 * 60;
+
     //if we are uploading a file in a format archive.org derives it will not
     //re-derive it therefore we need to decrement the expected derivatives by 1
     if (internet_archive_is_archive_format($archive_data['file_name'])) {
@@ -821,29 +825,20 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
       internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'derived');
     }
-    else if ($derivatives && (count($derivatives) > 0)) {
-      internet_archive_update_archive_data($archive_data);
-    }
-    elseif ((REQUEST_TIME - $archive_data['date']) > 172800) {
-      // if derivatives are not completed after 2 days, check to see if
-      //transfer validates
-      $valid = internet_archive_validate_transfer($archive_data['tid']);
-      if (!$valid) {
-        // if it doesn't validate, mark as failed for reprocessing
-	$archive_data['status'] = ARCHIVE_FAILED;
-	$archive_data['error'] = 
+    else if ((REQUEST_TIME - $archive_data['date']) > $wait_time) {
+      // if derivatives are not completed after 2 days
+      $archive_data['status'] = ARCHIVE_FAILED;
+      $archive_data['error'] = 
 	t('Validation failed, source file does not exist at Archive.org ' .
 	  'after 2 days. Marked as failed.');
 	
-	internet_archive_update_archive_data($archive_data);
-        internet_archive_invoke_internet_archive($archive_data, 'failed');
-      }
-      else {
-	$archive_data['derivatives'] = 'failed';	
-        internet_archive_invoke_internet_archive($archive_data,
-						 'derivativefailed');
-      }
+      internet_archive_update_archive_data($archive_data);
+      internet_archive_invoke_internet_archive($archive_data, 'failed');
     }
+    else if ($derivatives && (count($derivatives) > 0)) {
+      internet_archive_update_archive_data($archive_data);
+    }
+
   }
   return;
 }
