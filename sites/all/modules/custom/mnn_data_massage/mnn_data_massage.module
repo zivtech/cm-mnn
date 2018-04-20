@@ -68,7 +68,8 @@ function mnn_data_massage_page($function) {
 		     //"items_missing_status_update",
 		     //"update_project_internet_archive_opt_out",
 		     //"delete_program_import_shows_and_airings",
-		     "prune_replication_history",
+		     //"prune_replication_history",
+		     //"create_archive_shows",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3463,6 +3464,33 @@ function mnn_data_massage_prune_replication_history() {
   dsm(date('h:i:s'));
 }
 
+function mnn_data_massage_create_archive_shows() {
+
+  $start = 2020;
+  $max = 2034;
+  
+  for ($i = $start ; $i < $max; $i++) {
+    global $user;
+    $show = new stdClass();
+    $show->uid = $user->uid;
+    $show->title = "TEMP TITLE";
+    $show->type = 'cm_show';
+    $show->status = 1;
+    $show->language = LANGUAGE_NONE;
+    
+    $show->field_format[LANGUAGE_NONE][0]['tid'] = 768;
+    $show->field_runtime[LANGUAGE_NONE][0]['tid'] = 850;
+    $show->taxonomy_cm_project_types[LANGUAGE_NONE][0]['tid'] = 2;
+    $show->field_pbcore_fcc_ratings[LANGUAGE_NONE][0]['tid'] = 718;
+    $show->field_short_description[LANGUAGE_NONE][0]['value'] =
+      "This is show number $i";
+    $show->field_pbcore_languages[LANGUAGE_NONE][0]['tid'] = 244;
+    $show->field_pbcore_genres[LANGUAGE_NONE][0]['tid'] = 6;
+    $show->og_node2[LANGUAGE_NONE][0]['target_id'] = 29999;
+    $show->field_episode_number[LANGUAGE_NONE][0]['value'] = $i;
+    node_save($show);
+  }
+}
 function mnn_data_massage_log_query($sql, $args) {
   $ms = str_replace('{', '', $sql);
   $ms = str_replace('}', '', $ms);
