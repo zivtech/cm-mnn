@@ -573,30 +573,25 @@ function internet_archive_validate_transfers($nid = null) {
     //only grab 10 at a time to avoid pounding archive.org
     $result = db_query("SELECT * FROM {internet_archive} ".  
 		       "WHERE nid = :nid ".
-		       "AND (status = :transferred OR ".
-		       "(status = :failed AND attempts <= :attempts)) ".
+		       "AND status = :transferred ".
 		       "LIMIT 10",
 		       array(':nid' => $nid,
 			     ':transferred' => ARCHIVE_TRANSFERRED,
-			     ':failed' => ARCHIVE_FAILED,
 			     ':attempts' => $attempts));
   }
   else {
     //only grab 10 at a time to avoid pounding archive.org
     $result = db_query("SELECT * FROM {internet_archive} ".  
-		       "WHERE (status = :transferred OR ".
-		       "(status = :failed AND attempts <= :attempts)) ".
+		       "WHERE status = :transferred ".
 		       "LIMIT 10",
-		       array(':transferred' => ARCHIVE_TRANSFERRED,
-			     ':failed' => ARCHIVE_FAILED,
-			     ':attempts' => $attempts));
+		       array(':transferred' => ARCHIVE_TRANSFERRED));
   }
   while ($archive_data = $result->fetchAssoc()) {
     $valid = internet_archive_validate_transfer($archive_data);
     if (!$valid && (REQUEST_TIME - $archive_data['date']) > (8*60*60)) {
       $archive_data['status'] = ARCHIVE_FAILED;
       $archive_data['error'] = 
-	t('Validation failed, source file does not exist at Archive.org ' .
+	t('Validation failed, files do not exist at Archive.org ' .
 	  'after 8 hours. Marked as failed.');
       
       internet_archive_update_archive_data($archive_data);
@@ -825,12 +820,14 @@ function internet_archive_store_derivatives($nid = NULL, $limit = 25) {
       internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'derived');
     }
-    else if ((REQUEST_TIME - $archive_data['date']) > $wait_time) {
+    else if ((REQUEST_TIME - $archive_data['transfer_initiated']) >
+	     $wait_time) {
       // if derivatives are not completed after 2 days
       $archive_data['status'] = ARCHIVE_FAILED;
       $archive_data['error'] = 
 	t('Validation failed, source file does not exist at Archive.org ' .
-	  'after 2 days. Marked as failed.');
+	  'after @hours hours. Marked as failed.',
+	  array('@hours' => $wait_time/(60*60)));
 	
       internet_archive_update_archive_data($archive_data);
       internet_archive_invoke_internet_archive($archive_data, 'failed');

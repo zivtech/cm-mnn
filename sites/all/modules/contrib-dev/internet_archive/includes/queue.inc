@@ -442,12 +442,6 @@ function internet_archive_harvest_files() {
     }
   }
 
-  $transferring_files = internet_archive_harvest_overdue_transferring();
-
-  if ($transferring_files) {
-    $file_names = array_merge($transferring_files, $file_names);
-  }
-
   $transfer_queue = DrupalQueue::get('internet_archive_send_file');
 
   if ($file_names) {
@@ -536,60 +530,17 @@ function internet_archive_harvest_files() {
   }
 }
 
-
-/**
- * Harvests files that have been in state ARCHIVE_TRANSFERRRING for too long
- * and returns them to the queue. The length of time is determined by the 
- * configuration setting on admin/config/internet_archive/default
- */
-function internet_archive_harvest_overdue_transferring(){
-  $allowed_transfer_time =
-    variable_get('internet_archive_remote_allowed_upload_time', 24);
-
-  $result =
-    db_query("SELECT * FROM {internet_archive} " .
-	     "WHERE status = :status ",
-	     array(':status' => ARCHIVE_TRANSFERRING));
-
-  $file_names = array();
-  while ($archive_data = $result->fetchAssoc()) {
-    internet_archive_store_derivatives($archive_data['nid']);
-    $archive_data = internet_archive_load_data_tid($archive_data['tid']);
-
-    if ($archive_data['status'] == ARCHIVE_TRANSFERRING) {
-      //EXPIRE TIME IS DETERMINED FROM ADDING $allowed_transfer_time TO
-      //THE TIMESTAMP OF WHEN THE TRANSFER WAS INITIATED
-      $expire_time = $archive_data['transfer_initiated'] +
-	($allowed_transfer_time * 60 * 60);
-
-      //IF THE CURRENT TIME IS GREATER THAN THE EXPIRE TIME, THEN CONSIDER
-      //IT FAILED. IF SETTINGS ARE CORRECT IT WILL BE REHARVESTED
-      //INTO THE QUEUE
-      if (REQUEST_TIME > $expire_time) {
-	$file_names[$archive_data['in_path']] =
-	  array(
-		'field_name' => $archive_data['field_name'],
-		'file_location' => $archive_data['file_location'],
-	      );
-      }
-    }
-  }
-  return $file_names;
-}
-
 /**
  * Harvests failed files and adds them back to the transfer queue
  * based on number of allowed attemps in administrative settings
  */
 function internet_archive_harvest_failed_for_queue($allowed_attempts) {
-  $allowed_attempts++;
-
   $result =
     db_query("SELECT * FROM {internet_archive} " .
 	     "WHERE status = :status AND attempts < :attempts",
 	     array(':status' => ARCHIVE_FAILED,
-		   ':attempts' => $allowed_attempts));
-
+	     	   ':attempts' => $allowed_attempts));
+	     
   $file_names = array();
   while ($archive_data = $result->fetchAssoc()) {
     $file_names[$archive_data['in_path']] =
@@ -598,7 +549,6 @@ function internet_archive_harvest_failed_for_queue($allowed_attempts) {
 	    'file_location' => $archive_data['file_location'],
 	    );
   }
-
   return $file_names;
 }
 
