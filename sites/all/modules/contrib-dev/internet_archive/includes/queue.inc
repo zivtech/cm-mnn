@@ -171,17 +171,32 @@ function internet_archive_queue_settings_form($form, &$form_state) {
 	  '#multiple' => FALSE,
 	  );
   $description =
+    t('If your files are large, it can take a long time to add it to the '.
+      "queue as the file need to be md5'd so a lower number is better.");
+
+  $form['internet_archive_queue']['internet_archive_queue_limit'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' =>
+	  t('How many files should be added to the queue per cron run?'),
+	  '#default_value' => variable_get('internet_archive_queue_limit','1'),
+	  '#description' => $description,
+	  '#size' => 5,
+	  );
+
+  $description =
     t('This setting can be important if you have a slower internet '.
       'connection, or are sending very large files to archive.org. '.
       'Setting this to a small number can help prevent timeouts.');
-  
-  $form['internet_archive_queue']['internet_archive_queue_limit'] =
+
+  $form['internet_archive_queue']['internet_archive_transfer_limit'] =
     array(
 	  '#type' => 'textfield',
 	  '#title' =>
 	  t('Enter the maximum number of items to send to archive.org in a '.
 	    'single cron run'),
-	  '#default_value' => variable_get('internet_archive_queue_limit','1'),
+	  '#default_value' => variable_get('internet_archive_transfer_limit',
+					   '1'),
 	  '#description' => $description,
 	  '#size' => 5,
 	  );
@@ -341,12 +356,12 @@ function internet_archive_retrieve_queue($queue_name) {
  *
  */
 function internet_archive_transfer_queue_items() {
-  global $internet_archive_queue_count;
+  global $internet_archive_transfer_count;
 
-  $internet_archive_queue_count = $internet_archive_queue_count ?
-    $internet_archive_queue_count : 0;
+  $internet_archive_transfer_count = $internet_archive_transfer_count ?
+    $internet_archive_transfer_count : 0;
 
-  $limit = variable_get('internet_archive_queue_limit', '1');
+  $limit = variable_get('internet_archive_transfer_limit', '1');
 
   if (!internet_archive_hour_check() || !internet_archive_day_check()) {
     //setting the time range to negative causes the queue to skip execution
@@ -360,8 +375,8 @@ function internet_archive_transfer_queue_items() {
   $end = REQUEST_TIME + $time;
   $items = array();
   $queue = DrupalQueue::get($queue_name);
-  while (REQUEST_TIME < $end && ($internet_archive_queue_count <= $limit)) {
-    $internet_archive_queue_count ++;
+  while (REQUEST_TIME < $end && ($internet_archive_transfer_count <= $limit)) {
+    $internet_archive_transfer_count ++;
     $item = $queue->claimItem($lease);
     if (!$item) {
       continue;
@@ -388,7 +403,7 @@ function internet_archive_transfer_queue_items() {
 
   if (count($items) > $limit) {
     $msg =t('Completed transferring @count files and reached limit of @limit.',
-	     array('@count' => $internet_archive_queue_count - 1,
+	     array('@count' => $internet_archive_transfer_count - 1,
 		   '@limit' => $limit)) ;
     drupal_set_message($msg, 'warning');
     return;
@@ -445,7 +460,12 @@ function internet_archive_harvest_files() {
   $transfer_queue = DrupalQueue::get('internet_archive_send_file');
 
   if ($file_names) {
+    $limit = variable_get('internet_archive_queue_limit', '1');
     foreach ($file_names as $file_name => $file_info) {
+      if ($limit <= 0) {
+	break;
+      }
+      $limit --;
       $field_name = $file_info['field_name'];
       $file_location = $file_info['file_location'];
 

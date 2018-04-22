@@ -39,16 +39,16 @@ function internet_archive_cron_queue_info() {
  * the data up to archive.org
  */
 function internet_archive_send_file_run($item) {
-  global $internet_archive_queue_count;
+  global $internet_archive_transfer_count;
 
-  $internet_archive_queue_count = $internet_archive_queue_count ?
-    $internet_archive_queue_count : 0;
+  $internet_archive_transfer_count = $internet_archive_transfer_count ?
+    $internet_archive_transfer_count : 0;
 
-  $internet_archive_queue_count ++;
+  $internet_archive_transfer_count ++;
 
-  $limit = variable_get('internet_archive_queue_limit', '1');
+  $limit = variable_get('internet_archive_transfer_limit', '1');
 
-  if ($internet_archive_queue_count > $limit) {
+  if ($internet_archive_transfer_count > $limit) {
     throw new Exception('Item will remain in the queue.');
   }
 
