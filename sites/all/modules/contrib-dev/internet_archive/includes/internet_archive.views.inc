@@ -1,6 +1,6 @@
 <?php
 
-function internet_archive_views_default_views() {
+function internet_archive_views_default_views() {  // Add view to list of views to provide.
   $view = new view();
   $view->name = 'internet_archive_transfers';
   $view->description = '';
@@ -21,17 +21,104 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['exposed_form']['type'] = 'basic';
   $handler->display->display_options['pager']['type'] = 'full';
-  $handler->display->display_options['pager']['options']['items_per_page'] = '20';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '209';
   $handler->display->display_options['pager']['options']['offset'] = '0';
   $handler->display->display_options['pager']['options']['id'] = '0';
   $handler->display->display_options['pager']['options']['quantity'] = '9';
   $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+									 'views_bulk_operations' => 'views_bulk_operations',
+									 'tid' => 'tid',
+									 'title_1' => 'title_1',
+									 'in_path' => 'in_path',
+									 'field_name' => 'field_name',
+									 'file_location' => 'file_location',
+									 'item' => 'item',
+									 'status' => 'status',
+									 'date_1' => 'date_1',
+									 'transfer_initiated' => 'transfer_initiated',
+									 );
+  $handler->display->display_options['style_options']['default'] = '-1';
+  $handler->display->display_options['style_options']['info'] = array(
+								      'views_bulk_operations' => array(
+												       'align' => '',
+												       'separator' => '',
+												       'empty_column' => 0,
+												       ),
+								      'tid' => array(
+										     'sortable' => 1,
+										     'default_sort_order' => 'asc',
+										     'align' => '',
+										     'separator' => '',
+										     'empty_column' => 0,
+										     ),
+								      'title_1' => array(
+											 'sortable' => 1,
+											 'default_sort_order' => 'asc',
+											 'align' => '',
+											 'separator' => '',
+											 'empty_column' => 0,
+											 ),
+								      'in_path' => array(
+											 'sortable' => 1,
+											 'default_sort_order' => 'asc',
+											 'align' => '',
+											 'separator' => '',
+											 'empty_column' => 0,
+											 ),
+								      'field_name' => array(
+											    'sortable' => 1,
+											    'default_sort_order' => 'asc',
+											    'align' => '',
+											    'separator' => '',
+											    'empty_column' => 0,
+											    ),
+								      'file_location' => array(
+											       'sortable' => 1,
+											       'default_sort_order' => 'asc',
+											       'align' => '',
+											       'separator' => '',
+											       'empty_column' => 0,
+											       ),
+								      'item' => array(
+										      'sortable' => 1,
+										      'default_sort_order' => 'asc',
+										      'align' => '',
+										      'separator' => '',
+										      'empty_column' => 0,
+										      ),
+								      'status' => array(
+											'sortable' => 1,
+											'default_sort_order' => 'asc',
+											'align' => '',
+											'separator' => '',
+											'empty_column' => 0,
+											),
+								      'date_1' => array(
+											'sortable' => 1,
+											'default_sort_order' => 'asc',
+											'align' => '',
+											'separator' => '',
+											'empty_column' => 0,
+											),
+								      'transfer_initiated' => array(
+												    'sortable' => 1,
+												    'default_sort_order' => 'asc',
+												    'align' => '',
+												    'separator' => '',
+												    'empty_column' => 0,
+												    ),
+								      );
   /* Header: Global: Text area */
   $handler->display->display_options['header']['area']['id'] = 'area';
   $handler->display->display_options['header']['area']['table'] = 'views';
   $handler->display->display_options['header']['area']['field'] = 'area';
   $handler->display->display_options['header']['area']['content'] = 'Warning! Do not do to many actions at a time to avoid pounding Archive.org';
   $handler->display->display_options['header']['area']['format'] = 'ckeditor';
+  /* Header: Global: Result summary */
+  $handler->display->display_options['header']['result']['id'] = 'result';
+  $handler->display->display_options['header']['result']['table'] = 'views';
+  $handler->display->display_options['header']['result']['field'] = 'result';
   /* Relationship: Internet Archive: Node ID */
   $handler->display->display_options['relationships']['nid']['id'] = 'nid';
   $handler->display->display_options['relationships']['nid']['table'] = 'internet_archive';
@@ -85,13 +172,6 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['fields']['file_location']['id'] = 'file_location';
   $handler->display->display_options['fields']['file_location']['table'] = 'internet_archive';
   $handler->display->display_options['fields']['file_location']['field'] = 'file_location';
-  /* Field: Internet Archive: Date Archived */
-  $handler->display->display_options['fields']['date']['id'] = 'date';
-  $handler->display->display_options['fields']['date']['table'] = 'internet_archive';
-  $handler->display->display_options['fields']['date']['field'] = 'date';
-  $handler->display->display_options['fields']['date']['label'] = 'Transfer Initiated';
-  $handler->display->display_options['fields']['date']['date_format'] = 'short';
-  $handler->display->display_options['fields']['date']['second_date_format'] = 'long';
   /* Field: Internet Archive: Item Identifier */
   $handler->display->display_options['fields']['item']['id'] = 'item';
   $handler->display->display_options['fields']['item']['table'] = 'internet_archive';
@@ -102,6 +182,22 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['fields']['status']['table'] = 'internet_archive';
   $handler->display->display_options['fields']['status']['field'] = 'status';
   $handler->display->display_options['fields']['status']['relationship'] = 'nid';
+  /* Field: Internet Archive: Queue Date */
+  $handler->display->display_options['fields']['date_1']['id'] = 'date_1';
+  $handler->display->display_options['fields']['date_1']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['date_1']['field'] = 'date';
+  $handler->display->display_options['fields']['date_1']['date_format'] = 'short';
+  $handler->display->display_options['fields']['date_1']['second_date_format'] = 'long';
+  /* Field: Internet Archive: Transfer Initiated Date */
+  $handler->display->display_options['fields']['transfer_initiated']['id'] = 'transfer_initiated';
+  $handler->display->display_options['fields']['transfer_initiated']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['transfer_initiated']['field'] = 'transfer_initiated';
+  $handler->display->display_options['fields']['transfer_initiated']['date_format'] = 'short';
+  $handler->display->display_options['fields']['transfer_initiated']['second_date_format'] = 'long';
+  /* Field: Internet Archive: Queue Attempts */
+  $handler->display->display_options['fields']['attempts']['id'] = 'attempts';
+  $handler->display->display_options['fields']['attempts']['table'] = 'internet_archive';
+  $handler->display->display_options['fields']['attempts']['field'] = 'attempts';
   /* Sort criterion: Content: Post date */
   $handler->display->display_options['sorts']['created']['id'] = 'created';
   $handler->display->display_options['sorts']['created']['table'] = 'node';
@@ -279,8 +375,7 @@ function internet_archive_views_default_views() {
   $handler->display->display_options['menu']['weight'] = '0';
   $handler->display->display_options['menu']['context'] = 0;
   $handler->display->display_options['menu']['context_only_inline'] = 0;
-  
-  // Add view to list of views to provide.
+
   $views[$view->name] = $view;
   
   // ...Repeat all of the above for each view the module should provide.
