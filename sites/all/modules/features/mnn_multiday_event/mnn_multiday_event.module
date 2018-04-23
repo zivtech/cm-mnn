@@ -6,3 +6,101 @@
 // Drupal needs this blank file.
 
 include_once('mnn_multiday_event.features.inc');
+
+/**
+ * Function for computed field on civicrm_multiday_event
+ */
+
+function computed_field_field_civicrm_multiday_small_compute(&$entity_field,
+							     $entity_type,
+							     $entity,
+							     $field,
+							     $instance,
+							     $langcode,
+							     $items) {
+
+
+
+
+  $output_array = array();
+  if ($entity->field_civicrm_multiday_session &&
+      isset($entity->field_civicrm_multiday_session[LANGUAGE_NONE]) &&
+      $entity->field_civicrm_multiday_session[LANGUAGE_NONE]) {
+    $sessions = $entity->field_civicrm_multiday_session[LANGUAGE_NONE];
+    foreach($sessions as $info) {
+      $session = field_collection_item_load($info['value']);
+
+
+      $start = strtotime($session->field_session_date[LANGUAGE_NONE][0]
+			 ['value']);
+      $end = strtotime($session->field_session_date[LANGUAGE_NONE][0]
+		       ['value2']);
+      
+      $timerange = date('g:ia', $start) . ' - ' . date('g:ia', $end);
+      $output_array[$timerange] = isset($output_array[$timerange]) ?
+	$output_array[$timerange] : array();
+      
+      $output_array[$timerange]['days'] =
+	isset($output_array[$timerange]['days']) ?
+	$output_array[$timerange]['days'] : array();
+      
+      $output_array[$timerange]['first'] =
+	isset($output_array[$timerange]['first']) ?
+	$output_array[$timerange]['first'] :-1;
+      
+      $output_array[$timerange]['last'] =
+	isset($output_array[$timerange]['last']) ?
+	$output_array[$timerange]['last'] :-1;
+      
+      if ($output_array[$timerange]['first'] < 0 ||
+	  $output_array[$timerange]['first'] > $start) {
+	$output_array[$timerange]['first'] = $start;
+      }
+      
+      if ($output_array[$timerange]['last'] < 0 ||
+	  $output_array[$timerange]['last'] < $end) {
+	$output_array[$timerange]['last'] = $end;
+      }
+      
+      $day = date('D', $start);
+      $output_array[$timerange]['days'][$day] = $day;
+      
+    }
+    
+  }
+
+  //6:30p - 9:30p, Tues & Thurs, April 10-26
+  $value = '';
+  $is_first = TRUE;
+  foreach($output_array as $timerange => $info) {
+    if ($is_first) {
+      $is_first = FALSE;
+    }
+    else {
+      $value .= "<br/>";
+    }
+
+    if (date('F', $info['first']) == date('F', $info['last'])) {
+      if (date('j', $info['first']) == date('j', $info['last'])) {
+	$month_day = date('F, j', $info['first']);
+      }
+      else {
+	$month_day = date('F', $info['first']) . ' ' .
+	  date('j', $info['first']) .
+	  ' - ' .	date('j', $info['last']);
+      }
+
+    }
+    else {
+      $month_day = date('F, j', $info['first']) . ' - ' .
+	date('F, j', $info['last']);
+    }
+    
+    
+    $value .= $timerange . ', ' . implode(' & ', array_keys($info['days'])) .
+      ', '. $month_day;
+  }
+
+  $entity_field[0]['value'] = $value;
+  return $value;
+}
