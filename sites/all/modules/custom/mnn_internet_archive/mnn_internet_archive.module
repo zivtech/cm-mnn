@@ -292,12 +292,11 @@ function mnn_internet_archive_file_status_value($file) {
   $statuses = array(
 		    "error" => 1,
 		    "missing" => 2,
-		    "empty" => 3,
-		    "failed" => 4,
-		    "ineligible" => 5,
-		    "initial" => 6,
-		    "queued" => 7,
-		    "uploaded" => 8,
+		    "failed" => 3,
+		    "ineligible" => 4,
+		    "initial" => 5,
+		    "queued" => 6,
+		    "uploaded" => 7,
 		    );
     
   foreach($statuses as $test_status=>$key) {
