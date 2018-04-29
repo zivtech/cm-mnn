@@ -91,6 +91,12 @@ function mnn_data_massage_function_tester() {
 
 
   dsm("hi mom!");
+
+  $file = '29999_2020.mov';
+
+  dsm(mnn_internet_archive_file_status_value($file), 'my status');
+
+  
   //drupal_cron_run();
   
   //internet_archive_cron();
