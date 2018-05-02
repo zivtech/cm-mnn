@@ -226,6 +226,9 @@ function mnn_internet_archive_internet_archive_process_remote($files){
   foreach($files as $file) {
     $pathinfo = pathinfo($file);
     $name = $pathinfo['filename'];
+    if ($pathinfo['extension'] == 'mp4')  {
+      continue;
+    }
     $parts = explode('_', $name);
 
     if ($parts[0] == 'mnn') {
