@@ -70,11 +70,11 @@ stylesheets[all][] = css/cm.css
 
 ; Optionally add some JavaScripts to your theme.
 
-scripts[] = js/jquery.formalize.min.js
-scripts[] = js/select2.min.js
-scripts[] = js/jquery.selectorquery.min.js
-scripts[] = js/script.js
-scripts[] = js/jquery.html5placeholders.js
+#scripts[] = js/jquery.formalize.min.js
+#scripts[] = js/select2.min.js
+#scripts[] = js/jquery.selectorquery.min.js
+#scripts[] = js/script.js
+#scripts[] = js/jquery.html5placeholders.js
 
 ; This section lists the regions defined in Zen's default page.tpl.php and
 ; maintenance-page.tpl.php files. The name in brackets is the machine name of
