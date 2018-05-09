@@ -311,7 +311,7 @@ function mnn_internet_archive_file_status_value($file) {
   //AS OF RIGHT NOW, THE LOG FILE IS IN THE SAME DIRECTORY AS THE FILES
   //SO WE WILL PASS BACK 'queued' AS WE DON'T WANT THE FILE DELETED
   if ($file == 'archive_status.log') {
-    return $statuses['queued'];
+    return $statuses['initial'];
   }
   //look up file name from internet archive table
   $data = internet_archive_load_data($file);
@@ -373,7 +373,7 @@ function mnn_internet_archive_file_status_value($file) {
 	$return_status = 'missing';
       }
       else {
-	$return_status = 'queued';
+	$return_status = 'initial';
       }
     }
   }
