@@ -303,11 +303,16 @@ function mnn_internet_archive_file_status_value($file) {
 		    );
     
   foreach($statuses as $test_status=>$key) {
-    if ($file == "test-$test_status") {
+    if ($file == "test-$test_status" . ".mov") {
       return $statuses[$test_status];
     }
   }
 
+  //AS OF RIGHT NOW, THE LOG FILE IS IN THE SAME DIRECTORY AS THE FILES
+  //SO WE WILL PASS BACK 'queued' AS WE DON'T WANT THE FILE DELETED
+  if ($file == 'archive_status.log') {
+    return $statuses['queued'];
+  }
   //look up file name from internet archive table
   $data = internet_archive_load_data($file);
   $local_status = $data['status'];
