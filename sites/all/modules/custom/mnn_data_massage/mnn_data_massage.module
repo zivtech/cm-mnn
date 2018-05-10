@@ -70,6 +70,7 @@ function mnn_data_massage_page($function) {
 		     //"delete_program_import_shows_and_airings",
 		     //"prune_replication_history",
 		     //"create_archive_shows",
+		     "update_premiere_date_and_channels",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -89,12 +90,26 @@ function mnn_data_massage_page($function) {
 }
 function mnn_data_massage_function_tester() {
 
+  $node = node_load(765725);
+  dsm(date('i:s', strtotime('now')), '1');
+  $node->field_show_channels[LANGUAGE_NONE][0]['value'] =
+    mnn_show_get_channels($node);
+    dsm(date('i:s', strtotime('now')), '2');
+  $node->field_show_premiere_date[LANGUAGE_NONE][0]['value'] =
+    mnn_show_get_premiere_date($node);
 
+  dsm(date('i:s', strtotime('now')), '3');
+  field_attach_update('node', $node);
+  dsm(date('i:s', strtotime('now')), '4');
+  $node = node_load(783766);
+  dsm(date('i:s', strtotime('now')), '5');
+  dsm($node, 'node3');
+  drupal_set_message(l($node->title, 'node/' . $node->nid));
   dsm("hi mom!");
 
-  $file = '29999_2020.mov';
+  //$file = '29999_2020.mov';
 
-  dsm(mnn_internet_archive_file_status_value($file), 'my status');
+  //dsm(mnn_internet_archive_file_status_value($file), 'my status');
 
   
   //drupal_cron_run();
@@ -3496,6 +3511,72 @@ function mnn_data_massage_create_archive_shows() {
     $show->field_episode_number[LANGUAGE_NONE][0]['value'] = $i;
     node_save($show);
   }
+}
+function mnn_data_massage_update_premiere_date_and_channels() {
+  $start = strtotime('now');
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+
+  $max_nid =
+    variable_get('mnn_data_massage_premiere_date_and_channel_last_nid',
+		 100000000);
+
+  $sql =
+    "SELECT nid from node ".
+    "WHERE type='cm_show' AND nid < $max_nid ".
+    "ORDER BY nid desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($max_nid, 'mid');
+  dsm($sql, 'sql');
+
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $end = strtotime('now');
+    dsm("loop start " . mnn_data_massage_hms($end-$start));
+
+    $show = node_load($result->nid);
+    $end = strtotime('now');
+    dsm("pre channel " . mnn_data_massage_hms($end-$start));
+
+    $show->field_show_channels[LANGUAGE_NONE][0]['value'] =
+      mnn_show_get_channels($show);
+
+    $end = strtotime('now');
+    dsm("pre premiere " . mnn_data_massage_hms($end-$start));
+
+    $date = mnn_show_get_premiere_date($show);
+
+    $end = strtotime('now');
+    dsm("post premiere " . mnn_data_massage_hms($end-$start));
+    
+    if ($date) {
+      $show->field_show_premiere_date[LANGUAGE_NONE][0]['value'] =
+	$date;
+    }
+    $end = strtotime('now');
+    dsm("pre show " . mnn_data_massage_hms($end-$start));
+    field_attach_update('node', $show);
+
+    $end = strtotime('now');
+    dsm("post show " . mnn_data_massage_hms($end-$start));
+
+    //drupal_set_message(l($show->title, "node/".$show->nid) . ' ' .
+    //		       $date);
+    variable_set('mnn_data_massage_premiere_date_and_channel_last_nid',
+		 $show->nid);
+    $end = strtotime('now');
+    dsm("post variable set " . mnn_data_massage_hms($end-$start));
+
+  }
+  
+  $end = strtotime('now');
+  dsm("took " . mnn_data_massage_hms($end-$start));
+}
+function mnn_data_massage_hms($seconds) {
+    $hours = floor($seconds / 3600);
+    $minutes = floor(($seconds / 60) % 60);
+    $seconds = $seconds % 60;
+    return "$hours:$minutes:$seconds";
 }
 function mnn_data_massage_log_query($sql, $args) {
   $ms = str_replace('{', '', $sql);
