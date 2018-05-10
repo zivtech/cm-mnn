@@ -87,6 +87,11 @@ function mnn_show_form_alter(&$form, &$form_state, $form_id) {
       $form['field_episode_number'][LANGUAGE_NONE][0]
         ['value']['#default_value'] = $episode_number;
     }
+
+    /////////////////////////////////////////////////////////////////////////
+    //HIDE PREMIERE DATE AND CHANNELS FIELDS AS WE WILL AUTO SET THEM
+    unset($form['field_show_channels']);
+    unset($form['field_show_premiere_date']);
   }
 }
 function mnn_show_node_validate($node, $form, &$form_state) {
@@ -211,6 +216,15 @@ function mnn_show_node_presave($node) {
 	}
       }
     }
+    /////////////////////////////////////////////////////////////////////////
+    //SET PREMIERE DATE AND CHANNELS FIELDS AS WE WILL AUTO SET THEM
+    $node->field_show_channels[LANGUAGE_NONE][0]['value'] =
+      mnn_show_get_channels($node);
+    $date = mnn_show_get_premiere_date($show);
+    if ($date) {
+      $node->field_show_premiere_date[LANGUAGE_NONE][0]['value'] =
+	$date;
+    }
   }
 }
 
@@ -320,3 +334,65 @@ function mnn_show_node_access($node, $op, $account) {
   return NODE_ACCESS_IGNORE;
 }
 
+function mnn_show_get_premiere_date($show) {
+  $airings = mnn_show_airings_for_show($show->nid);
+  foreach($airings as $airing_id) {
+    $airings = entity_load('airing', array($airing_id));
+    $airing = array_pop($airings);
+    if ($airing) {
+      $tid = mnn_show_get_single_field_value($airing, 'field_airing_type',
+					     'tid');
+      $term = taxonomy_term_load($tid);
+
+      if ($term->name != 'Series' && $term->name != 'Special') {
+	continue;
+      }
+      
+      $date = mnn_show_get_single_field_value($airing, 'field_airing_date',
+					     'value');
+      $dates[strtotime($date)] = $date;      
+    }
+  }
+  ksort($dates);
+  
+  foreach($dates as $ts => $date) {
+    return $date;
+  }
+  return '';
+}
+
+function mnn_show_get_channels($show) {
+  $channels = array();
+  
+  $airings = mnn_show_airings_for_show($show->nid);
+  foreach($airings as $airing_id) {
+    $airings = entity_load('airing', array($airing_id));
+    $airing = array_pop($airings);
+    if ($airing) {
+      $channel_tid = mnn_show_get_single_field_value($airing,
+						     'field_airing_channel',
+						     'tid');
+      $channel = taxonomy_term_load($channel_tid);
+      $channels[] = $channel->name;
+    }
+  }
+  $channels = array_unique($channels);
+  return implode(', ', $channels);
+}
+
+/**
+  * Helper function to get a single value off of a entity 
+ */
+function mnn_show_get_single_field_value($entity, 
+					 $field_name,
+					 $index = 'value') {
+  if (isset($entity->{$field_name})) {
+    $field = $entity->{$field_name};
+    if (isset($field[LANGUAGE_NONE]) &&
+        isset($field[LANGUAGE_NONE][0]) &&
+        isset($field[LANGUAGE_NONE][0][$index])) {
+      return $field[LANGUAGE_NONE][0][$index];
+    }
+  }
+  return NULL;
+}
