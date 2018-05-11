@@ -89,7 +89,32 @@ function mnn_data_massage_page($function) {
   return $ret;
 }
 function mnn_data_massage_function_tester() {
+  /**
+    $file_data = array(
+		       'filename' => 'name.mp4',
+		       'nid' => 5,
+		       'show_nid' => 6,
+		       'project_nid' => 7,
+		       'uid' => 8,
+		       'airdate' => '2018-07-28',
+		       'status' => 'test',
+		       'title' => 'title',
+		       'short_description' => 'descript',
+		       'neighborhood' => 'chelsea',
+		       'theme' => 'the blues',
+		       'theme_tid' => 9,
+		       'neighborhood_tid' => 10,
+		  );
 
+    mnn_qnap_show_write_to_db($file_data);
+  */
+
+  dsm("hi mom!");
+
+  mnn_qnap_load_data();
+
+
+  /**
   $node = node_load(765725);
   dsm(date('i:s', strtotime('now')), '1');
   $node->field_show_channels[LANGUAGE_NONE][0]['value'] =
@@ -105,7 +130,7 @@ function mnn_data_massage_function_tester() {
   dsm(date('i:s', strtotime('now')), '5');
   dsm($node, 'node3');
   drupal_set_message(l($node->title, 'node/' . $node->nid));
-  dsm("hi mom!");
+  */
 
   //$file = '29999_2020.mov';
 
@@ -3560,8 +3585,8 @@ function mnn_data_massage_update_premiere_date_and_channels() {
     $end = strtotime('now');
     dsm("post show " . mnn_data_massage_hms($end-$start));
 
-    //drupal_set_message(l($show->title, "node/".$show->nid) . ' ' .
-    //		       $date);
+    drupal_set_message(l($show->title, "node/".$show->nid) . ' ' .
+    		       $date);
     variable_set('mnn_data_massage_premiere_date_and_channel_last_nid',
 		 $show->nid);
     $end = strtotime('now');

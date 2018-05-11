@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Install file for MNN QNAP SHOW.
+ */
+
+
+/**
+ * Implements hook_schema().
+ */
+function mnn_qnap_show_schema() {
+  $schema['mnn_qnap_show'] = array(
+    'description' =>
+    'Stores lookup information for files with show metadata on QNAP.',
+    'fields' => array(
+      'filename' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'project_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'show_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'airing_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'airdate' => array(
+        'type' => 'datetime',
+	'mysql_type' => 'datetime',
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => 1000,
+        'default' => '',
+      ),
+      'short_description' => array(
+        'mysql_type' => 'longtext',
+      ),
+     'neighborhood' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'theme' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ),
+      'theme_tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'neighborhood_tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'file_contents' => array(
+        'mysql_type' => 'longtext',
+      ),
+      'multiple_shows' => array(
+        'mysql_type' => 'longtext',
+      ),
+    ),
+    'indexes' => array(
+      'project_nid' => array('project_nid'),
+    ),
+
+    'primary key' => array('filename'),
+  );
+    // cache schema
+  $schema['cache_mnn_qnap_show'] = drupal_get_schema_unprocessed('system',
+								 'cache');
+  $schema['cache_mnn_qnap_show']['description'] =
+    'Cache table for the QNAP show lookups';
+
+  return $schema;
+}

@@ -118,12 +118,65 @@ function mnn_qnap_update_shows($found_shows, $multiples) {
   }
 }
 /**
+ * FUNCTION WRITES A ROW TO THE mnn_qnap_show TABLE
+ */
+function mnn_qnap_show_write_to_db($file_data) {
+  $fields = array(
+		  'filename',
+		  'project_nid',
+		  'show_nid',
+		  'airing_id',
+		  'uid',
+		  'airdate',
+		  'status',
+		  'title',
+		  'short_description',
+		  'neighborhood',
+		  'theme',
+		  'theme_tid',
+		  'neighborhood_tid',
+		  'file_contents',
+		  'multiple_shows', 
+		  );
+
+  $last_index = count($fields);
+  $count = 0;
+  $sql = "INSERT INTO {mnn_qnap_show} (";
+  foreach($fields as $field) {
+    $count ++;
+    $sql .= $field;
+    if ($last_index != $count) {
+      $sql .= ",";
+    }
+  }
+  $sql .= ") VALUES (";
+
+  $count = 0;
+  foreach($fields as $field) {
+    $count ++;
+    $sql .= ':' . $field;
+    if ($last_index != $count) {
+      $sql .= ",";
+    }
+  }
+  $sql .= ")";
+  
+  $args = array();
+  foreach($fields as $field) {
+    $index = ':' . $field;
+    $args[$index] = $file_data[$field];
+  }
+
+  db_query($sql, $args);
+}
+/**
  * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
  * REPORTS AND UPDATING
  */
-function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
-			    &$found_shows, &$missing_shows, &$multiples,
-			    &$already_updated, &$empty) {
+function mnn_qnap_load_data() {
+  $extensions = array(//'.txt',
+		      '.xml'
+		      );
 
   //build url to the files directory
   $prefix = "files/show_descriptions";
@@ -134,256 +187,279 @@ function mnn_qnap_load_data(&$harvested_files, &$bad_file_names,&$bad_projects,
   
   $url_parts = parse_url($remote_url);
   $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
-
+  
   //grab all file names from directory
   $html = file_get_contents($remote_file_directory_url);
   //parse the html
   $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
 			  $html, $files);
 
-  
 
+  //FIXME ONLY HERE FOR TESTING
+  //$count = 300;
   
   for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = $airdate = FALSE;
     
     $file = trim(urldecode($files[1][$i]));
+    
+    $correct_extension = FALSE;
+    foreach ($extensions as $extension) {
+      $ext_length = strlen($extension);
+      $file_length = strlen($file);
+      $ext_pos =
+	strpos($file, $extension, ($file_length - $ext_length - 1));
 
-    $upos = strpos($file, '_');
-    if ($upos) {
-      $dpos = strpos($file, '.', $upos);
-      if ($dpos) {
-	$pid = substr($file, 0, $upos);
-	if (is_numeric($pid)) {
-	  $project = node_load($pid);
+      if ($ext_pos) {
+	$correct_extension = TRUE;
+      }
+    }
+    if (!$correct_extension) {
+      continue;
+    }
+
+    $sql = "SELECT count(1) from mnn_qnap_show where filename = :file";
+    $in_db = db_query($sql, array(':file' => $file))->fetchField();
+    if ($in_db) {
+      continue;
+    }
+
+    //WE'VE GOTTEN THIS FAR, FROM NOW ON WRITE TO DB
+    $file_data = array(
+		       'filename' => $file,
+		       'project_nid' => NULL,
+		       'show_nid' => NULL,
+		       'airing_id' => NULL,
+		       'uid' => NULL,
+		       'airdate' => NULL,
+		       'status' => NULL,
+		       'title' => NULL,
+		       'short_description' => NULL,
+		       'neighborhood' => NULL,
+		       'theme' => NULL,
+		       'theme_tid' => NULL,
+		       'neighborhood_tid' => NULL,
+		       'file_contents' => NULL,
+		       'mulitple_airings' => NULL,
+		  );
+    preg_match("~^(\d+)~", $file, $match);
+    $pid = $match[1];
+
+    $first_digit = substr($pid, 0, 1);
+    if (!$first_digit) {
+      $pid = NULL;
+      $file_data['status'] = 'bad file name';
+    }
+    
+    if ($pid) {
+      $delim_pos = strlen($pid);
+      $delim = substr($file, $delim_pos, 1);
+
+      if ($delim != '.' && $delim != '-' && $delim != '_') {
+	$pid = NULL;
+	$file_data['status'] = 'bad file name';
+      }
+    }
+
+    if ($pid) {
+      $file_data['project_nid'] = $pid;
+      $bad_date = FALSE;
+      
+      $date_pos = strlen($pid) + 1;
+      $file_part = substr($file, $date_pos);
+
+      preg_match("~^(\d+)~", $file_part, $match);
+      $date = $match[1];
+      if (!$date) {
+	$date = NULL;
+	$file_data['status'] = 'bad file name';
+      }
+    }
+    if ($date) {
+      $date_length = strlen($date);
+     
+      if ($date_length == 1) {
+	$pos = $date_pos + 2;
+	$file_part = substr($file, $pos);
+	preg_match("~^(\d+)~", $file_part, $match);
+	$date .= $match[1];
+	$date_length = strlen($date);
+      }
+      if ($date_length == 2) {
+	$pos = $date_pos + 3;
+	$file_part = substr($file, $pos);
+	preg_match("~^(\d+)~", $file_part, $match);
+	$date .= $match[1];
+	$date_length = strlen($date);
+      }
+
+      $month = $day = $year = 0;
+      switch ($date_length) {
+      case 3:
+	$month = substr($date, 0, 1);
+	$day = substr($date, 1, 2);
+	break;
+      case 4:
+	$month = substr($date, 0, 2);
+	$day = substr($date, 2, 2);
+	break;
+      case 6:
+	$month = substr($date, 0, 2);
+	$day = substr($date, 2, 2);
+	$year = '20' . substr($date, 4, 2);
+	break;
+      case 8:
+	$month = substr($date, 0, 2);
+	$day = substr($date, 2, 2);
+	$year = substr($date, 4, 4);
+	break;
+      default:
+	$bad_date = TRUE;
+	break;
+      }
+
+      if (!$month || $month < 1 || $month > 12) {
+	$bad_date = TRUE;
+      }
+      else if (!$day || $day < 1 || $day > 31) {
+	$bad_date = TRUE;
+      }
+      else if ($year) {
+	$cur_year = date('Y');
+	if ($year < ($cur_year -1) || $year > ($cur_year + 1)) {
+	  $bad_date = TRUE;
 	}
-	if (!$project || $project->type != 'cm_project') {
-	  if (is_numeric($pid)) {
-	    $bad_projects[] = $file;
-	  }
-	  $bad_file_names[] = $file;
-	  continue;
-	}
+      }
+      else {
+	$cur_year = date('Y');
+	$prev_year = $cur_year - 1;
+	$next_year = $cur_year + 1;
 	
-	$month_day = substr($file, ($upos + 1), ($dpos-($upos+1)));
-
-	$date_length = strlen($month_day);
-
-	if ($date_length == 4 && is_numeric($month_day)) {
-	  //check for valid month
-	  if ((substr($month_day, 0, 2) == '00') ||
-	      (((int)substr($month_day, 0, 2)) > 12)) {
-	    $bad_file_names[] = $file;
-	    continue;
+	$date_string_suffix = '-' . $month . '-' . $day;
+	
+	$cur = strtotime($cur_year . $date_string_suffix);
+	$prev = strtotime($prev_year . $date_string_suffix);
+	$next = strtotime($next_year . $date_string_suffix);
+	
+	$dates = array($prev, $cur, $next);
+	$now = strtotime('now');
+	$low_diff = 365*24*60*60; //no valid diff will be less than a year
+	
+	foreach($dates as $date_ts) {
+	  //find the nearest date
+	  if (abs($date_ts - $now) < $low_diff) {
+	    $low_diff = abs($date_ts - $now);
+	    //last $airdate found will be our match
+	    $year = date('Y', $date_ts);
 	  }
-	  //check for valid day
-	  if ((substr($month_day, 2, 2) == '00') ||
-	      (((int)substr($month_day, 2, 2)) > 31)) {
-	    $bad_file_names[] = $file;
-	    continue;
-	  }
-	  $cur_year = date('Y');
-	  $prev_year = $cur_year - 1;
-	  $next_year = $cur_year + 1;
-	  
-	  $date_string_suffix = '-' . substr($month_day, 0, 2) . '-' .
-	    substr($month_day, 2, 2);
-
-	  $cur = strtotime($cur_year . $date_string_suffix);
-	  $prev = strtotime($prev_year . $date_string_suffix);
-	  $next = strtotime($next_year . $date_string_suffix);
-
-	  $dates = array($prev, $cur, $next);
-	  $now = strtotime('now');
-	  $low_diff = 365*24*60*60; //no valid diff will be less than a year
-
-	  foreach($dates as $date_ts) {
-	    //find the nearest date
-	    if (abs($date_ts - $now) < $low_diff) {
-	      $low_diff = abs($date_ts - $now);
-	      //last $airdate found will be our match
-	      $airdate = date('Y-m-d', $date_ts);
-	    }
-	  }
-	}
-	else if ($date_length == 6 && is_numeric($month_day)) {
-	  //check for valid month
-	  if ((substr($month_day, 0, 2) == '00') ||
-	      (((int)substr($month_day, 0, 2)) > 12)) {
-	    $bad_file_names[] = $file;
-	    continue;
-	  }
-	  //check for valid day
-	  if ((substr($month_day, 2, 2) == '00') ||
-	      (((int)substr($month_day, 2, 2)) > 31)) {
-	    $bad_file_names[] = $file;
-	    continue;
-	  }
-	  //build date out of mmddyy
-	  $airdate =  '20' . substr($month_day, 4, 2) . '-' .
-	    substr($month_day, 0, 2) . '-' . substr($month_day, 2, 2);
-	}
-
-	if ($airdate) {
-	  //find airing for project for airdate
-	  $range_end = mnn_qnap_show_add_to_date(strtotime($airdate), 'day',1);
-	  $fill_tid = 970;
-
-	  $sql_prefix =
-	    "FROM field_data_field_airing_date ad " .
-	    "INNER JOIN field_data_field_airing_project_ref ap " .
-	    "ON ap.entity_id=ad.entity_id " .
+	}	  
+      }
+      
+      if ($bad_date) {
+	$date = NULL;
+	$file_data['status'] = 'bad date';
+      }
+      else {
+	$airdate = $year . '-' . $month . '-' . $day;
+	
+	$file_data['airdate'] = $airdate;
+	//find airing for project for airdate
+	$range_end = mnn_qnap_show_add_to_date(strtotime($airdate), 'day',1);
+	$fill_tid = 970;
+	
+	$sql =
+	  "SELECT ad.entity_id as airing_id, " .
+	  "s.field_airing_show_ref_target_id as show_nid " .
+	  "FROM field_data_field_airing_date ad " .
+	  "INNER JOIN field_data_field_airing_project_ref ap " .
+	  "ON ap.entity_id=ad.entity_id " .
 	    "INNER JOIN field_data_field_airing_show_ref s " .
-	    "ON s.entity_id=ad.entity_id " .
-	    "LEFT JOIN field_data_field_airing_type at " .
-	    "ON at.entity_id=ad.entity_id " .
-	    "WHERE ap.field_airing_project_ref_target_id = " . $pid . " " .
-	    "AND ad.field_airing_date_value >= '" . $airdate . "' " .
-	    "AND ad.field_airing_date_value < '" .
-	    date('Y-m-d 00:00:00', $range_end). "' " .
-	    "AND at.field_airing_type_tid != " . $fill_tid;
+	  "ON s.entity_id=ad.entity_id " .
+	  "LEFT JOIN field_data_field_airing_type at " .
+	  "ON at.entity_id=ad.entity_id " .
+	  "WHERE ap.field_airing_project_ref_target_id = " . $pid . " " .
+	  "AND ad.field_airing_date_value >= '" . $airdate . "' " .
+	  "AND ad.field_airing_date_value < '" .
+	  date('Y-m-d 00:00:00', $range_end). "' " .
+	  "AND at.field_airing_type_tid != " . $fill_tid;
 
-	  $count_sql = "SELECT count(1) " . $sql_prefix;
-
-	  //execute query
-	  $count_shows = db_query($count_sql)->fetchField();
-	  if ($count_shows == 0) {
-	    $missing_shows[] = $file;
-	    continue;
+	
+	//execute query
+	$results = db_query($sql);
+	$has_airing = FALSE;
+	$result_shows = array();
+	while($result = $results->fetchObject()) {
+	  $airings = entity_load('airing', array($result->airing_id));
+	  $airing = array_pop($airings);
+	  if ($airing) {
+	    $airing_id = $result->airing_id;
+	    $show_nid = $result->show_nid;
+	    $has_airing = TRUE;
+	    $title =
+	      mnn_qnap_show_get_single_field_value($airing,
+						   'field_airing_title',
+						   'value');
+	    $result_shows[$result->show_nid] = $title;
 	  }
-	  else {
-	    $text = file_get_contents($remote_file_directory_url .'/'. $file);
 
-	    $lines =  explode(PHP_EOL,$text);
-	    $description = '';
-	    $prev_line = '';
-	    foreach($lines as $line) {
-	      if (!trim($line) ||
-		  strpos($file, trim($line)) === 0 ||
-		  strpos($file, trim($line)) > 0) {
-		continue;
-	      }
-	      else if ($prev_line && trim($prev_line) == trim($line)) {
-		continue;
-	      }
-	      if ($description) {
-		$description .= ' ';
-	      }
-	      $description .= trim($line);
-	      $prev_line = $line;
-	    }
-	    $description = substr(trim($description), 0, 200);
-	    if (!$description) {
-	      $empty[$file] = $text;
-	      $harvested_files[$file] = array('pid' => $pid,
-					      'date' => $airdate,
-					      'text' => $text);
-	      
-	      continue;
-	    }
-	    else if ($description) { //we have found a description
+	}
 
-	      $result_sql =
-		"SELECT ad.entity_id as airing_id, " .
-		"s.field_airing_show_ref_target_id as show_id, " .
-		"ad.field_airing_date_value as airdate " . $sql_prefix;
-	      
-	      $results = db_query($result_sql);
-
-	      $result_shows = $filtered_results = array();
-	      while ($result = $results->fetchObject()) {
-		if (isset($result_shows[$result->show_id])) {
-		  continue;
-		}
-		$filtered_results[] = $result;
-		$result_shows[$result->show_id] = $result;
-
-	      }
-	      $count_shows = count($filtered_results);
-	      if ($count_shows > 1) {
-		$multiples[$file] = array();
-
-		foreach ($filtered_results as $result) {
-		  $show = node_load($result->show_id);
-		  if (!$show) {
-		    $missing_shows[] = $file;
-
-		    continue;
-		  }
-
-		  $multiples[$file][$result->airdate] =
-		    isset($multiples[$file][$result->airdate]) ?
-		    $multiples[$file][$result->airdate] : array();
-		  
-		  $current = $show->field_short_description[LANGUAGE_NONE]
-		    [0]['value'];
-		
-		  $original = $show->field_qnap_original_description
-		    [LANGUAGE_NONE][0]['value'];
-		  $info = array(
-				'title' => $show->title,
-				'airdate' => $result->airdate,
-				'airing_id' => $result->airing_id,
-				'show_id' => $result->show_id,
-				'new' => $description,
-				'raw' => $text,
-				'current' => $current,
-				'original' => $original);
-		  $multiples[$file][$result->airdate][$show->nid] = $info;
-		}
-	      }
-	      else {
-		$result = $filtered_results[0];
-		$show = node_load($result->show_id);
-		if (!$show) {
-		  $missing_shows[] = $file;
-		  continue;
-		}
-		
-		$current = $show->field_short_description[LANGUAGE_NONE]
-		  [0]['value'];
-		
-		$original = $show->field_qnap_original_description
-		  [LANGUAGE_NONE][0]['value'];
-		
-		$info = array(
-			      'title' => $show->title,
-			      'airdate' => $result->airdate,
-			      'airing_id' => $result->airing_id,
-			      'show_id' => $result->show_id,
-			      'new' => $description,
-			      'raw' => $text,
-			      'current' => $current,
-			      'original' => $original);
-		
-		$qnap_updated =
-		  mnn_qnap_show_get_single_field_value($show,
-						       'field_qnap_updated_',
-						       'value');
-		if ($qnap_updated) {
-		  $already_updated[$file] = $info;
-		}
-		else if ($description == $current) {
-		  $already_updated[$file] = $info;
-		}
-		else {
-		  $found_shows[$file] = $info;
-		}
-	      }
-	    
-	      $harvested_files[$file] = array('pid' => $pid,
-					      'date' => $airdate,
-					      'text' => $text);
-	      $valid = TRUE;
+	if (!$has_airing) {
+	  $file_data['status'] = 'no airing';
+	}
+	else if (count($result_shows) > 1) {
+	  $file_data['multiple_shows'] = serialize($result_shows);
+	  $file_data['status'] = 'multiple shows';
+	}
+	else if ($airing_id) {
+	  $file_data['airing_id'] = $airing_id;
+	  $file_data['show_nid'] = $show_nid;
+	}
+      }
+      
+      
+      $text = file_get_contents($remote_file_directory_url .'/'. $file);
+      $file_data['file_contents'] = $text;
+      if ($text) {
+	$text = str_replace('Phone#', 'Phone', $text);
+	$text = str_replace('<UserAcct></UserAcct>',
+			    '<UserAcct>anonymous</UserAcct>', $text);
+	$text = trim($text);
+	libxml_use_internal_errors(true);
+	$xml = simplexml_load_string($text);
+	if ($xml === false) {
+	  //dsm('**********************************');
+	  //dsm($xml, 'xml');
+	  //dsm($text, 'text');
+	  //dsm("Failed loading XML");
+	  foreach(libxml_get_errors() as $error) {
+	    //dsm($error->message, 'msg:');
+	  }
+	  $file_data['status'] = 'bad xml';
+	}
+	else {
+	  foreach($xml->children() as $child) {
+	    switch($child->getName()) {
+	    case 'EpisodeTitle':
+	      $file_data['title'] = $child;
+	      break;
+	    case 'Description':
+	      $file_data['short_description'] = $child;
+	      break;
+	    case 'ThemeProgramming':
+	      //FIXME ALSO FIND theme_tid
+	      $file_data['theme'] = $child;
+	      break;
+	    case 'Neighborhood':
+	      //FIXME ALSO FIND neighborhood_tid
+	      $file_data['neighborhood'] = $child;
+	      break;
 	    }
 	  }
 	}
       }
     }
-    if (!$valid) {
-      $bad_file_names[] = $file;
-    }
-
+    mnn_qnap_show_write_to_db($file_data);
   }
 }
 /*
