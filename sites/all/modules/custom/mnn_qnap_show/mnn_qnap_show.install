@@ -79,8 +79,8 @@ function mnn_qnap_show_schema() {
     ),
     'indexes' => array(
       'project_nid' => array('project_nid'),
+      'status' => array('status'),
     ),
-
     'primary key' => array('filename'),
   );
     // cache schema

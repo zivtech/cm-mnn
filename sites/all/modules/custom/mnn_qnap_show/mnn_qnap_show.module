@@ -19,37 +19,75 @@ function mnn_qnap_show_menu() {
  * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page($form, &$form_state) {
+  $file_search = filter_input(INPUT_GET, 'filename');
+  $status = filter_input(INPUT_GET, 'status');
+    
+  $form['mnn_qnap_show'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Archive.org Account Configuration',
+	  '#weight' => -10,
+	  '#description' =>
+	  t('Global settings for Archive.org S3 configurations.'),
+  );
+      
+  $form['mnn_qnap_show']['mnn_qnap_show_filename'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('File Name'),
+	  '#default_value' => $file_search,
+	  );
 
-  $harvested_files = $bad_file_names = $bad_projects = $found_shows =
-    $missing_shows = $multiples = $already_updated = $empty = array();
+  $form['mnn_qnap_show']['mnn_qnap_show_status'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Status'),
+	  '#default_value' => $status,
+	  );
 
-  mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
-		     $found_shows, $missing_shows, $multiples,
-		     $already_updated, $empty);
-
-  $_SESSION['mnn_qnap_found_shows'] = $found_shows;
-  $_SESSION['mnn_qnap_multiples'] = $multiples;
-  $_SESSION['mnn_qnap_already_updated'] = $already_updated;
-  
-  $report = array('found_shows' => $found_shows,
-		  'multiples' => $multiples,
-		  'empty' => $empty, 
-		  'already_updated' => $already_updated,
-		  'missing_shows' => $missing_shows,
-		  'bad_file_names' => $bad_file_names,
-		  'harvested_file_names' => $harvested_files,
-		  'bad_projects' => $bad_projects );
-
-  dsm($report, 'report');
-
-  
   $form['mnn_qnap_show_submit'] =
     array(
 	  '#type' => 'submit',
 	  '#value' => t('Update Shows'),
 	  );
 
-    $form['mnn_qnap_show_header'] =
+
+  $select = db_select('mnn_qnap_show', 's')
+    ->extend('PagerDefault')
+    ->extend('TableSort');
+  
+  $fields = mnn_qnap_show_get_fields();
+  $header = array();
+  foreach ($fields as $field) {
+    $header[] = array('data' => $field, 'field' => $field, 'sort' => 'ASC');
+  }
+
+  $select->fields('s', $fields)->limit(100)->orderByHeader($header);
+
+  if ($file_search) {
+    $select->condition('filename', '%' . db_like($file_search) . '%', 'LIKE'); 
+  }
+  if ($status) {
+    $select->condition('status', $status); 
+  }
+
+  $results = $select->execute();
+
+  foreach($results as $result) {
+    $row = array();
+    foreach ($fields as $field) {
+      $row[] = $result->{$field};
+    }
+    $rows[] = $row;
+  }
+
+  if ($rows) {
+    $table = theme('table',array('header'=> $header, 'rows' => $rows));
+    $table .= theme('pager');
+  }
+  $form['mnn_qnap_show_report'] = array('#markup' => $table);
+  
+  $form['mnn_qnap_show_header'] =
     array('#markup' =>
 	  "</br><a href='/admin/reports/qnap/show_report'>See Report</a>");
 
@@ -59,10 +97,13 @@ function mnn_qnap_show_update_page($form, &$form_state) {
  * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_update_page_submit($form, &$form_state) {
-  $found_shows = $_SESSION['mnn_qnap_found_shows'];
-  $multiples = $_SESSION['mnn_qnap_multiples'];
+  $file_search = $form_state['values']['mnn_qnap_show_filename'];
+  $status = $form_state['values']['mnn_qnap_show_status'];
 
-  mnn_qnap_update_shows($found_shows, $multiples);
+  drupal_goto("admin/config/internet_archive/update_shows_from_qnap",
+	      array('query'=>array('filename' => $file_search,
+				   'status' => $status)));
+
 }
 
 function mnn_qnap_show_cron() {
@@ -117,28 +158,31 @@ function mnn_qnap_update_shows($found_shows, $multiples) {
     }
   }
 }
+
+function mnn_qnap_show_get_fields() {
+  return array(
+	       'filename',
+	       'project_nid',
+	       'show_nid',
+	       'airing_id',
+	       'uid',
+	       'airdate',
+	       'status',
+	       'multiple_shows',
+	       'title',
+	       'short_description',
+	       'neighborhood',
+	       'neighborhood_tid',
+	       'theme',
+	       'theme_tid',
+	       'file_contents', 
+	       );
+}
 /**
  * FUNCTION WRITES A ROW TO THE mnn_qnap_show TABLE
  */
 function mnn_qnap_show_write_to_db($file_data) {
-  $fields = array(
-		  'filename',
-		  'project_nid',
-		  'show_nid',
-		  'airing_id',
-		  'uid',
-		  'airdate',
-		  'status',
-		  'title',
-		  'short_description',
-		  'neighborhood',
-		  'theme',
-		  'theme_tid',
-		  'neighborhood_tid',
-		  'file_contents',
-		  'multiple_shows', 
-		  );
-
+  $fields = mnn_qnap_show_get_fields();
   $last_index = count($fields);
   $count = 0;
   $sql = "INSERT INTO {mnn_qnap_show} (";
@@ -417,7 +461,6 @@ function mnn_qnap_load_data() {
 	}
       }
       
-      
       $text = file_get_contents($remote_file_directory_url .'/'. $file);
       $file_data['file_contents'] = $text;
       if ($text) {
@@ -514,3 +557,4 @@ function mnn_qnap_show_get_single_field_value($entity, $field_name,
   }
   return NULL;
 }
+
