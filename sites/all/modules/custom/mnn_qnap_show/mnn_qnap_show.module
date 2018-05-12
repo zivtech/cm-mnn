@@ -1,13 +1,22 @@
 <?php
 
+define(MNN_QNAP_SHOW_QUEUED,'queued');
+define(MNN_QNAP_SHOW_COMPLETED,'completed'); 
+define(MNN_QNAP_SHOW_BAD_DATE,'bad_airdate');
+define(MNN_QNAP_SHOW_BAD_PROJECT,'bad_project'); 
+define(MNN_QNAP_SHOW_BAD_NAME,'bad_filename');
+define(MNN_QNAP_SHOW_BAD_XML,'bad_xml');
+define(MNN_QNAP_SHOW_MULTIPLE_SHOWS,'multiple_shows_on_airdate');
+define(MNN_QNAP_SHOW_NO_AIRING,'no_show_on_airdate');
+
 /**
  * Implements hook_menu().
  */
 function mnn_qnap_show_menu() {
-  $items['admin/config/internet_archive/update_shows_from_qnap'] = array(
-    'title' => 'Update Shows from data on QNAP',
+  $items['admin/reports/qnap/xml_report'] = array(
+    'title' => 'XML Metadata files on  QNAP',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('mnn_qnap_show_update_page'),
+    'page arguments' => array('mnn_qnap_show_form'),
     'access arguments' => array('administer internet_archive'),
     'weight' => 15,
   );
@@ -18,40 +27,151 @@ function mnn_qnap_show_menu() {
 /**
  * FORM PAGE FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
-function mnn_qnap_show_update_page($form, &$form_state) {
+function mnn_qnap_show_form($form, &$form_state) {
   $file_search = filter_input(INPUT_GET, 'filename');
   $status = filter_input(INPUT_GET, 'status');
+  $mode = filter_input(INPUT_GET, 'status');
     
-  $form['mnn_qnap_show'] =
+  $form['mnn_qnap_show_filters'] =
     array(
 	  '#type' => 'fieldset',
-	  '#title' => 'Archive.org Account Configuration',
+	  '#title' => 'Filters',
+	  '#collapsible' => TRUE,
+	  '#collapsed' => FALSE,
 	  '#weight' => -10,
-	  '#description' =>
-	  t('Global settings for Archive.org S3 configurations.'),
   );
       
-  $form['mnn_qnap_show']['mnn_qnap_show_filename'] =
+  $form['mnn_qnap_show_filters']['mnn_qnap_show_filename'] =
     array(
 	  '#type' => 'textfield',
 	  '#title' => t('File Name'),
 	  '#default_value' => $file_search,
 	  );
 
-  $form['mnn_qnap_show']['mnn_qnap_show_status'] =
+  $form['mnn_qnap_show_filters']['mnn_qnap_show_status'] =
     array(
-	  '#type' => 'textfield',
+	  '#type' => 'select',
 	  '#title' => t('Status'),
+	  '#options' => mnn_qnap_show_get_statuses(),
 	  '#default_value' => $status,
 	  );
 
-  $form['mnn_qnap_show_submit'] =
+  $form['mnn_qnap_show_filters']['mnn_qnap_show_submit'] =
     array(
 	  '#type' => 'submit',
-	  '#value' => t('Update Shows'),
+	  '#value' => t('Filter Report'),
 	  );
 
 
+  $rows = $header = array();
+
+  mnn_qnap_show_view_table_element($rows, $header);
+  if ($rows) {
+    $form['mnn_qnap_show_view'] =
+      array(
+	    '#type' => 'fieldset',
+	    '#title' => 'Review Files and Process Queued Files',
+	    '#collapsible' => TRUE,
+	    '#collapsed' => FALSE,
+	    
+	    '#weight' => 10,
+	    );
+    $form['mnn_qnap_show_view']['mnn_qnap_show_submit'] =
+    array(
+	  '#prefix' => '<br/>',
+	  '#suffix' => '<br/><br/>',
+	  '#type' => 'submit',
+	  '#value' => t('Update Selected Queued Shows'),
+	  );
+    
+    $form['mnn_qnap_show_view']['mnn_qnap_show_table'] =
+      array(
+	    '#type' => 'tableselect',
+	    '#header' => $header,
+	    '#options' => $rows,
+	    '#multiple' => TRUE,
+	    '#suffix' => theme('pager'),
+	    );
+    $element = mnn_qnap_show_edit_table_element($form, $rows, $header);
+    
+  }    
+  dsm($rows, 'rows');
+  
+  return $form;
+}
+
+/**
+ * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
+ */
+function mnn_qnap_show_form_submit($form, &$form_state) {
+  $file_search = $form_state['values']['mnn_qnap_show_filename'];
+  $status = $form_state['values']['mnn_qnap_show_status'];
+
+  drupal_goto("admin/reports/qnap/xml_report",
+	      array('query'=>array('filename' => $file_search,
+				   'status' => $status)));
+
+}
+
+/**
+ *Function fills $rows and $header for the table when in "edit" mode
+ */
+function mnn_qnap_show_edit_table_element(&$form, &$rows, &$header) {
+   $form['mnn_qnap_show_edit'] =
+      array(
+	    '#type' => 'fieldset',
+	    '#title' => 'Modify Data from the XML file name and contents.',
+	    '#collapsible' => TRUE,
+	    '#collapsed' => TRUE,
+	    '#weight' => 0,
+	    );
+   
+  $row_count = count($rows);
+  $row_counter = 0;  
+  foreach($rows as $filename => $row) {
+    $row_counter ++;
+    $cell_count = count($row);
+    $cell_counter = 0;
+    foreach($row as $field => $value) {
+      $cell_counter ++;
+      $element_name = 'mnn_qnap_show|' . $filename . '|' . $field;
+      if ($row_counter == 1 && $cell_counter == 1) {
+	$prefix = "<table><tr><td>";
+      }
+      else if ($cell_counter == 1) {
+	$prefix = "<tr><td>";
+      }
+      else {
+	$prefix = "<td>";
+      }
+      if ($row_count == $row_counter &&
+	  $cell_count == $cell_counter) {
+	$suffix = "</td></tr></table>";
+      }
+      else if ($cell_count == $cell_counter) {
+	$suffix = "</td></tr>";
+      }
+      else {
+	$suffix = "</td>";
+      }
+
+      $form['mnn_qnap_show_edit'][$element_name] =
+	array(
+	      '#type' => 'textfield',
+	      '#default_value' => $value,
+	      '#prefix' => $prefix,
+	      '#suffix' => $suffix,
+	      );
+    }
+  } 
+}
+/**
+ * Function fills $rows and $header for the table when in "view" mode
+ */
+function mnn_qnap_show_view_table_element(&$rows, &$header) {
+  $file_search = filter_input(INPUT_GET, 'filename');
+  $status = filter_input(INPUT_GET, 'status');
+  
   $select = db_select('mnn_qnap_show', 's')
     ->extend('PagerDefault')
     ->extend('TableSort');
@@ -82,81 +202,7 @@ function mnn_qnap_show_update_page($form, &$form_state) {
     }
     $rows[$result->filename] = $row;
   }
-  dsm($rows, 'rows');
-  if ($rows) {
-    $form['mnn_qnap_show_table'] =
-      array(
-	    '#type' => 'tableselect',
-	    '#header' => $header,
-	    '#options' => $rows,
-	    '#multiple' => TRUE,
-	    '#suffix' => theme('pager'),
-	    );
-    //$table = theme('table',array('header'=> $header, 'rows' => $rows));
-    //$table .= theme('pager');
-    //$form['mnn_qnap_show_report'] = array('#markup' => $table);
-  }
-
-  $row_count = count($rows);
-  $row_counter = 0;  
-  foreach($rows as $filename => $row) {
-    $row_counter ++;
-    $cell_count = count($row);
-    $cell_counter = 0;
-    foreach($row as $field => $value) {
-      $cell_counter ++;
-      $element_name = 'mnn_qnap_show|' . $filename . '|' . $field;
-      dsm($element_name, 'en');
-      if ($row_counter == 1 && $cell_counter == 1) {
-	$prefix = "<table><tr><td>";
-      }
-      else if ($cell_counter == 1) {
-	$prefix = "<tr><td>";
-      }
-      else {
-	$prefix = "<td>";
-      }
-      if ($row_count == $row_counter &&
-	  $cell_count == $cell_counter) {
-	$suffix = "</td></tr></table>";
-      }
-      else if ($cell_count == $cell_counter) {
-	$suffix = "</td></tr>";
-      }
-      else {
-	$suffix = "</td>";
-      }
-      
-      $form[$element_name] =
-	array(
-	      '#type' => 'textfield',
-	      '#default_value' => $value,
-	      '#prefix' => $prefix,
-	      '#suffix' => $suffix,
-	      );
-    }
-  }
-
-  
-  $form['mnn_qnap_show_header'] =
-    array('#markup' =>
-	  "</br><a href='/admin/reports/qnap/show_report'>See Report</a>");
-
-  return $form;
 }
-/**
- * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
- */
-function mnn_qnap_show_update_page_submit($form, &$form_state) {
-  $file_search = $form_state['values']['mnn_qnap_show_filename'];
-  $status = $form_state['values']['mnn_qnap_show_status'];
-
-  drupal_goto("admin/config/internet_archive/update_shows_from_qnap",
-	      array('query'=>array('filename' => $file_search,
-				   'status' => $status)));
-
-}
-
 function mnn_qnap_show_cron() {
   //FIXME REMOVE WHEN CRON IS READY
   return;
@@ -209,7 +255,20 @@ function mnn_qnap_update_shows($found_shows, $multiples) {
     }
   }
 }
+function mnn_qnap_show_get_statuses() {
+  return array(
+	       0 => "< SELECT >",
+	       MNN_QNAP_SHOW_QUEUED => MNN_QNAP_SHOW_QUEUED, 
+	       MNN_QNAP_SHOW_COMPLETED	=> MNN_QNAP_SHOW_COMPLETED,
+	       MNN_QNAP_SHOW_BAD_DATE => MNN_QNAP_SHOW_BAD_DATE,
+	       MNN_QNAP_SHOW_BAD_PROJECT => MNN_QNAP_SHOW_BAD_PROJECT,
+	       MNN_QNAP_SHOW_BAD_NAME => MNN_QNAP_SHOW_BAD_NAME,
+	       MNN_QNAP_SHOW_BAD_XML => MNN_QNAP_SHOW_BAD_XML,
+	       MNN_QNAP_SHOW_MULTIPLE_SHOWS => MNN_QNAP_SHOW_MULTIPLE_SHOWS,
+	       MNN_QNAP_SHOW_NO_AIRING	=> MNN_QNAP_SHOW_NO_AIRING,
+	       );
 
+}
 function mnn_qnap_show_get_fields() {
   return array(
 	       'filename',
@@ -229,6 +288,7 @@ function mnn_qnap_show_get_fields() {
 	       'file_contents', 
 	       );
 }
+
 /**
  * FUNCTION WRITES A ROW TO THE mnn_qnap_show TABLE
  */
@@ -327,7 +387,7 @@ function mnn_qnap_load_data() {
 		       'airing_id' => NULL,
 		       'uid' => NULL,
 		       'airdate' => NULL,
-		       'status' => NULL,
+		       'status' => MNN_QNAP_SHOW_QUEUED,
 		       'title' => NULL,
 		       'short_description' => NULL,
 		       'neighborhood' => NULL,
@@ -352,7 +412,7 @@ function mnn_qnap_load_data() {
 
       if ($delim != '.' && $delim != '-' && $delim != '_') {
 	$pid = NULL;
-	$file_data['status'] = 'bad file name';
+	$file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
       }
     }
 
@@ -367,7 +427,7 @@ function mnn_qnap_load_data() {
       $date = $match[1];
       if (!$date) {
 	$date = NULL;
-	$file_data['status'] = 'bad file name';
+	$file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
       }
     }
     if ($date) {
@@ -452,7 +512,7 @@ function mnn_qnap_load_data() {
       
       if ($bad_date) {
 	$date = NULL;
-	$file_data['status'] = 'bad date';
+	$file_data['status'] = MNN_QNAP_SHOW_BAD_DATE;
       }
       else {
 	$airdate = $year . '-' . $month . '-' . $day;
@@ -500,11 +560,11 @@ function mnn_qnap_load_data() {
 	}
 
 	if (!$has_airing) {
-	  $file_data['status'] = 'no airing';
+	  $file_data['status'] = MNN_QNAP_SHOW_NO_AIRING;
 	}
 	else if (count($result_shows) > 1) {
 	  $file_data['multiple_shows'] = serialize($result_shows);
-	  $file_data['status'] = 'multiple shows';
+	  $file_data['status'] = MNN_QNAP_SHOW_MULTIPLE_SHOWS;
 	}
 	else if ($airing_id) {
 	  $file_data['airing_id'] = $airing_id;
@@ -529,7 +589,7 @@ function mnn_qnap_load_data() {
 	  foreach(libxml_get_errors() as $error) {
 	    //dsm($error->message, 'msg:');
 	  }
-	  $file_data['status'] = 'bad xml';
+	  $file_data['status'] = MNN_QNAP_SHOW_BAD_XML;
 	}
 	else {
 	  foreach($xml->children() as $child) {
