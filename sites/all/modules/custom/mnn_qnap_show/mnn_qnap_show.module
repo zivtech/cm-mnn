@@ -59,7 +59,8 @@ function mnn_qnap_show_update_page($form, &$form_state) {
   $fields = mnn_qnap_show_get_fields();
   $header = array();
   foreach ($fields as $field) {
-    $header[] = array('data' => $field, 'field' => $field, 'sort' => 'ASC');
+    $header[$field] =
+      array('data' => $field, 'field' => $field, 'sort' => 'ASC');
   }
 
   $select->fields('s', $fields)->limit(100)->orderByHeader($header);
@@ -75,17 +76,67 @@ function mnn_qnap_show_update_page($form, &$form_state) {
 
   foreach($results as $result) {
     $row = array();
+    
     foreach ($fields as $field) {
-      $row[] = $result->{$field};
+      $row[$field] = $result->{$field};
     }
-    $rows[] = $row;
+    $rows[$result->filename] = $row;
+  }
+  dsm($rows, 'rows');
+  if ($rows) {
+    $form['mnn_qnap_show_table'] =
+      array(
+	    '#type' => 'tableselect',
+	    '#header' => $header,
+	    '#options' => $rows,
+	    '#multiple' => TRUE,
+	    '#suffix' => theme('pager'),
+	    );
+    //$table = theme('table',array('header'=> $header, 'rows' => $rows));
+    //$table .= theme('pager');
+    //$form['mnn_qnap_show_report'] = array('#markup' => $table);
   }
 
-  if ($rows) {
-    $table = theme('table',array('header'=> $header, 'rows' => $rows));
-    $table .= theme('pager');
+  $row_count = count($rows);
+  $row_counter = 0;  
+  foreach($rows as $filename => $row) {
+    $row_counter ++;
+    $cell_count = count($row);
+    $cell_counter = 0;
+    foreach($row as $field => $value) {
+      $cell_counter ++;
+      $element_name = 'mnn_qnap_show|' . $filename . '|' . $field;
+      dsm($element_name, 'en');
+      if ($row_counter == 1 && $cell_counter == 1) {
+	$prefix = "<table><tr><td>";
+      }
+      else if ($cell_counter == 1) {
+	$prefix = "<tr><td>";
+      }
+      else {
+	$prefix = "<td>";
+      }
+      if ($row_count == $row_counter &&
+	  $cell_count == $cell_counter) {
+	$suffix = "</td></tr></table>";
+      }
+      else if ($cell_count == $cell_counter) {
+	$suffix = "</td></tr>";
+      }
+      else {
+	$suffix = "</td>";
+      }
+      
+      $form[$element_name] =
+	array(
+	      '#type' => 'textfield',
+	      '#default_value' => $value,
+	      '#prefix' => $prefix,
+	      '#suffix' => $suffix,
+	      );
+    }
   }
-  $form['mnn_qnap_show_report'] = array('#markup' => $table);
+
   
   $form['mnn_qnap_show_header'] =
     array('#markup' =>
