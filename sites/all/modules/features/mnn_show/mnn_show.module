@@ -335,48 +335,57 @@ function mnn_show_node_access($node, $op, $account) {
 }
 
 function mnn_show_get_premiere_date($show) {
-  $airings = mnn_show_airings_for_show($show->nid);
-  foreach($airings as $airing_id) {
-    $airings = entity_load('airing', array($airing_id));
-    $airing = array_pop($airings);
-    if ($airing) {
-      $tid = mnn_show_get_single_field_value($airing, 'field_airing_type',
-					     'tid');
-      $term = taxonomy_term_load($tid);
+  $start = strtotime('now');
 
-      if ($term->name != 'Series' && $term->name != 'Special') {
-	continue;
-      }
-      
-      $date = mnn_show_get_single_field_value($airing, 'field_airing_date',
-					     'value');
-      $dates[strtotime($date)] = $date;      
-    }
-  }
-  ksort($dates);
+  $sql =
+    "SELECT min(dt.field_airing_date_value)
+     FROM {cm_airing} a
+     INNER JOIN {field_data_field_airing_show_ref} s
+       ON s.entity_id = a.airing_id
+     INNER JOIN {field_data_field_airing_date} dt
+       ON dt.entity_id=s.entity_id
+     INNER JOIN {field_data_field_airing_type} tp
+       ON tp.entity_id=s.entity_id
+     WHERE s.field_airing_show_ref_target_id = :sid
+     AND (tp.field_airing_type_tid = 969 or 
+          tp.field_airing_type_tid = 973 or 
+          tp.field_airing_type_tid = 972)
+     ";
+
+  $args = array(':sid'=>$show->nid);
   
-  foreach($dates as $ts => $date) {
-    return $date;
-  }
-  return '';
+  $ret = array();
+  $results = db_query($sql, $args);
+  
+  $date = $results->fetchField();
+
+  return $date;
+
 }
 
 function mnn_show_get_channels($show) {
+  $start = strtotime('now');
   $channels = array();
+
+  $sql =
+    "SELECT DISTINCT ch.field_airing_channel_tid as tid
+     FROM {cm_airing} a
+     INNER JOIN {field_data_field_airing_show_ref} s
+       ON s.entity_id = a.airing_id
+     INNER JOIN {field_data_field_airing_channel} ch
+       ON ch.entity_id=s.entity_id
+     WHERE s.field_airing_show_ref_target_id = :sid
+     ";
+
+  $args = array(':sid'=>$show->nid);
   
-  $airings = mnn_show_airings_for_show($show->nid);
-  foreach($airings as $airing_id) {
-    $airings = entity_load('airing', array($airing_id));
-    $airing = array_pop($airings);
-    if ($airing) {
-      $channel_tid = mnn_show_get_single_field_value($airing,
-						     'field_airing_channel',
-						     'tid');
-      $channel = taxonomy_term_load($channel_tid);
-      $channels[] = $channel->name;
-    }
+  $ret = array();
+  $results = db_query($sql, $args);
+
+  while ($result = $results->fetchObject()) {
+    $channel = taxonomy_term_load($result->tid);
+    $channels[] = $channel->name;
   }
-  $channels = array_unique($channels);
   return implode(', ', $channels);
 }
 
