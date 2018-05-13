@@ -198,7 +198,7 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	if ($row['project_nid'] && $field =='show_nid') {
 	  if ($row['multiple_shows']) {
 	    $options = unserialize($row['multiple_shows']);
-	    $options[0] = '<- select ->';
+	    $options[0] = '- Select a value -';
 	    asort($options);
 	  }
 	  else {
@@ -209,7 +209,7 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  $form['mnn_qnap_show_edit'][$element_name] =
 	    array(
 		  '#type' => 'select',
-		  '#title' => 'Select Show',
+		  '#title' => 'Select Show:',
 		  '#options' => $options, 
 		  );
 
@@ -219,11 +219,24 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	    array(
 		  '#type' => 'textfield',
 		  '#default_value' => $value,
-		  '#size' => 10,
+		  '#size' => 15,
 		  );
-	  if ($field == 'show_nid') {
+	  if ($field == 'project_nid') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
-	      'Enter Episode#';
+	      'Project ID (numbers only)';
+	  }
+	  else if ($field == 'show_nid') {
+	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
+	      'Enter Episode # (numbers only)';
+	  }
+	  else if ($field == 'title') {
+	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
+	      'Show Title';
+	  }
+	  else if ($field == 'short_description') {
+	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
+	      'Short Description';
+	    $form['mnn_qnap_show_edit'][$element_name]['#size'] = 40;
 	  }
 	  
 	}
@@ -325,7 +338,7 @@ function mnn_qnap_update_shows($found_shows, $multiples) {
 }
 function mnn_qnap_show_get_statuses() {
   return array(
-	       0 => "< SELECT >",
+	       0 => "- Select a value -",
 	       MNN_QNAP_SHOW_QUEUED => MNN_QNAP_SHOW_QUEUED, 
 	       MNN_QNAP_SHOW_COMPLETED	=> MNN_QNAP_SHOW_COMPLETED,
 	       MNN_QNAP_SHOW_BAD_DATE => MNN_QNAP_SHOW_BAD_DATE,
@@ -403,7 +416,7 @@ function mnn_qnap_load_data() {
 		      );
 
   //build url to the files directory
-  $prefix = "files/show_descriptions";
+  $prefix = "metadata";
   $remote_url = variable_get('internet_archive_server_url', FALSE);
   if (!$remote_url) {
     return;
@@ -425,7 +438,7 @@ function mnn_qnap_load_data() {
   for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = $airdate = FALSE;
     
-    $file = trim(urldecode($files[1][$i]));
+    $file = urldecode($files[1][$i]);
     
     $correct_extension = FALSE;
     foreach ($extensions as $extension) {
@@ -472,7 +485,7 @@ function mnn_qnap_load_data() {
     $first_digit = substr($pid, 0, 1);
     if (!$first_digit) {
       $pid = NULL;
-      $file_data['status'] = 'bad file name';
+      $file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
     }
     
     if ($pid) {
@@ -640,48 +653,57 @@ function mnn_qnap_load_data() {
 	  $file_data['show_nid'] = $show_nid;
 	}
       }
-      
-      $text = file_get_contents($remote_file_directory_url .'/'. $file);
-      $file_data['file_contents'] = $text;
-      if ($text) {
-	$text = str_replace('Phone#', 'Phone', $text);
-	$text = str_replace('<UserAcct></UserAcct>',
-			    '<UserAcct>anonymous</UserAcct>', $text);
-	$text = trim($text);
-	libxml_use_internal_errors(true);
-	$xml = simplexml_load_string($text);
-	if ($xml === false) {
-	  //dsm('**********************************');
-	  //dsm($xml, 'xml');
-	  //dsm($text, 'text');
-	  //dsm("Failed loading XML");
-	  foreach(libxml_get_errors() as $error) {
-	    //dsm($error->message, 'msg:');
-	  }
-	  $file_data['status'] = MNN_QNAP_SHOW_BAD_XML;
+    }
+
+    $path = $remote_file_directory_url .'/'. urlencode($file);
+    $path = str_replace('+','%20',$path);
+    
+    $text = file_get_contents($path);
+    if ('23377_0522.mp4.xml' == $file) {
+          dsm($path, 'path');
+      dsm($text, 'yo');
+    }
+
+    $file_data['file_contents'] = $text;
+    if ($text) {
+      $text = str_replace('Phone#', 'Phone', $text);
+      $text = str_replace('<UserAcct></UserAcct>',
+			  '<UserAcct>anonymous</UserAcct>', $text);
+      $text = trim($text);
+      libxml_use_internal_errors(true);
+      $xml = simplexml_load_string($text);
+      if ($xml === false) {
+	//dsm('**********************************');
+	//dsm($xml, 'xml');
+	//dsm($text, 'text');
+	//dsm("Failed loading XML");
+	foreach(libxml_get_errors() as $error) {
+	  //dsm($error->message, 'msg:');
 	}
-	else {
-	  foreach($xml->children() as $child) {
-	    switch($child->getName()) {
-	    case 'EpisodeTitle':
-	      $file_data['title'] = $child;
-	      break;
-	    case 'Description':
-	      $file_data['short_description'] = $child;
-	      break;
-	    case 'ThemeProgramming':
-	      //FIXME ALSO FIND theme_tid
-	      $file_data['theme'] = $child;
-	      break;
-	    case 'Neighborhood':
-	      //FIXME ALSO FIND neighborhood_tid
-	      $file_data['neighborhood'] = $child;
-	      break;
-	    }
+	$file_data['status'] = MNN_QNAP_SHOW_BAD_XML;
+      }
+      else {
+	foreach($xml->children() as $child) {
+	  switch($child->getName()) {
+	  case 'EpisodeTitle':
+	    $file_data['title'] = $child;
+	    break;
+	  case 'Description':
+	    $file_data['short_description'] = $child;
+	    break;
+	  case 'ThemeProgramming':
+	    //FIXME ALSO FIND theme_tid
+	    $file_data['theme'] = $child;
+	    break;
+	  case 'Neighborhood':
+	    //FIXME ALSO FIND neighborhood_tid
+	    $file_data['neighborhood'] = $child;
+	    break;
 	  }
 	}
       }
     }
+   
     mnn_qnap_show_write_to_db($file_data);
   }
 }
