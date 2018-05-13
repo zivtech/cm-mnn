@@ -8,7 +8,7 @@ define('MNN_QNAP_SHOW_BAD_NAME','bad_filename');
 define('MNN_QNAP_SHOW_BAD_XML','bad_xml');
 define('MNN_QNAP_SHOW_MULTIPLE_SHOWS','multiple_shows_on_airdate');
 define('MNN_QNAP_SHOW_NO_AIRING','no_show_on_airdate');
-define('MNN_QNAP_SHOW_NO_IGNORE','ignore');
+define('MNN_QNAP_SHOW_IGNORE','ignore');
 
 /**
  * Implements hook_menu().
