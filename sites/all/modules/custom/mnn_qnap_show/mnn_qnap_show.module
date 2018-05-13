@@ -1,14 +1,14 @@
 <?php
 
-define(MNN_QNAP_SHOW_QUEUED,'queued');
-define(MNN_QNAP_SHOW_COMPLETED,'completed'); 
-define(MNN_QNAP_SHOW_BAD_DATE,'bad_airdate');
-define(MNN_QNAP_SHOW_BAD_PROJECT,'bad_project'); 
-define(MNN_QNAP_SHOW_BAD_NAME,'bad_filename');
-define(MNN_QNAP_SHOW_BAD_XML,'bad_xml');
-define(MNN_QNAP_SHOW_MULTIPLE_SHOWS,'multiple_shows_on_airdate');
-define(MNN_QNAP_SHOW_NO_AIRING,'no_show_on_airdate');
-define(MNN_QNAP_SHOW_NO_IGNORE,'ignore');
+define('MNN_QNAP_SHOW_QUEUED','queued');
+define('MNN_QNAP_SHOW_COMPLETED','completed'); 
+define('MNN_QNAP_SHOW_BAD_DATE','bad_airdate');
+define('MNN_QNAP_SHOW_BAD_PROJECT','bad_project'); 
+define('MNN_QNAP_SHOW_BAD_NAME','bad_filename');
+define('MNN_QNAP_SHOW_BAD_XML','bad_xml');
+define('MNN_QNAP_SHOW_MULTIPLE_SHOWS','multiple_shows_on_airdate');
+define('MNN_QNAP_SHOW_NO_AIRING','no_show_on_airdate');
+define('MNN_QNAP_SHOW_NO_IGNORE','ignore');
 
 /**
  * Implements hook_menu().
@@ -128,9 +128,9 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  );
   
   $fields = mnn_qnap_show_get_fields();
-  $skips = array('airing_id', 'uid', 'airdate', 'multiple_shows');
-  $statics = array('filename', 'status', 'neighborhood', 'theme',
-		   'file_contents');
+  $skips = array('airing_id', 'uid', 'airdate', 'multiple_shows',
+		 'neighborhood', 'theme');
+  $statics = array('filename', 'status', 'file_contents');
 
   $header_count = count($fields) - count($skips);
   $header_counter = 0;
@@ -138,10 +138,12 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
     if (in_array($field, $skips)) {
       continue;
     }
+    $field = str_replace('_tid', '', $field);
+    $field = str_replace('_nid', '', $field);
     $header_counter ++;
     $var_name = "_".$field."_header";
     if ($header_counter == 1) {
-      $prefix = '<table class="sticky-enabled table-select-processed tableheader-processed sticky-table"><thead><th>';
+      $prefix = '<table><thead><th>';
     }
     else {
       $prefix = "<th>";
@@ -190,20 +192,44 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 
       if (in_array($field, $statics)) {
 	$form['mnn_qnap_show_edit'][$element_name] =
-	  array('#markup' => $value,
-		'#prefix' => $prefix,
-		'#suffix' => $suffix);
+	  array('#markup' => htmlspecialchars($value));
       }
       else {
-	$form['mnn_qnap_show_edit'][$element_name] =
-	  array(
-		'#type' => 'textfield',
-		'#default_value' => $value,
-		'#prefix' => $prefix,
-		'#suffix' => $suffix,
-		'#size' => 10,
-		);
+	if ($row['project_nid'] && $field =='show_nid') {
+	  if ($row['multiple_shows']) {
+	    $options = unserialize($row['multiple_shows']);
+	    $options[0] = '<- select ->';
+	    asort($options);
+	  }
+	  else {
+	    $options =
+	      mnn_airing_get_shows_for_project_airing($row['project_nid']);
+	    
+	  }
+	  $form['mnn_qnap_show_edit'][$element_name] =
+	    array(
+		  '#type' => 'select',
+		  '#title' => 'Select Show',
+		  '#options' => $options, 
+		  );
+
+	}
+	else {
+	  $form['mnn_qnap_show_edit'][$element_name] =
+	    array(
+		  '#type' => 'textfield',
+		  '#default_value' => $value,
+		  '#size' => 10,
+		  );
+	  if ($field == 'show_nid') {
+	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
+	      'Enter Episode#';
+	  }
+	  
+	}
       }
+      $form['mnn_qnap_show_edit'][$element_name]['#prefix'] = $prefix;
+      $form['mnn_qnap_show_edit'][$element_name]['#suffix'] = $suffix;
     }
   } 
 }
@@ -315,12 +341,12 @@ function mnn_qnap_show_get_statuses() {
 function mnn_qnap_show_get_fields() {
   return array(
 	       'filename',
+	       'status',
 	       'project_nid',
 	       'show_nid',
 	       'airing_id',
 	       'uid',
 	       'airdate',
-	       'status',
 	       'multiple_shows',
 	       'title',
 	       'short_description',
