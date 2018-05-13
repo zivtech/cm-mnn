@@ -8,6 +8,7 @@ define(MNN_QNAP_SHOW_BAD_NAME,'bad_filename');
 define(MNN_QNAP_SHOW_BAD_XML,'bad_xml');
 define(MNN_QNAP_SHOW_MULTIPLE_SHOWS,'multiple_shows_on_airdate');
 define(MNN_QNAP_SHOW_NO_AIRING,'no_show_on_airdate');
+define(MNN_QNAP_SHOW_NO_IGNORE,'ignore');
 
 /**
  * Implements hook_menu().
@@ -92,7 +93,7 @@ function mnn_qnap_show_form($form, &$form_state) {
 	    '#multiple' => TRUE,
 	    '#suffix' => theme('pager'),
 	    );
-    $element = mnn_qnap_show_edit_table_element($form, $rows, $header);
+    $element = mnn_qnap_show_edit_table_element($form, $rows);
     
   }    
   dsm($rows, 'rows');
@@ -116,30 +117,62 @@ function mnn_qnap_show_form_submit($form, &$form_state) {
 /**
  *Function fills $rows and $header for the table when in "edit" mode
  */
-function mnn_qnap_show_edit_table_element(&$form, &$rows, &$header) {
-   $form['mnn_qnap_show_edit'] =
-      array(
-	    '#type' => 'fieldset',
-	    '#title' => 'Modify Data from the XML file name and contents.',
-	    '#collapsible' => TRUE,
-	    '#collapsed' => TRUE,
-	    '#weight' => 0,
-	    );
-   
+function mnn_qnap_show_edit_table_element(&$form, $rows) {
+  $form['mnn_qnap_show_edit'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => 'Modify Data from the XML file name and contents.',
+	  '#collapsible' => TRUE,
+	  '#collapsed' => TRUE,
+	  '#weight' => 0,
+	  );
+  
+  $fields = mnn_qnap_show_get_fields();
+  $skips = array('airing_id', 'uid', 'airdate', 'multiple_shows');
+  $statics = array('filename', 'status', 'neighborhood', 'theme',
+		   'file_contents');
+
+  $header_count = count($fields) - count($skips);
+  $header_counter = 0;
+  foreach ($fields as $field) {
+    if (in_array($field, $skips)) {
+      continue;
+    }
+    $header_counter ++;
+    $var_name = "_".$field."_header";
+    if ($header_counter == 1) {
+      $prefix = '<table class="sticky-enabled table-select-processed tableheader-processed sticky-table"><thead><th>';
+    }
+    else {
+      $prefix = "<th>";
+    }
+    if ($header_count == $header_counter) {
+	$suffix = "</th></thead>";
+    }
+    else {
+      $suffix = "</th>";
+    }
+    
+    $form['mnn_qnap_show_edit'][$var_name] =
+      array('#markup' => $field, '#prefix' => $prefix, '#suffix' => $suffix);
+    
+  }
+  $even_odd = 'odd';
   $row_count = count($rows);
   $row_counter = 0;  
   foreach($rows as $filename => $row) {
     $row_counter ++;
-    $cell_count = count($row);
+    $cell_count = count($row) - count($skips);
     $cell_counter = 0;
     foreach($row as $field => $value) {
+      if (in_array($field, $skips)) {
+	continue;
+      }
       $cell_counter ++;
       $element_name = 'mnn_qnap_show|' . $filename . '|' . $field;
-      if ($row_counter == 1 && $cell_counter == 1) {
-	$prefix = "<table><tr><td>";
-      }
-      else if ($cell_counter == 1) {
-	$prefix = "<tr><td>";
+      $even_odd = ($even_odd == 'odd') ? 'even' : 'odd';
+      if ($cell_counter == 1) {
+	$prefix = "<tr class=$even_odd><td>";
       }
       else {
 	$prefix = "<td>";
@@ -155,13 +188,22 @@ function mnn_qnap_show_edit_table_element(&$form, &$rows, &$header) {
 	$suffix = "</td>";
       }
 
-      $form['mnn_qnap_show_edit'][$element_name] =
-	array(
-	      '#type' => 'textfield',
-	      '#default_value' => $value,
-	      '#prefix' => $prefix,
-	      '#suffix' => $suffix,
-	      );
+      if (in_array($field, $statics)) {
+	$form['mnn_qnap_show_edit'][$element_name] =
+	  array('#markup' => $value,
+		'#prefix' => $prefix,
+		'#suffix' => $suffix);
+      }
+      else {
+	$form['mnn_qnap_show_edit'][$element_name] =
+	  array(
+		'#type' => 'textfield',
+		'#default_value' => $value,
+		'#prefix' => $prefix,
+		'#suffix' => $suffix,
+		'#size' => 10,
+		);
+      }
     }
   } 
 }
@@ -266,6 +308,7 @@ function mnn_qnap_show_get_statuses() {
 	       MNN_QNAP_SHOW_BAD_XML => MNN_QNAP_SHOW_BAD_XML,
 	       MNN_QNAP_SHOW_MULTIPLE_SHOWS => MNN_QNAP_SHOW_MULTIPLE_SHOWS,
 	       MNN_QNAP_SHOW_NO_AIRING	=> MNN_QNAP_SHOW_NO_AIRING,
+	       MNN_QNAP_SHOW_IGNORE	=> MNN_QNAP_SHOW_IGNORE,
 	       );
 
 }
