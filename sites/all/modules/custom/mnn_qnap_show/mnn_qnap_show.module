@@ -206,8 +206,8 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  }
 	  else {
 	    $options =
-	      mnn_airing_get_shows_for_project_airing($row['project_nid']);
-	    
+	      mnn_airing_get_shows_for_project_airing($row['project_nid'],
+						      TRUE);
 	  }
 	  $form['mnn_qnap_show_edit'][$element_name] =
 	    array(
@@ -220,6 +220,7 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	}
 	else if ($field == 'neighborhood_tid' ||
 		 $field == 'theme_tid') {
+	  $alt = str_replace('_tid', '', $field);
 	  $vid = ($field == 'neighborhood_tid') ? 31 : 32;
 	  $label = ($field == 'neighborhood_tid') ? "Select Neighborhood:" :
 	    "Select Theme:";
@@ -228,13 +229,15 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 		     "FROM {taxonomy_term_data} ".
 		     "WHERE vid = $vid")->fetchAllKeyed();
 	  $options = array('0' => '- Select a value -') + $options;
-
+	  $description = $row[$alt] ? 'Current Value: '.
+	    $row[$alt] : '';
 	  $form['mnn_qnap_show_edit'][$element_name] =
 	    array(
 		  '#type' => 'select',
 		  '#title' => $label,
 		  '#options' => $options, 
-		  '#description' => 'description',
+		  '#description' => $description,
+		  '#default_value' => $row[$field],
 		  );
 	    
 
@@ -439,7 +442,6 @@ function mnn_qnap_show_write_to_db($file_data) {
     $index = ':' . $field;
     $args[$index] = $file_data[$field];
   }
-
   db_query($sql, $args);
 }
 /**
@@ -726,10 +728,41 @@ function mnn_qnap_load_data() {
 	  case 'ThemeProgramming':
 	    //FIXME ALSO FIND theme_tid
 	    $file_data['theme'] = $child;
+	    if ($child) {
+	      $query = new EntityFieldQuery;
+	      $term = NULL;
+	      $terms =
+		$query->entityCondition('entity_type', 'taxonomy_term')
+		->propertyCondition('name', $child)
+		->propertyCondition('vid', 32)
+		->execute();
+	      if ($terms) {
+		$term = array_shift($terms['taxonomy_term']);
+	      }
+	      if ($term) {
+		$file_data['theme_tid'] = $term->tid;
+	      }
+	    }	    
 	    break;
 	  case 'Neighborhood':
 	    //FIXME ALSO FIND neighborhood_tid
 	    $file_data['neighborhood'] = $child;
+	    if ($child) {
+	      $query = new EntityFieldQuery;
+	      $term = NULL;
+	      $terms =
+		$query->entityCondition('entity_type', 'taxonomy_term')
+		->propertyCondition('name', $child)
+		->propertyCondition('vid', 31)
+		->execute();
+	      if ($terms) {
+		$term = array_shift($terms['taxonomy_term']);
+	      }
+	      if ($term) {
+		$file_data['neighborhood_tid'] = $term->tid;
+	      }
+	    }
+
 	    break;
 	  }
 	}
