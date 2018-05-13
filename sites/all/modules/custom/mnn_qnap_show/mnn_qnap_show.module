@@ -123,7 +123,9 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  '#type' => 'fieldset',
 	  '#title' => 'Modify Data from the XML file name and contents.',
 	  '#collapsible' => TRUE,
-	  '#collapsed' => TRUE,
+	  //'#collapsed' => TRUE,
+	  //FIXME, RECOLLAPSE
+	  '#collapsed' => FALSE,
 	  '#weight' => 0,
 	  );
   
@@ -195,7 +197,8 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  array('#markup' => htmlspecialchars($value));
       }
       else {
-	if ($row['project_nid'] && $field =='show_nid') {
+	if ($row['project_nid'] && $field =='show_nid'){
+	  $default_value = $row['show_nid'];
 	  if ($row['multiple_shows']) {
 	    $options = unserialize($row['multiple_shows']);
 	    $options[0] = '- Select a value -';
@@ -210,8 +213,30 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	    array(
 		  '#type' => 'select',
 		  '#title' => 'Select Show:',
-		  '#options' => $options, 
+		  '#options' => $options,
+		  '#default_value' => $default_value,
 		  );
+
+	}
+	else if ($field == 'neighborhood_tid' ||
+		 $field == 'theme_tid') {
+	  $vid = ($field == 'neighborhood_tid') ? 31 : 32;
+	  $label = ($field == 'neighborhood_tid') ? "Select Neighborhood:" :
+	    "Select Theme:";
+	  $options =
+	    db_query("SELECT tid, name ".
+		     "FROM {taxonomy_term_data} ".
+		     "WHERE vid = $vid")->fetchAllKeyed();
+	  $options = array('0' => '- Select a value -') + $options;
+
+	  $form['mnn_qnap_show_edit'][$element_name] =
+	    array(
+		  '#type' => 'select',
+		  '#title' => $label,
+		  '#options' => $options, 
+		  '#description' => 'description',
+		  );
+	    
 
 	}
 	else {
@@ -228,14 +253,25 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  else if ($field == 'show_nid') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
 	      'Enter Episode # (numbers only)';
+	    if ($row['show_nid']) {
+	      $show = node_load($row['show_nid']);
+	      $episode_number = 
+		mnn_qnap_show_get_single_field_value($show,
+						     'field_episode_number',
+						     'value');
+
+	      $form['mnn_qnap_show_edit'][$element_name]['#default_value'] =
+		$episode_number;;
+
+	      }
 	  }
 	  else if ($field == 'title') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
-	      'Show Title';
+	      'Show Title:';
 	  }
 	  else if ($field == 'short_description') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
-	      'Short Description';
+	      'Short Description:';
 	    $form['mnn_qnap_show_edit'][$element_name]['#size'] = 40;
 	  }
 	  
@@ -659,10 +695,6 @@ function mnn_qnap_load_data() {
     $path = str_replace('+','%20',$path);
     
     $text = file_get_contents($path);
-    if ('23377_0522.mp4.xml' == $file) {
-          dsm($path, 'path');
-      dsm($text, 'yo');
-    }
 
     $file_data['file_contents'] = $text;
     if ($text) {
