@@ -21,6 +21,13 @@ function mnn_qnap_show_menu() {
     'access arguments' => array('administer internet_archive'),
     'weight' => 15,
   );
+  $items['show/xml'] =
+    array(
+	  'title' => 'Potential Show/XML File Matches',
+	  'access callback' => TRUE,
+	  'page callback' => 'mnn_qnap_show_file_match_json',
+	  'type' => MENU_CALLBACK,
+	  );
 
   return $items;
 }
@@ -473,6 +480,73 @@ function mnn_qnap_show_view_table_element(&$rows, &$header) {
     }
     $rows[$result->filename] = $row;
   }
+}
+/**
+ * Function called by show/xml menu hook. This menu item will be called from
+ * JQUERY WHEN WE SHOW A DROPDOWN (OR SINGLE MATCH) OF XML FILES TO MATCH
+ * WITH NEWLY CREATED SHOWS
+ */
+function mnn_qnap_show_file_match_json() {
+  $exact_matches = $project_matches = $bad_file_matches = array();
+  
+  $airing_id = filter_input(INPUT_GET, 'airing_id');
+  $airings = entity_load('airing', array($airing_id));
+  $airing = array_pop($airings);
+  if ($airing) {
+    $date =
+      mnn_qnap_show_get_single_field_value($airing,
+					   'field_airing_date',
+					   'value');
+
+    $pid = mnn_qnap_show_get_single_field_value($airing,
+						'field_airing_project_ref',
+						'target_id');
+
+    $airdate = date('Y-m-d', strtotime($date)) . ' 00:00:00';
+    
+    $args = array(":pid" => $pid,
+		  ":airdate" => $airdate);
+    $sql =
+      "SELECT xid, filename, project_nid, airdate ".
+      "FROM mnn_qnap_show " .
+      "WHERE show_nid IS NULL ".
+      "AND (".
+      "  (airdate = :airdate AND project_nid=:pid ) OR ".
+      "  (project_nid=:pid ) OR ".
+      "  (project_nid is NULL)".
+      ") ".
+      "ORDER BY project_nid = :pid desc, airdate desc, xid desc";
+
+    $orphans = $project_matches = $exact_matches = array();
+    $results = db_query($sql, $args);
+    while ($result = $results->fetchObject()) {
+      if ($result->airdate == $airdate) {
+	$exact_matches[$result->xid] = $result->filename;
+      }
+      else if ($result->project_nid == $pid){ 
+	$project_matches[$result->xid] = $result->filename;
+      }
+      else {
+	$orphans[$result->xid] = $result->filename;
+      }
+    }
+  }
+  if ($exact_matches) {
+    $data = array(0=>'- Select -') + array('exact' => 'Exact Match:') +
+      $exact_matches + array('project' => 'Project Matches:') +
+      $project_matches + array('orphan' => 'Unmatched Files:') + $orphans;
+  }
+  else if ($project_matches) {
+    $data = array(0=>'- Select -') + array('project' => 'Project Matches:') +
+      $project_matches + array('orphan' => 'Unmatched Files:') + $orphans;
+  }
+  else {
+    $data = array(0=>'- Select -') + $orphans;
+  }
+
+  drupal_json_output($data);
+  drupal_exit();
+
 }
 function mnn_qnap_show_cron() {
   //FIXME REMOVE WHEN CRON IS READY
