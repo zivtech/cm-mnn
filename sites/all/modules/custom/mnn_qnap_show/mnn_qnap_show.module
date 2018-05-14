@@ -166,9 +166,7 @@ function mnn_qnap_show_form_validate($form, &$form_state) {
 	$sid =
 	  mnn_show_get_existing_show_for_episode_number($pid,NULL,$show_value);
 	if ($sid) {
-	  dsm($submitted_values, 'sv1');
 	  $submitted_values[$xid]['show_nid'] = $sid;
-	  dsm($submitted_values, 'sv2');
 	}
       }
     }
@@ -202,15 +200,39 @@ function mnn_qnap_show_form_submit($form, &$form_state) {
   global $submitted_values;
   global $existing_values;
 
+  $changed_rows = array();  
+  $fields = mnn_qnap_show_get_fields();
+  $skips = array('airing_id', 'uid', 'airdate', 'multiple_shows',
+		 'neighborhood', 'theme','xid', 'filename', 'status',
+		 'file_contents');
+    
+  //loop through submitted values
+  foreach ($submitted_values as $xid => $row) {
+    $changed = FALSE;
+    //check to see if submitted is different than existing
+    foreach ($fields as $field) {
+      if (in_array($field, $skips)) {
+	continue;
+      }
+      $field_value = isset($row[$field]) && $row[$field] ?
+	trim($row[$field]) : NULL;
+
+      $existing_value = $existing_values[$xid][$field] ?
+	trim($existing_values[$xid][$field]) : NULL;
+      
+      if ($field_value != $existing_value) {
+	$changed = TRUE;
+	$existing_values[$xid][$field] = $submitted_values[$xid][$field];
+      }
+    }
+    if ($changed) {
+      $changed_rows[$xid] = $existing_values[$xid];
+    }
+  }
+  
   dsm($existing_values, 'ev');
   dsm($submitted_values, 'sv');
-
-  //loop through submitted values
-  foreach ($submitted_values as $row) {
-    //check to see if submitted is different than existing
-  }
-
-
+  dsm($changed_rows, 'cr');
   
   $file_search = $form_state['values']['mnn_qnap_show_filename'];
   $status = $form_state['values']['mnn_qnap_show_status'];
