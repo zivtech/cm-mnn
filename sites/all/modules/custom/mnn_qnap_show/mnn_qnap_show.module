@@ -2,12 +2,10 @@
 
 define('MNN_QNAP_SHOW_QUEUED','queued');
 define('MNN_QNAP_SHOW_COMPLETED','completed'); 
-define('MNN_QNAP_SHOW_BAD_DATE','bad_airdate');
-define('MNN_QNAP_SHOW_BAD_PROJECT','bad_project'); 
-define('MNN_QNAP_SHOW_BAD_NAME','bad_filename');
+define('MNN_QNAP_SHOW_MISSING_SHOW','missing_show');
+define('MNN_QNAP_SHOW_MISSING_PROJECT','missing_project'); 
 define('MNN_QNAP_SHOW_BAD_XML','bad_xml');
 define('MNN_QNAP_SHOW_MULTIPLE_SHOWS','multiple_shows_on_airdate');
-define('MNN_QNAP_SHOW_NO_AIRING','no_show_on_airdate');
 define('MNN_QNAP_SHOW_IGNORE','ignore');
 
 /**
@@ -204,6 +202,29 @@ function mnn_qnap_show_form_validate($form, &$form_state) {
  * FORM SUBMIT FOR MANUALLY UPDATING SHOWS FROM QNAP
  */
 function mnn_qnap_show_form_submit($form, &$form_state) {
+  $clicked_button = $form_state['clicked_button']['#value'];
+  $xids = array();
+  if ($clicked_button == 'Update Show Data') {
+    mnn_qnap_show_form_submit_update_show_data($form, $form_state);
+  }
+  else if ($clicked_button == 'Update Selected Queued Shows') {
+    mnn_qnap_show_form_submit_update_queued($form, $form_state);
+  }
+
+  $file_search = $form_state['values']['mnn_qnap_show_filename'];
+  $status = $form_state['values']['mnn_qnap_show_status'];
+  
+  drupal_goto("admin/reports/qnap/xml_report",
+	      array('query'=>array('filename' => $file_search,
+				   'status' => $status)));
+
+}
+
+function mnn_qnap_show_form_submit_update_queued($form, &$form_state) {
+  dsm($form_state, 'fs yo');
+}
+function mnn_qnap_show_form_submit_update_show_data($form, &$form_state) {
+  
   global $submitted_values;
   global $existing_values;
 
@@ -233,23 +254,21 @@ function mnn_qnap_show_form_submit($form, &$form_state) {
       }
     }
     if ($changed) {
-      //FIXME UPDATE STATUS HERE!
-      
       $changed_rows[$xid] = $existing_values[$xid];
+      if ($existing_values[$xid]['project_nid']) {
+	$existing_values[$xid]['show_nid'] = NULL;
+	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_MISSING_PROJECT;
+      }
+      else if ($existing_values[$xid]['show_nid']) {
+	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_MISSING_SHOW;
+      }
+      else {
+	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_QUEUED;
+      }
     }
   }
-  
-  dsm($existing_values, 'ev');
-  dsm($submitted_values, 'sv');
+  mnn_qnap_write_records($changed_rows, TRUE);
   dsm($changed_rows, 'cr');
-  
-  $file_search = $form_state['values']['mnn_qnap_show_filename'];
-  $status = $form_state['values']['mnn_qnap_show_status'];
-
-  drupal_goto("admin/reports/qnap/xml_report",
-	      array('query'=>array('filename' => $file_search,
-				   'status' => $status)));
-
 }
 
 /**
@@ -534,13 +553,19 @@ function mnn_qnap_show_file_match_json() {
     }
   }
   if ($exact_matches) {
-    $data = array(0=>'- Select -') + array('exact' => '----EXACT MATCH----') +
+    $data =
+      array(0=>'- Select -') +
+      array('exact' => '----EXACT MATCH----') +
       $exact_matches + array('project' => '----PROJECT MATCHES----') +
-      $project_matches + array('orphan' => '----UNMATCHED FILES----') + $orphans;
+      $project_matches + array('orphan' => '----UNMATCHED FILES----') +
+      $orphans;
   }
   else if ($project_matches) {
-    $data = array(0=>'- Select -') + array('project' => '----Project Matches----') +
-      $project_matches + array('orphan' => '----Unmatched Files----') + $orphans;
+    $data =
+      array(0=>'- Select -') +
+      array('project' => '----Project Matches----') +
+      $project_matches +
+      array('orphan' => '----Unmatched Files----') + $orphans;
   }
   else {
     $data = array(0=>'- Select -') + $orphans;
@@ -569,23 +594,21 @@ function mnn_qnap_process_queued() {
   while($result = $results->fetchObject()) {
     $record = array();
     foreach ($fields as $field) {
-      $record[$field] = $record->{$field};
+      $record[$field] = $result->{$field};
     }
-    $records[] = $record;
+    $records[$result->xid] = $record;
   }
-  mnn_qnap_write_records($records, TRUE) {
+  mnn_qnap_write_records($records, TRUE);
 }
 function mnn_qnap_show_get_statuses() {
   return array(
 	       0 => "- Select a value -",
 	       MNN_QNAP_SHOW_QUEUED => MNN_QNAP_SHOW_QUEUED, 
 	       MNN_QNAP_SHOW_COMPLETED	=> MNN_QNAP_SHOW_COMPLETED,
-	       MNN_QNAP_SHOW_BAD_DATE => MNN_QNAP_SHOW_BAD_DATE,
-	       MNN_QNAP_SHOW_BAD_PROJECT => MNN_QNAP_SHOW_BAD_PROJECT,
-	       MNN_QNAP_SHOW_BAD_NAME => MNN_QNAP_SHOW_BAD_NAME,
+	       MNN_QNAP_SHOW_MISSING_SHOW => MNN_QNAP_SHOW_MISSING_SHOW,
+	       MNN_QNAP_SHOW_MISSING_PROJECT => MNN_QNAP_SHOW_MISSING_PROJECT,
 	       MNN_QNAP_SHOW_BAD_XML => MNN_QNAP_SHOW_BAD_XML,
 	       MNN_QNAP_SHOW_MULTIPLE_SHOWS => MNN_QNAP_SHOW_MULTIPLE_SHOWS,
-	       MNN_QNAP_SHOW_NO_AIRING	=> MNN_QNAP_SHOW_NO_AIRING,
 	       MNN_QNAP_SHOW_IGNORE	=> MNN_QNAP_SHOW_IGNORE,
 	       );
 
@@ -746,9 +769,6 @@ function mnn_qnap_load_data() {
 			  $html, $files);
 
 
-  //FIXME ONLY HERE FOR TESTING
-  //$count = 300;
-  
   for ($i = 0; $i < $count; $i++) {
     $valid = $upos = $dpos = $pid = $date = $project = $airdate = FALSE;
     
@@ -799,7 +819,7 @@ function mnn_qnap_load_data() {
     $first_digit = substr($pid, 0, 1);
     if (!$first_digit) {
       $pid = NULL;
-      $file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
+      $file_data['status'] = MNN_QNAP_SHOW_MISSING_PROJECT;
     }
     
     if ($pid) {
@@ -808,7 +828,7 @@ function mnn_qnap_load_data() {
 
       if ($delim != '.' && $delim != '-' && $delim != '_') {
 	$pid = NULL;
-	$file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
+	$file_data['status'] = MNN_QNAP_SHOW_MISSING_PROJECT;
       }
     }
 
@@ -823,7 +843,7 @@ function mnn_qnap_load_data() {
       $date = $match[1];
       if (!$date) {
 	$date = NULL;
-	$file_data['status'] = MNN_QNAP_SHOW_BAD_NAME;
+	$file_data['status'] = MNN_QNAP_SHOW_MISSING_SHOW;
       }
     }
     if ($date) {
@@ -905,10 +925,10 @@ function mnn_qnap_load_data() {
 	  }
 	}	  
       }
-      
+    
       if ($bad_date) {
 	$date = NULL;
-	$file_data['status'] = MNN_QNAP_SHOW_BAD_DATE;
+	$file_data['status'] = MNN_QNAP_SHOW_MISSING_SHOW;
       }
       else {
 	$airdate = $year . '-' . $month . '-' . $day;
@@ -956,7 +976,7 @@ function mnn_qnap_load_data() {
 	}
 
 	if (!$has_airing) {
-	  $file_data['status'] = MNN_QNAP_SHOW_NO_AIRING;
+	  $file_data['status'] = MNN_QNAP_SHOW_MISSING_SHOW;
 	}
 	else if (count($result_shows) > 1) {
 	  $file_data['multiple_shows'] = serialize($result_shows);
@@ -1002,7 +1022,6 @@ function mnn_qnap_load_data() {
 	    $file_data['short_description'] = $child;
 	    break;
 	  case 'ThemeProgramming':
-	    //FIXME ALSO FIND theme_tid
 	    $file_data['theme'] = $child;
 	    if ($child) {
 	      $query = new EntityFieldQuery;
@@ -1021,7 +1040,6 @@ function mnn_qnap_load_data() {
 	    }	    
 	    break;
 	  case 'Neighborhood':
-	    //FIXME ALSO FIND neighborhood_tid
 	    $file_data['neighborhood'] = $child;
 	    if ($child) {
 	      $query = new EntityFieldQuery;
