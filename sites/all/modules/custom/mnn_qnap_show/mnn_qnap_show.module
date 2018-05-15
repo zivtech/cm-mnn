@@ -233,6 +233,8 @@ function mnn_qnap_show_form_submit($form, &$form_state) {
       }
     }
     if ($changed) {
+      //FIXME UPDATE STATUS HERE!
+      
       $changed_rows[$xid] = $existing_values[$xid];
     }
   }
@@ -555,54 +557,23 @@ function mnn_qnap_show_file_match_json() {
 function mnn_qnap_show_cron() {
   //FIXME REMOVE WHEN CRON IS READY
   return;
-  $harvested_files = $bad_file_names = $bad_projects = $found_shows =
-    $missing_shows = $multiples = $already_updated = $empty = array();
-
-  mnn_qnap_load_data($harvested_files, $bad_file_names, $bad_projects,
-		     $found_shows, $missing_shows, $multiples,
-		     $already_updated, $empty);
-  mnn_qnap_update_shows($found_shows, $multiples);
-
-  
+  mnn_qnap_load_data();
+  mnn_qnap_process_queued();
 }
 
-function mnn_qnap_update_shows($found_shows, $multiples) {
-  if ($found_shows) {
-    foreach($found_shows as $file=>$info) {
-      $show = node_load($info['show_id']);
-      $show->field_short_description[LANGUAGE_NONE][0]['value'] =
-	$info['new'];
-      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
-      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 0;
-      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
-	$info['raw'];
-      $show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
-	$info['current'];
-      node_save($show);	      
+function mnn_qnap_process_queued() {
+  $records = array();
+  $fields = mnn_qnap_show_get_fields();
+  $sql = "SELECT * FROM  {mnn_qnap_show} WHERE status=".MNN_QNAP_SHOW_QUEUED;
+  $results = db_query($sql);
+  while($result = $results->fetchObject()) {
+    $record = array();
+    foreach ($fields as $field) {
+      $record[$field] = $record->{$field};
     }
+    $records[] = $record;
   }
-  if ($multiples) {
-    foreach($multiples as $file => $airdates) {
-      foreach($airdates as $airdate => $airings) {
-	foreach ($airings as $show_id => $info) {
-	  $show = node_load($show_id);
-	  if ($show) {
-	    $raw =
-	      mnn_qnap_show_get_single_field_value($show,
-						   'field_qnap_file_contents',
-						   'value');
-	    if (!$raw) {
-	      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 0;
-	      $show->field_qnap_needs_review[LANGUAGE_NONE][0]['value'] = 1;
-	      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
-		$info['raw'];
-	      node_save($show);
-	    }
-	  }
-	}
-      }
-    }
-  }
+  mnn_qnap_write_records($records, TRUE) {
 }
 function mnn_qnap_show_get_statuses() {
   return array(
@@ -697,6 +668,56 @@ function mnn_qnap_show_get_record($xid) {
 function mnn_qnap_write_records($records, $update_show = FALSE) {
 
   dsm($records, 'yo!');
+
+
+  foreach ($records as $xid => $record) {
+    if ($update_show && $record['status'] == MNN_QNAP_SHOW_QUEUED) {
+      $show = node_load($record['show_nid']);
+      if ($record['title']) {
+	$show->field_show_public_title[LANGUAGE_NONE][0]['value'] =
+	  $record['title'];
+      }
+      if ($record['neighborhood_tid']) {
+	$show->field_show_neighborhood[LANGUAGE_NONE][0]['tid'] =
+	  $record['neighborhood_tid'];
+      }
+      if ($record['theme_tid']) {
+	$show->field_show_theme[LANGUAGE_NONE][0]['tid'] =
+	  $record['theme_tid'];
+      }
+      if ($record['short_description']) {
+	$show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
+	  $show->field_short_description[LANGUAGE_NONE][0]['value'];
+	$show->field_short_description[LANGUAGE_NONE][0]['value'] =
+	  $record['short_description'];
+      }
+      $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
+      $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
+	$record['file_contents'];
+
+      field_attach_update('node', $show);
+      $record['status'] = MNN_QNAP_SHOW_COMPLETED;
+    }
+
+    $sql = "UPDATE {mnn_qnap_show} SET ";
+    $fields = mnn_qnap_show_get_fields();
+    $field_counter = 0;
+    $args = array(':xid' => $xid);
+    foreach ($fields as $field) {
+      if  ($field == 'xid') {
+	continue;
+      }
+      $field_counter++;
+      if ($field_counter != 1) {
+	$sql .= ", ";
+      }
+      $sql .= " " . $field . " = :" . $field;
+      $index = ':' . $field;
+      $args[$index] = $record[$field] ? $record[$field] : 'NULL';
+    }
+    $sql .= " WHERE xid = :xid ";
+    mnn_data_massage_log_query($sql, $args);
+  }
 
 }
 /**
