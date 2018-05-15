@@ -259,9 +259,9 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  '#type' => 'fieldset',
 	  '#title' => 'Modify Data from the XML file name and contents.',
 	  '#collapsible' => TRUE,
-	  //'#collapsed' => TRUE,
+	  '#collapsed' => TRUE,
 	  //FIXME, RECOLLAPSE
-	  '#collapsed' => FALSE,
+	  //'#collapsed' => FALSE,
 	  '#weight' => 0,
 	  );
 
@@ -532,19 +532,23 @@ function mnn_qnap_show_file_match_json() {
     }
   }
   if ($exact_matches) {
-    $data = array(0=>'- Select -') + array('exact' => 'Exact Match:') +
-      $exact_matches + array('project' => 'Project Matches:') +
-      $project_matches + array('orphan' => 'Unmatched Files:') + $orphans;
+    $data = array(0=>'- Select -') + array('exact' => '----EXACT MATCH----') +
+      $exact_matches + array('project' => '----PROJECT MATCHES----') +
+      $project_matches + array('orphan' => '----UNMATCHED FILES----') + $orphans;
   }
   else if ($project_matches) {
-    $data = array(0=>'- Select -') + array('project' => 'Project Matches:') +
-      $project_matches + array('orphan' => 'Unmatched Files:') + $orphans;
+    $data = array(0=>'- Select -') + array('project' => '----Project Matches----') +
+      $project_matches + array('orphan' => '----Unmatched Files----') + $orphans;
   }
   else {
     $data = array(0=>'- Select -') + $orphans;
   }
-
-  drupal_json_output($data);
+  $ret = array();
+  foreach ($data as $k=>$v) {
+    $ret[] = array('id'=>$k, 'label'=>$v);
+  }
+  
+  drupal_json_output($ret);
   drupal_exit();
 
 }
@@ -669,6 +673,31 @@ function mnn_qnap_show_write_to_db($file_data) {
     $args[$index] = $file_data[$field];
   }
   db_query($sql, $args);
+}
+/**
+ * function gets a row in the mnn_qnap_show table by its xid
+ */
+function mnn_qnap_show_get_record($xid) {
+  $ret = array();
+  $sql = "SELECT * from mnn_qnap_show where xid = :xid";
+  $result = db_query($sql, array(':xid' => $xid))->fetchObject();
+  if ($result) {
+    $fields = mnn_qnap_show_get_fields();
+    foreach ($fields as $field) {
+      $ret[$field] = $result->{$field};
+    }
+  }
+  return $ret;
+}
+
+/**
+ * FUNCTION IS PASSED AN ARRY OF RECORDS, WILL UPDATE mnn_qnap_show TABLE
+ * AND UPDATE THE SHOW IF THE $update_show PARAMETER IS SET
+ */
+function mnn_qnap_write_records($records, $update_show = FALSE) {
+
+  dsm($records, 'yo!');
+
 }
 /**
  * FUNCTION LOOKS AT QNAP FOR SHOW METADATA FILES, FILLS UP ARRAYS FOR
