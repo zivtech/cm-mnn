@@ -36,7 +36,7 @@ function mnn_qnap_show_menu() {
 function mnn_qnap_show_form($form, &$form_state) {
   $file_search = filter_input(INPUT_GET, 'filename');
   $status = filter_input(INPUT_GET, 'status');
-  $mode = filter_input(INPUT_GET, 'status');
+  $project_nid = filter_input(INPUT_GET, 'project_nid');
     
   $form['mnn_qnap_show_filters'] =
     array(
@@ -62,10 +62,23 @@ function mnn_qnap_show_form($form, &$form_state) {
 	  '#default_value' => $status,
 	  );
 
+  $form['mnn_qnap_show_filters']['mnn_qnap_show_project_nid'] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Project ID'),
+	  '#default_value' => $project_nid,
+	  );
+
   $form['mnn_qnap_show_filters']['mnn_qnap_show_submit'] =
     array(
 	  '#type' => 'submit',
 	  '#value' => t('Filter Report'),
+	  );
+
+  $form['mnn_qnap_show_filters']['mnn_qnap_show_reload'] =
+    array(
+	  '#type' => 'submit',
+	  '#value' => t('Load New Files'),
 	  );
 
 
@@ -210,13 +223,18 @@ function mnn_qnap_show_form_submit($form, &$form_state) {
   else if ($clicked_button == 'Update Selected Queued Shows') {
     mnn_qnap_show_form_submit_update_queued($form, $form_state);
   }
+  else if ($clicked_button == 'Load New Files') {
+    mnn_qnap_load_data();
+  }
 
   $file_search = $form_state['values']['mnn_qnap_show_filename'];
   $status = $form_state['values']['mnn_qnap_show_status'];
+  $project_nid = $form_state['values']['mnn_qnap_show_project_nid'];
   
   drupal_goto("admin/reports/qnap/xml_report",
 	      array('query'=>array('filename' => $file_search,
-				   'status' => $status)));
+				   'status' => $status,
+				   'project_nid' => $project_nid)));
 
 }
 
@@ -298,9 +316,10 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
   $skips = array('airing_id', 'uid', 'airdate', 'multiple_shows',
 		 'neighborhood', 'theme');
   $statics = array('xid', 'filename', 'status', 'file_contents');
-
+  $fields = array(-1 => 'Ignore') + $fields;
   $header_count = count($fields) - count($skips);
   $header_counter = 0;
+
   foreach ($fields as $field) {
     if (in_array($field, $skips)) {
       continue;
@@ -331,6 +350,8 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
   $row_counter = 0;  
   foreach($rows as $filename => $row) {
     $row_counter ++;
+    $ignore_value = $row['ignore'] ? "Ignored" : "";
+    $row = array('ignore' => $ignore_value) + $row;
     $cell_count = count($row) - count($skips);
     $cell_counter = 0;
     foreach($row as $field => $value) {
@@ -356,13 +377,42 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
       else {
 	$suffix = "</td>";
       }
+      $current_node = NULL;
+      if ($value && strpos($field, '_nid') > 0) {
+	$current_node = node_load($value);
+	if ($current_node) {
+	  if ($current_node->type == 'cm_show') {
+	    $episode_number = 
+	      mnn_qnap_show_get_single_field_value($current_node,
+						   'field_episode_number',
+						   'value');
+	    $link = l("Current Show Ep# $episode_number", 'node/' . $value); 
 
+	  }
+	  else if ($current_node->type == 'cm_project') {
+	    $link = l("Current Project: $value", 'node/' . $value); 
+
+	  }
+	  $current_node->field_description = $link;
+	}
+      }
       if (in_array($field, $statics)) {
 	$form['mnn_qnap_show_edit'][$element_name] =
 	  array('#markup' => htmlspecialchars($value));
       }
       else {
-	if ($row['project_nid'] && $field =='show_nid'){
+	if ($field == 'ignore') {
+	  $default_value = $row['status'] == MNN_QNAP_SHOW_IGNORE ?
+	    1 : 0;
+	  $form['mnn_qnap_show_edit'][$element_name] =
+	    array(
+		  '#type' => 'radio',
+		  '#title' => 'Ignore?',
+		  '#default_value' => $default_value,
+		  );
+
+	}
+	else if ($row['project_nid'] && $field =='show_nid'){
 	  $default_value = $row['show_nid'];
 	  if ($row['multiple_shows']) {
 	    $options = unserialize($row['multiple_shows']);
@@ -381,7 +431,10 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 		  '#options' => $options,
 		  '#default_value' => $default_value,
 		  );
-
+	  if ($value && $current_node) {
+	    $form['mnn_qnap_show_edit'][$element_name]['#description'] =
+	      $current_node->field_description;
+	  }
 	}
 	else if ($field == 'neighborhood_tid' ||
 		 $field == 'theme_tid') {
@@ -407,6 +460,7 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	    
 
 	}
+	//SHOW FORM ELEMENT
 	else {
 	  $form['mnn_qnap_show_edit'][$element_name] =
 	    array(
@@ -417,6 +471,10 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	  if ($field == 'project_nid') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
 	      'Project ID (numbers only)';
+	    if ($value && $current_node) {
+	      $form['mnn_qnap_show_edit'][$element_name]['#description'] =
+		$current_node->field_description;
+	    }
 	  }
 	  else if ($field == 'show_nid') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
@@ -430,6 +488,10 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 
 	      $form['mnn_qnap_show_edit'][$element_name]['#default_value'] =
 		$episode_number;
+	      if ($value && $current_node) {
+		$form['mnn_qnap_show_edit'][$element_name]['#description'] =
+		  $current_node->field_description;
+	      }
 	    }
 	    $form['mnn_qnap_show_edit'][$element_name."_epnum"] =
 	      array(
@@ -447,14 +509,14 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	    $form['mnn_qnap_show_edit'][$element_name]['#size'] = 40;
 	      
 	    $form['mnn_qnap_show_edit'][$element_name]['#maxlength'] = 1000;
-	  }
-	  
+	  }	  
 	}
       }
       $form['mnn_qnap_show_edit'][$element_name]['#prefix'] = $prefix;
       $form['mnn_qnap_show_edit'][$element_name]['#suffix'] = $suffix;
     }
   }
+
   $form['mnn_qnap_show_edit']['mnn_qnap_edit_submit2'] =
     array(
 	  '#prefix' => '<br/>',
@@ -470,6 +532,7 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 function mnn_qnap_show_view_table_element(&$rows, &$header) {
   $file_search = filter_input(INPUT_GET, 'filename');
   $status = filter_input(INPUT_GET, 'status');
+  $project_nid = filter_input(INPUT_GET, 'project_nid');
   
   $select = db_select('mnn_qnap_show', 's')
     ->extend('PagerDefault')
@@ -482,13 +545,16 @@ function mnn_qnap_show_view_table_element(&$rows, &$header) {
       array('data' => $field, 'field' => $field, 'sort' => 'ASC');
   }
 
-  $select->fields('s', $fields)->limit(100)->orderByHeader($header);
+  $select->fields('s', $fields)->limit(30)->orderByHeader($header);
 
   if ($file_search) {
     $select->condition('filename', '%' . db_like($file_search) . '%', 'LIKE'); 
   }
   if ($status) {
     $select->condition('status', $status); 
+  }
+  if ($project_nid) {
+    $select->condition('project_nid', $project_nid); 
   }
 
   $results = $select->execute();
@@ -497,7 +563,8 @@ function mnn_qnap_show_view_table_element(&$rows, &$header) {
     $row = array();
     
     foreach ($fields as $field) {
-      $row[$field] = $result->{$field};
+      $value = $result->{$field};
+      $row[$field] = $value;
     }
     $rows[$result->filename] = $row;
   }
