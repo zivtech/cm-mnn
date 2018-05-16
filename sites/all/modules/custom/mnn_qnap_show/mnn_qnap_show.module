@@ -435,6 +435,11 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	    $form['mnn_qnap_show_edit'][$element_name]['#description'] =
 	      $current_node->field_description;
 	  }
+	  else {
+	    $form['mnn_qnap_show_edit'][$element_name]['#description'] =
+	      l("Add Show", "node/add/cm-show",
+		array('query'=>array('gid'=> $row['project_nid'])));
+	  }
 	}
 	else if ($field == 'neighborhood_tid' ||
 		 $field == 'theme_tid') {
@@ -475,6 +480,11 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	      $form['mnn_qnap_show_edit'][$element_name]['#description'] =
 		$current_node->field_description;
 	    }
+	    else {
+	      $form['mnn_qnap_show_edit'][$element_name]['#description'] =
+		l("Add Show", "node/add/cm-show",
+		  array('query'=>array('gid'=> $row['project_nid'])));
+	    }
 	  }
 	  else if ($field == 'show_nid') {
 	    $form['mnn_qnap_show_edit'][$element_name]['#title'] =
@@ -491,6 +501,11 @@ function mnn_qnap_show_edit_table_element(&$form, $rows) {
 	      if ($value && $current_node) {
 		$form['mnn_qnap_show_edit'][$element_name]['#description'] =
 		  $current_node->field_description;
+	      }
+	      else {
+		$form['mnn_qnap_show_edit'][$element_name]['#description'] =
+		  l("Add Show", "node/add/cm-show",
+		    array('query'=>array('gid'=> $row['project_nid'])));
 	      }
 	    }
 	    $form['mnn_qnap_show_edit'][$element_name."_epnum"] =
