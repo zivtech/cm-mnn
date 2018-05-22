@@ -355,7 +355,7 @@ function mnn_internet_archive_file_status_value($file) {
       $episode_number = $parts[1];
     }
     
-    if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+    if (ctype_digit($project_id)) {
       $project = node_load($project_id);
       if ($project) {
 	$field = 'field_internet_archive_opt_in';
