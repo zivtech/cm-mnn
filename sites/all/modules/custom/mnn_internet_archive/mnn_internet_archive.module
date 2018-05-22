@@ -239,7 +239,7 @@ function mnn_internet_archive_internet_archive_process_remote($files){
       $project_id = $parts[0];
       $episode_number = $parts[1];
     }
-    
+    $episode_number = str_replace('.HD', '', $episode_number);
     if (ctype_digit($project_id) && ctype_digit($episode_number)) {
 
       $project = node_load($project_id);
