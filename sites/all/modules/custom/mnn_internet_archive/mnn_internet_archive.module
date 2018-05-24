@@ -239,7 +239,7 @@ function mnn_internet_archive_internet_archive_process_remote($files){
       $project_id = $parts[0];
       $episode_number = $parts[1];
     }
-    
+    $episode_number = str_replace('.HD', '', $episode_number);
     if (ctype_digit($project_id) && ctype_digit($episode_number)) {
 
       $project = node_load($project_id);
@@ -294,12 +294,13 @@ function mnn_internet_archive_file_status_value($file) {
     
   $statuses = array(
 		    "error" => 1,
-		    "missing" => 2,
+		    "no-project" => 2,
 		    "failed" => 3,
 		    "ineligible" => 4,
-		    "initial" => 5,
-		    "queued" => 6,
-		    "uploaded" => 7,
+		    "bad-file-name" => 5,
+		    "initial" => 6,
+		    "queued" => 7,
+		    "uploaded" => 8,
 		    );
     
   foreach($statuses as $test_status=>$key) {
@@ -340,11 +341,13 @@ function mnn_internet_archive_file_status_value($file) {
       $return_status = 'queued';
     }
   }
-  
+
+  //WE DON'T HAVE ANY ARCHIVE RECORD YET
   if (!$return_status) {
     $no_extension = pathinfo($file, PATHINFO_FILENAME);
+    $no_extension = str_replace('.HD', '', $no_extension);
     $parts = explode('_', $no_extension);
-    
+
     if ($parts[0] == 'mnn') {
       $project_id = $parts[1];
       $episode_number = $parts[2];
@@ -353,32 +356,31 @@ function mnn_internet_archive_file_status_value($file) {
       $project_id = $parts[0];
       $episode_number = $parts[1];
     }
-    
-    if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+    if (!ctype_digit($episode_number)) {
+      $return_status = 'bad-file-name';
+    }
+    else if (ctype_digit($project_id)) {
       $project = node_load($project_id);
-      $field = 'field_internet_archive_opt_in';
-      $opt_in = mnn_internet_archive_get_single_field_value($project, $field);
-      $show_nid =
-	mnn_show_get_existing_show_for_episode_number($project_id,
-						      NULL,
-						      $episode_number);
-      
-      if ($show_nid) {
-	$show = node_load($show_nid);
+      if ($project) {
+	$field = 'field_internet_archive_opt_in';
+	$opt_in =mnn_internet_archive_get_single_field_value($project, $field);
+	//we have a project and we aren't opting in
+	if ($opt_in != 1) {
+	  $return_status = 'ineligible';
+	}
+	//we have a project, so just waiting for either the show to be created
+	//or waiting for the show's file to be harvested
+	else {
+	  $return_status = 'initial';
+	}
       }
-      if ($opt_in != 1) {
-	$return_status = 'ineligible';
-      }
-      else if (!$show || !$project) {
-	$return_status = 'missing';
-      }
-      else {
-	$return_status = 'initial';
-      }
+    }
+    else {
+      $return_status = 'bad-file-name';
     }
   }
   if (!$return_status) {
-    $return_status = 'missing';
+    $return_status = 'no-project';
   }
 
   return $statuses[$return_status];
