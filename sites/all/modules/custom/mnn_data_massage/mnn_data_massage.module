@@ -71,6 +71,7 @@ function mnn_data_massage_page($function) {
 		     //"prune_replication_history",
 		     //"create_archive_shows",
 		     "update_premiere_date_and_channels",
+		     "update_class_titles",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3591,6 +3592,72 @@ function mnn_data_massage_update_premiere_date_and_channels() {
   
   $end = strtotime('now');
   dsm("took " . mnn_data_massage_hms($end-$start));
+}
+function mnn_data_massage_update_class_titles() {
+  $start = strtotime('now');
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+
+  $sql =
+    "SELECT nid from node ".
+    "WHERE type='civicrm_multiday_event' ".
+    "ORDER BY nid desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($sql, 'sql');
+  $count = 0;
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $end = strtotime('now');
+    //dsm("loop start " . mnn_data_massage_hms($end-$start));
+    
+    $node = node_load($result->nid);
+    //drupal_set_message(l($node->title, "node/".$node->nid));
+    $title1 = $node->title;
+    //reset title to pattern... need template
+    $template_event_id =
+      $node->field_civievent_template[LANGUAGE_NONE][0]['value'];
+    $template_params = civicrm_multiday_event_lookup($template_event_id, 1);
+    
+    if ($title_start != $title_end) {
+      $date = ' - ' . $title_start . ' to ' . $title_end;
+    } else {
+      if (isset($title_start)) {
+	$date = ' - ' . $title_start;
+      } else {
+	$date = ' - ' . t('MISSING START DATE');
+      }
+    }
+    
+    // FOR MNN: custom for MNN, remove the date from the title
+    // templates don't have to include a title so use the
+    // template title if there is no title
+    if (isset($template_params['title'])) {
+      $node->title = $template_params['title']; //. $date;
+    }
+    else {
+      //$node->title = $template_params['template_title'] . $date;
+      $node->title = $template_params['title'];
+      //$params['title'] = $template_params['template_title'] . $date;
+      $params['title'] = $template_params['title'];
+    }
+    $title2 = $node->title;
+    if (!$title2) {
+      drupal_set_message(l($node->title, "node/".$node->nid));
+    }
+    else if ($title1 != $title2) {
+      $count ++;
+      //dsm($node->title, 'titel 2');
+      //dsm("--------------------------------------");
+      $sql = "UPDATE node set title = :title WHERE nid=:nid";
+      $args = array(":title"=>$node->title, ":nid"=>$node->nid);
+      db_query($sql, $args);
+      $sql = "UPDATE node_revision set title = :title WHERE nid=:nid";
+      db_query($sql, $args);
+    }
+  }
+  
+  $end = strtotime('now');
+  dsm("took " . mnn_data_massage_hms($end-$start) . " to process $count");
 }
 function mnn_data_massage_hms($seconds) {
     $hours = floor($seconds / 3600);
