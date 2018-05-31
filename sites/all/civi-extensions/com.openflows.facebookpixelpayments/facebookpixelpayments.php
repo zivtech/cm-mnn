@@ -9,17 +9,32 @@ use CRM_Facebookpixelpayments_ExtensionUtil as E;
  */
 function facebookpixelpayments_civicrm_buildForm($formName, &$form) {
 #add a script to the page if it is an event registration page
+    $templatePath = realpath(dirname(__FILE__)."/templates");
+
   if($formName == 'CRM_Event_Form_Registration_Register') { 
-   CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_start.js');
+ //  CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_start.js');
+    // dynamically insert a template block in the page
+    CRM_Core_Region::instance('html-header')->add(array(
+      'template' => "{$templatePath}/facebook_pixel_reg_start.tpl"
+     ));
   }
 #add a script to the page if it the payment/confirmation page
   if($formName == 'CRM_Event_Form_Registration_Confirm') { 
-    CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_checkout.js');
+//    CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_checkout.js');
+        // dynamically insert a template block in the page
+    CRM_Core_Region::instance('html-header')->add(array(
+      'template' => "{$templatePath}/facebook_pixel_reg_checkout.tpl"
+     ));
   }  
   
 #add a script to the page if it is an event registration complete/thank you page
   if($formName == 'CRM_Event_Form_Registration_ThankYou') {
     CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_complete.js');
+            // dynamically insert a template block in the page
+    CRM_Core_Region::instance('html-header')->add(array(
+      'template' => "{$templatePath}/facebook_pixel_reg_complete.tpl"
+     ));
+    
   }
   
 
