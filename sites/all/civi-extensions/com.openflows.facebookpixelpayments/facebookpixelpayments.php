@@ -14,7 +14,7 @@ function facebookpixelpayments_civicrm_buildForm($formName, &$form) {
   if($formName == 'CRM_Event_Form_Registration_Register') { 
  //  CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_start.js');
     // dynamically insert a template block in the page
-    CRM_Core_Region::instance('page-body')->add(array(
+    CRM_Core_Region::instance('html-header')->add(array(
       'template' => "{$templatePath}/facebook_pixel_reg_start.tpl"
      ));
   }
@@ -22,7 +22,7 @@ function facebookpixelpayments_civicrm_buildForm($formName, &$form) {
   if($formName == 'CRM_Event_Form_Registration_Confirm') { 
 //    CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_checkout.js');
         // dynamically insert a template block in the page
-    CRM_Core_Region::instance('page-body')->add(array(
+    CRM_Core_Region::instance('html-header')->add(array(
       'template' => "{$templatePath}/facebook_pixel_reg_checkout.tpl"
      ));
   }  
@@ -31,7 +31,7 @@ function facebookpixelpayments_civicrm_buildForm($formName, &$form) {
   if($formName == 'CRM_Event_Form_Registration_ThankYou') {
     CRM_Core_Resources::singleton()->addScriptFile('com.openflows.facebookpixelpayments', 'facebook_pixel_reg_complete.js');
             // dynamically insert a template block in the page
-    CRM_Core_Region::instance('page-body')->add(array(
+    CRM_Core_Region::instance('html-header')->add(array(
       'template' => "{$templatePath}/facebook_pixel_reg_complete.tpl"
      ));
     
