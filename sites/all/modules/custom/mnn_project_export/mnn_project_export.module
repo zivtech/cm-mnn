@@ -70,6 +70,7 @@ function mnn_project_export_show_page() {
 
   $hash = md5(json_encode($filters + array('page' => $page)));
   $cache_id = 'mnn_project_export:shows:' . $hash;
+  $cache = cache_get($cache_id, 'cache');
   if (empty($cache) || $cache->expire < REQUEST_TIME) {
     $shows = mnn_project_export_get_shows($filters);
     $data = array(
@@ -272,6 +273,8 @@ function mnn_project_export_get_shows_query($filters) {
   foreach (array(
     'field_episode_number',
     'field_short_description',
+    'field_show_channels',
+    'field_show_premiere_date',
   ) as $field_name) {
     $field = field_info_field($field_name);
     $table_name = 'field_data_' . $field_name;
@@ -285,6 +288,8 @@ function mnn_project_export_get_shows_query($filters) {
     'field_pbcore_languages',
     'field_pbcore_genres',
     'field_pbcore_fcc_ratings',
+    'field_show_neighborhood',
+    'field_show_theme',
   ) as $field_name) {
     $table_name = 'field_data_' . $field_name;
     $term_table_name = $field_name . '_terms';
@@ -322,6 +327,7 @@ function mnn_project_export_get_shows_query($filters) {
     ->condition('ogm.entity_type', 'node')
     ->condition('ogm.field_name', 'og_node2')
     ->condition('arch.field_name', array('field_internet_archive_remote', 'field_internet_archive_local'), 'IN')
+    ->condition('field_show_premiere_date.field_show_premiere_date_value', gmdate('Y-m-d h:i:s'), '<')
     ->isNotNull('arch.item')
     ->condition('tos.field_internet_archive_tos_value', 1);
   return $query;
