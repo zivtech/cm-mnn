@@ -275,6 +275,7 @@ function mnn_project_export_get_shows_query($filters) {
     'field_short_description',
     'field_show_channels',
     'field_show_premiere_date',
+    'field_show_public_title',
   ) as $field_name) {
     $field = field_info_field($field_name);
     $table_name = 'field_data_' . $field_name;
