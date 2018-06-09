@@ -701,16 +701,16 @@ function mnn_qnap_show_file_match_json() {
 
 }
 function mnn_qnap_show_cron() {
-  //FIXME REMOVE WHEN CRON IS READY
-  return;
   mnn_qnap_load_data();
   mnn_qnap_process_queued();
 }
 
 function mnn_qnap_process_queued() {
+  dsm('processsing queued');
   $records = array();
   $fields = mnn_qnap_show_get_fields();
-  $sql = "SELECT * FROM  {mnn_qnap_show} WHERE status=".MNN_QNAP_SHOW_QUEUED;
+  $sql = "SELECT * FROM  {mnn_qnap_show} WHERE status= '".
+    MNN_QNAP_SHOW_QUEUED."'";
   $results = db_query($sql);
   while($result = $results->fetchObject()) {
     $record = array();
@@ -829,12 +829,11 @@ function mnn_qnap_write_records($records, $update_show = FALSE) {
 	$show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
 	  $show->field_short_description[LANGUAGE_NONE][0]['value'];
 	$show->field_short_description[LANGUAGE_NONE][0]['value'] =
-	  $record['short_description'];
+	  substr($record['short_description'], 0, 240);
       }
       $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
       $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
 	$record['file_contents'];
-
       field_attach_update('node', $show);
       drupal_set_message("Updated Show: ".l($show->title, 'node/'.$show->nid));
       $record['status'] = MNN_QNAP_SHOW_COMPLETED;
