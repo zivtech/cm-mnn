@@ -826,8 +826,6 @@ function mnn_qnap_write_records($records, $update_show = FALSE) {
 	  $record['theme_tid'];
       }
       if ($record['short_description']) {
-	$show->field_qnap_original_description[LANGUAGE_NONE][0]['value'] =
-	  $show->field_short_description[LANGUAGE_NONE][0]['value'];
 	$show->field_short_description[LANGUAGE_NONE][0]['value'] =
 	  substr($record['short_description'], 0, 240);
       }
