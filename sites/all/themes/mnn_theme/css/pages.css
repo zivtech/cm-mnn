@@ -1284,3 +1284,41 @@ table td[class*=col-], table th[class*=col-] {
 #content .field-name-field-addthis a img {
   visibility: hidden;
 }
+
+.crm-container div.form-item {
+  clear: both;
+}
+.crm-container .crm-section {
+  clear: both;
+}
+.crm-container .crm-section .label {
+  float: none;
+  text-align: start;
+  width: auto;
+}
+.crm-container .crm-section .content {
+  margin-left: 0%;
+}
+@media (max-width: 550px) {
+  .crm-container .crm-section .content span.crm-error {
+    display: inline-block;
+  }
+}
+.crm-container .crm-section .description {
+  margin-left: 5%;
+}
+@media (max-width: 460px) {
+  .crm-container .crm-section .huge {
+    width: 100%;
+  }
+}
+
+@media (max-width: 460px) {
+  #rc-imageselect,
+  .g-recaptcha {
+    transform: scale(0.77);
+    -webkit-transform: scale(0.77);
+    transform-origin: 0 0;
+    -webkit-transform-origin: 0 0;
+  }
+}
