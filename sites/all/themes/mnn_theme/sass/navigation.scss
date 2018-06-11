@@ -90,7 +90,9 @@ li a.active {
   @include breakpoint ($breakpoint-resp-menu) {
     height: 85px;
     float: right;
-    width: 65%;
+    #block-google-translator-active-languages {
+      float: none;
+    }
   }
 }
 

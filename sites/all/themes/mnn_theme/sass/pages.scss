@@ -602,3 +602,43 @@ table td[class*=col-],table th[class*=col-]{position:static;float:none;display:t
     }
   }
 }
+
+.crm-container {
+  div.form-item {
+    clear: both;
+  }
+  .crm-section {
+    clear: both;
+    .label {
+      float: none;
+      text-align: start;
+      width: auto;
+    }
+    .content {
+      margin-left: 0%;
+      span.crm-error {
+        @include breakpoint ($breakpoint-resp-menu) {
+          display: inline-block;
+        }
+      }
+    }
+    .description {
+      margin-left: 5%;
+    }
+    .huge {
+      @include breakpoint ($breakpoint-med-small-width) {
+        width: 100%;
+      }
+    }
+  }
+}
+
+@include breakpoint ($breakpoint-med-small-width) {
+  #rc-imageselect,
+  .g-recaptcha {
+    transform: scale(0.77);
+    -webkit-transform:scale(0.77);
+    transform-origin:0 0;
+    -webkit-transform-origin:0 0;
+  }
+}
