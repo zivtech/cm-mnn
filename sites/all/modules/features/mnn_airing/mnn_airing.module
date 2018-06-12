@@ -484,9 +484,11 @@ function mnn_airing_create_conflicts(&$airing){
   return $conflicts;
 }
 
-function mnn_airing_get_shows_for_project_airing($project_id) {
+function mnn_airing_get_shows_for_project_airing($project_id,
+						 $include_premiere = FALSE) {
   $sql = 
-    "SELECT epnum.field_episode_number_value, s.nid as show_nid 
+    "SELECT epnum.field_episode_number_value, s.nid as show_nid,
+     pd.field_show_premiere_date_value as premiere
      FROM node s
      LEFT JOIN og_membership og_membership 
        ON (s.nid = og_membership.etid AND 
@@ -495,6 +497,8 @@ function mnn_airing_get_shows_for_project_airing($project_id) {
        ON og_membership.gid = p.nid
      INNER JOIN field_data_field_episode_number epnum
        ON epnum.revision_id=s.vid
+     LEFT JOIN field_data_field_show_premiere_date pd
+       ON pd.revision_id=epnum.revision_id
      WHERE (p.nid = $project_id )
        AND (s.status = '1') 
        AND (s.type IN  ('cm_show'))
@@ -503,7 +507,11 @@ function mnn_airing_get_shows_for_project_airing($project_id) {
 
   $ret = array(0=>"- Select a value -");
   while ($show = $results->fetchObject()) {
-    $ret[$show->show_nid] = "Episode #".$show->field_episode_number_value;
+    $value = "Episode #".$show->field_episode_number_value;
+    if ($include_premiere && $show->premiere) {
+      $value .= ' ' . date("Y-m-d h:ia", strtotime($show->premiere)) ;
+    }
+    $ret[$show->show_nid] = $value;
   }
   return $ret;
 }
