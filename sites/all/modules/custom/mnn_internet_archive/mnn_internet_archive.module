@@ -180,8 +180,7 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
       }
     }
 
-    $metadata['licenseurl'] =
-      'http://creativecommons.org/licenses/by-nc/3.0/us/';
+    $metadata['licenseurl'] ='https://creativecommons.org/licenses/by-sa/4.0/';
   }
 
   $data = array($metadata);

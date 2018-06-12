@@ -281,6 +281,10 @@ function mnn_qnap_show_form_submit_update_show_data($form, &$form_state) {
 	trim($existing_values[$xid][$field]) : NULL;
       
       if ($field_value != $existing_value) {
+	$changed_rows[$xid] =
+	  (isset($changed_rows[$xid]) && $changed_rows[$xid]) ?
+	  $changed_rows[$xid] : $existing_values[$xid];
+	$changed_rows[$xid][$field] = $field_value;
 	$changed = TRUE;
       }
     }
@@ -290,20 +294,18 @@ function mnn_qnap_show_form_submit_update_show_data($form, &$form_state) {
     }
     else if ((!isset($row['ignore']) || !$row['ignore']) &&
 	$existing_values[$xid]['status'] == MNN_QNAP_SHOW_IGNORE) {
-      dsm('boo');
       $changed = TRUE;
     }
 
     if ($changed) {
-      $changed_rows[$xid] = $existing_values[$xid];
       if (isset($row['ignore']) && $row['ignore']) {
 	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_IGNORE;
       }
-      else if (!$existing_values[$xid]['project_nid']) {
+      else if (!$changed_rows[$xid]['project_nid']) {
 	$changed_rows[$xid]['show_nid'] = NULL;
 	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_MISSING_PROJECT;
       }
-      else if (!$existing_values[$xid]['show_nid']) {
+      else if (!$changed_rows[$xid]['show_nid']) {
 	$changed_rows[$xid]['status'] = MNN_QNAP_SHOW_MISSING_SHOW;
       }
       else {
@@ -330,7 +332,6 @@ function mnn_qnap_show_form_submit_update_show_data($form, &$form_state) {
       }
     }
   }
-  dsm($changed_rows, 'cr');
   mnn_qnap_write_records($changed_rows, TRUE);
 }
 
@@ -706,7 +707,6 @@ function mnn_qnap_show_cron() {
 }
 
 function mnn_qnap_process_queued() {
-  dsm('processsing queued');
   $records = array();
   $fields = mnn_qnap_show_get_fields();
   $sql = "SELECT * FROM  {mnn_qnap_show} WHERE status= '".
@@ -827,7 +827,7 @@ function mnn_qnap_write_records($records, $update_show = FALSE) {
       }
       if ($record['short_description']) {
 	$show->field_short_description[LANGUAGE_NONE][0]['value'] =
-	  substr($record['short_description'], 0, 240);
+	  substr($record['short_description'], 0, 200);
       }
       $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
       $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =

@@ -508,7 +508,7 @@ function mnn_airing_get_shows_for_project_airing($project_id,
   $ret = array(0=>"- Select a value -");
   while ($show = $results->fetchObject()) {
     $value = "Episode #".$show->field_episode_number_value;
-    if ($include_premiere) {
+    if ($include_premiere && $show->premiere) {
       $value .= ' ' . date("Y-m-d h:ia", strtotime($show->premiere)) ;
     }
     $ret[$show->show_nid] = $value;
