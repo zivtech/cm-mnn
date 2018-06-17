@@ -41,11 +41,30 @@ function mnn_internet_archive_admin_form($form, &$form_state) {
  * Implements hook_internet_archive_metadata().
  */
 function mnn_internet_archive_internet_archive_metadata($node = NULL,
-								 $file_name) {
+							$file_name) {
   $metadata = array();
 
-  if ($node) {
-    $metadata['title'] = $node->title;
+  //grab all the cm_show specific metadata fields
+  if ($node && $node->type == 'cm_show') {
+    $public_title =
+      mnn_internet_archive_get_single_field_value($node,
+						  'field_show_public_title');
+
+    $short_description =
+      mnn_internet_archive_get_single_field_value($node,
+						  'field_short_description');
+
+    if ($public_title) {
+      $title = $public_title;
+    }
+    else if ($short_description) {
+      $title = $short_description;
+    }
+    else {
+      $title = $node->title;
+    }
+
+    $metadata['title'] = $title;
     
     if (isset($node->body)) {
       $metadata['description'] = $node->body;
@@ -53,37 +72,31 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
     else {
       $narrative =
 	mnn_internet_archive_get_single_field_value($node,
-							     'field_narrative',
-							     'value');
-
+						    'field_narrative',
+						    'value');
+      
       if ($narrative) {
 	$metadata['description'] = $narrative;
       }
       else {
-	$short_desc =
-	  mnn_internet_archive_get_single_field_value($node,
-							       'field_short_'.
-							       'description',
-							       'value');
 
 	if ($short_desc) {
-	  $metadata['description'] = $short_desc;
+	  $metadata['description'] = $short_description;
 	}
       }
     }
     $metadata['date'] = date("Y-m-d", $node->created);
-  }
 
-  
-
-  //grab all the cm_show specific metadata fields
-  if ($node->type == 'cm_show') {
-
-    //find project
-    $project_id =
+    $premiere_date =
       mnn_internet_archive_get_single_field_value($node,
-							   'og_node2',
-							   'target_id');
+						  'field_show_premiere_date');
+    if ($premiere_date) {
+      $metadata['premiere_date'] = $premiere_date;
+    }
+    //find project
+    $project_id = mnn_internet_archive_get_single_field_value($node,
+							      'og_node2',
+							      'target_id');
     if ($project_id) {
       $project = node_load($project_id);
       $producer =
@@ -92,13 +105,10 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
       $metadata['creator'] = $producer;
       $metadata['project'] = $project->title;
 
-      
       $episode_number =
 	mnn_internet_archive_get_single_field_value($node,
-							     'field_episode_'.
-							     'number',
-							     'value');
-
+						    'field_episode_number',
+						    'value');
       if ($episode_number) {
 	$bucket_name = 'mnn_'. $project_id . '_' . $episode_number;
 	$bucket_name = internet_archive_create_item_name($bucket_name);
@@ -109,9 +119,8 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
 
     $genre_tid =
       mnn_internet_archive_get_single_field_value($node,
-							   'field_pbcore_'.
-							   'genres',
-							   'tid');
+						  'field_pbcore_genres',
+						  'tid');
 
     if ($genre_tid) {
       $genre = taxonomy_term_load($genre_tid);
@@ -126,9 +135,8 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
     
     $fcc_rating_tid =
       mnn_internet_archive_get_single_field_value($node,
-							   'field_pbcore_'.
-							   'fcc_ratings',
-							   'tid');
+						  'field_pbcore_fcc_ratings',
+						  'tid');
 
     if ($fcc_rating_tid) {
       $fcc_rating = taxonomy_term_load($fcc_rating_tid);
@@ -139,9 +147,8 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
 
     $language_tid =
       mnn_internet_archive_get_single_field_value($node,
-							   'field_pbcore_'.
-							   'languages',
-							   'tid');
+						  'field_pbcore_languages',
+						  'tid');
 
     if ($language_tid) {
       $language = taxonomy_term_load($language_tid);
@@ -150,6 +157,30 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
       }
     }
 
+    $neighborhood_tid =
+      mnn_internet_archive_get_single_field_value($node,
+						  'field_show_neighborhood',
+						  'tid');
+    
+    if ($neighborhood_tid) {
+      $neighborhood = taxonomy_term_load($neighborhood_tid);
+      if ($neighborhood) {
+	$metadata['neighborhood'] = $neighborhood->name;
+      }
+    }
+
+    $theme_tid =mnn_internet_archive_get_single_field_value($node,
+							    'field_show_theme',
+							    'tid');
+
+    if ($theme_tid) {
+      $theme = taxonomy_term_load($theme_tid);
+      if ($theme) {
+	$metadata['theme'] = $theme->name;
+      }
+    }
+
+    $metadata['licenseurl'] ='https://creativecommons.org/licenses/by-sa/4.0/';
   }
 
   $data = array($metadata);

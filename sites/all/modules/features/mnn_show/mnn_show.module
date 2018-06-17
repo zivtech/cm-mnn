@@ -282,7 +282,7 @@ function mnn_show_node_insert($node) {
 	$record['status'] = MNN_QNAP_SHOW_QUEUED;
 	$record['uid'] = $user->uid;
 
-	mnn_qnap_write_records(array($xid=>$record));
+	mnn_qnap_write_records(array($xid=>$record), TRUE);
       }
     }
   }
