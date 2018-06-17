@@ -70,8 +70,9 @@ function mnn_data_massage_page($function) {
 		     //"delete_program_import_shows_and_airings",
 		     //"prune_replication_history",
 		     //"create_archive_shows",
-		     "update_premiere_date_and_channels",
-		     "update_class_titles",
+		     //"update_premiere_date_and_channels",
+		     //"update_class_titles",
+		     "update_class_short_date",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3659,6 +3660,26 @@ function mnn_data_massage_update_class_titles() {
   $end = strtotime('now');
   dsm("took " . mnn_data_massage_hms($end-$start) . " to process $count");
 }
+
+function mnn_data_massage_update_class_short_date() {
+ $start = strtotime('now');
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+
+  $sql =
+    "SELECT nid from node ".
+    "WHERE type='civicrm_multiday_event' ".
+    "ORDER BY nid desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($sql, 'sql');
+  $count = 0;
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $node = node_load($result->nid);
+    field_attach_update('node', $node);
+  }
+}
+
 function mnn_data_massage_hms($seconds) {
     $hours = floor($seconds / 3600);
     $minutes = floor(($seconds / 60) % 60);
