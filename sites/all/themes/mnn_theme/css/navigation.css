@@ -181,7 +181,9 @@ li a.active {
   .region-navigation {
     height: 85px;
     float: right;
-    width: 65%;
+  }
+  .region-navigation #block-google-translator-active-languages {
+    float: none;
   }
 }
 
