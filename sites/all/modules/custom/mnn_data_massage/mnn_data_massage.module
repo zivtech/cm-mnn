@@ -72,6 +72,7 @@ function mnn_data_massage_page($function) {
 		     //"create_archive_shows",
 		     //"update_premiere_date_and_channels",
 		     //"update_class_titles",
+		     "update_class_titles2",
 		     "update_class_short_date",
 		     );
   $ret = "";
@@ -3594,6 +3595,30 @@ function mnn_data_massage_update_premiere_date_and_channels() {
   $end = strtotime('now');
   dsm("took " . mnn_data_massage_hms($end-$start));
 }
+
+function mnn_data_massage_update_class_titles2() {
+  $start = strtotime('now');
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+
+  $sql =
+    "SELECT nid from node ".
+    "WHERE type='civicrm_multiday_event' ".
+    "ORDER BY nid desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($sql, 'sql');
+  $count = 0;
+  $results = db_query($sql);
+
+  while ($result = $results->fetchObject()) {
+    $node = node_load($result->nid);
+    global $civicrm_multiday_event_cached_title;
+    $civicrm_multiday_event_cached_title = null;
+    node_save($node);
+
+  }
+
+}
+
 function mnn_data_massage_update_class_titles() {
   $start = strtotime('now');
   $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
