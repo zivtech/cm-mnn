@@ -663,6 +663,9 @@ function mnn_qnap_show_file_match_json() {
     $orphans = $project_matches = $exact_matches = array();
     $results = db_query($sql, $args);
     while ($result = $results->fetchObject()) {
+      if (!$result->filename) {
+	continue;
+      }
       if ($result->airdate == $airdate) {
 	$exact_matches[$result->xid] = $result->filename;
       }
@@ -674,6 +677,8 @@ function mnn_qnap_show_file_match_json() {
       }
     }
   }
+  asort($orphans);
+  asort($project_matches);
   if ($exact_matches) {
     $data =
       array(0=>'- Select -') +
@@ -696,7 +701,7 @@ function mnn_qnap_show_file_match_json() {
   foreach ($data as $k=>$v) {
     $ret[] = array('id'=>$k, 'label'=>$v);
   }
-  
+
   drupal_json_output($ret);
   drupal_exit();
 
@@ -809,10 +814,12 @@ function mnn_qnap_show_get_record($xid) {
  * FUNCTION IS PASSED AN ARRY OF RECORDS, WILL UPDATE mnn_qnap_show TABLE
  * AND UPDATE THE SHOW IF THE $update_show PARAMETER IS SET
  */
-function mnn_qnap_write_records($records, $update_show = FALSE) {
+function mnn_qnap_write_records($records, $update_show = FALSE, $show = NULL) {
   foreach ($records as $xid => $record) {
     if ($update_show && $record['status'] == MNN_QNAP_SHOW_QUEUED) {
-      $show = node_load($record['show_nid']);
+      if (!$show) {
+	$show = node_load($record['show_nid']);
+      }
       if ($record['title']) {
 	$show->field_show_public_title[LANGUAGE_NONE][0]['value'] =
 	  $record['title'];
