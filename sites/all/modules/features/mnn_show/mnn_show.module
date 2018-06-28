@@ -209,8 +209,10 @@ function mnn_show_og_node2_callback($form, $form_state) {
 function mnn_show_node_presave($node) {
   if ($node->type=='cm_show') {
     //SET THE TITLE
-    $short_description = $node->field_short_description ?
-      $node->field_short_description[LANGUAGE_NONE][0]['value'] : "";
+    //FIXME USE PUBLIC TITLE INSTEAD)
+    $public_title = mnn_show_get_single_field_value($node,
+						    'field_show_public_title',
+						    'value');
     $episode_number = $node->field_episode_number ?
       $node->field_episode_number[LANGUAGE_NONE][0]['value'] : "";
     $project_id = $node->{MNN_PROJECT_OG_FIELD_FOR_SHOW} ?
@@ -218,8 +220,8 @@ function mnn_show_node_presave($node) {
     $project = node_load($project_id);
     $project_title = $project->title;
 
-    $node->title = ($short_description) ? 
-      $project->title." Episode ".$episode_number.": ".$short_description :
+    $node->title = ($public_title) ? 
+      $project->title." Episode ".$episode_number.": ".$public_title :
       $project->title." Episode ".$episode_number;
 
     $node->title = substr($node->title, 0, 254);
@@ -282,7 +284,7 @@ function mnn_show_node_insert($node) {
 	$record['status'] = MNN_QNAP_SHOW_QUEUED;
 	$record['uid'] = $user->uid;
 
-	mnn_qnap_write_records(array($xid=>$record), TRUE);
+	mnn_qnap_write_records(array($xid=>$record), TRUE, $node);
       }
     }
   }
