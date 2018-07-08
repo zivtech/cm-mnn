@@ -3742,10 +3742,8 @@ function mnn_data_massage_reload_short_description() {
   while ($result = $results->fetchObject()) {
     $node = node_load($result->entity_id);
     if($node) {
-      dsm($node, 'n1');
       $node->field_short_description[LANGUAGE_NONE][0]['value'] =
 	$node->field_short_description_backup[LANGUAGE_NONE][0]['value'];
-      dsm($node, 'n2');
       field_attach_update('node', $node);
     }
   }
