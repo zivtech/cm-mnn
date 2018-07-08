@@ -834,7 +834,7 @@ function mnn_qnap_write_records($records, $update_show = FALSE, $show = NULL) {
       }
       if ($record['short_description']) {
 	$show->field_short_description[LANGUAGE_NONE][0]['value'] =
-	  substr($record['short_description'], 0, 200);
+	  $record['short_description'];
       }
       $show->field_qnap_updated_[LANGUAGE_NONE][0]['value'] = 1;
       $show->field_qnap_file_contents[LANGUAGE_NONE][0]['value'] =
