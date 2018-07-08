@@ -73,7 +73,9 @@ function mnn_data_massage_page($function) {
 		     //"update_premiere_date_and_channels",
 		     //"update_class_titles",
 		     "update_class_titles2",
-		     "update_class_short_date",
+		     //"update_class_short_date",
+		     "backup_short_description",
+		     "reload_short_description",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -3705,6 +3707,48 @@ function mnn_data_massage_update_class_short_date() {
   }
 }
 
+function mnn_data_massage_backup_short_description() {
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+  $sql = "SELECT entity_id FROM field_data_field_short_description " .
+    "ORDER BY entity_id desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($sql, 'sql');
+  
+  $results = db_query($sql);
+
+  
+  while ($result = $results->fetchObject()) {
+    $node = node_load($result->entity_id);
+    if($node) {
+      $node->field_short_description_backup[LANGUAGE_NONE]
+	[0]['value'] =
+	$node->field_short_description[LANGUAGE_NONE][0]['value'] ;
+      field_attach_update('node', $node);
+    }
+  }
+  
+}
+
+function mnn_data_massage_reload_short_description() {
+  $num = filter_input(INPUT_GET, 'num') ? filter_input(INPUT_GET, 'num') : 1;
+  $sql = "SELECT entity_id FROM field_data_field_short_description_backup " .
+    "ORDER BY entity_id desc LIMIT $num";
+  dsm($num, 'num');
+  dsm($sql, 'sql');
+  
+  $results = db_query($sql);
+
+  
+  while ($result = $results->fetchObject()) {
+    $node = node_load($result->entity_id);
+    if($node) {
+      $node->field_short_description[LANGUAGE_NONE][0]['value'] =
+	$node->field_short_description_backup[LANGUAGE_NONE][0]['value'];
+      field_attach_update('node', $node);
+    }
+  }
+  
+}
 function mnn_data_massage_hms($seconds) {
     $hours = floor($seconds / 3600);
     $minutes = floor(($seconds / 60) % 60);
