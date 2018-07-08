@@ -100,6 +100,9 @@ function cm_crew_connect_role_position_mapping() {
 				"studios_cg_operator",
 				"studios_director",
         "studios_general_prod_asst",
+    ),
+    'OAEX' => array(
+			   "express_studios_general",
     ),            
 	       );
   return $ret;
