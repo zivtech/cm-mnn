@@ -5,3 +5,102 @@
  */
 
 include_once('mnn_inventory_search.features.inc');
+
+function mnn_inventory_search_action_info() {
+  return array(
+	       'mnn_inventory_search_update_action' =>
+	       array(
+		     'type' => 'node',
+		     'label' => t('Update Inventory and Status for Item'),
+		     'behavior' => array('changes_property'),
+		     'configurable' => FALSE,
+		     'vbo_configurable' => TRUE,
+		     'triggers' => array('any'),
+		     ),
+	       );
+}
+
+function mnn_inventory_search_update_action_form($settings, &$form_state) {
+  $form = array();
+
+  $vid = variable_get('reservations_inventory_vid', 0);       
+  $terms = taxonomy_get_tree($vid);
+
+  //add check to see if there are any terms
+  $options = array(0=>'-Select-');
+  foreach ($terms as $term) {
+    $options[$term->tid] = $term->name;
+  }
+
+  $form['inventory'] =
+    array(
+	  '#type' => 'select',
+	  '#title' => t('Inventory'),
+	  '#options' => $options, 
+	  );
+
+  //hardcoded for mnn
+  $vid = 13;
+  $terms = taxonomy_get_tree($vid);
+  //add check to see if there are any terms
+  $options = array(0=>'-Select-');
+  foreach ($terms as $term) {
+    $options[$term->tid] = $term->name;
+  }
+
+  $form['status'] =
+    array(
+	  '#type' => 'select',
+	  '#title' => t('Status'),
+	  '#options' => $options, 
+	  );
+
+  return $form;
+}
+
+function mnn_inventory_search_update_action_submit(&$form, $form_state) {
+  $vid = variable_get('reservations_inventory_vid', 0);       
+  $terms = taxonomy_get_tree($vid);
+  $inventories = array();
+  foreach ($terms as $term) {
+    $inventories[$term->tid] = $term->name;
+  }
+
+  $vid = 13;
+  $terms = taxonomy_get_tree($vid);
+  $statuses = array();
+  foreach ($terms as $term) {
+    $statuses[$term->tid] = $term->name;
+  }
+
+  $status = $statuses[$form_state['values']['status']];
+  $inventory = $inventories[$form_state['values']['inventory']];
+
+  $message = t('About to set status to: %status  and inventory to: %inventory',
+	       array(
+		     '%status' => $status,
+		     '%inventory' => $inventory,
+		     ));
+
+  drupal_set_message($message, 'warning');
+
+  return array(
+	       'form_values' => $form_state['values'],
+	       );
+  
+}
+
+function mnn_inventory_search_update_action(&$node, $context) {
+  $status = $context['form_values']['status'];
+  $inventory = $context['form_values']['inventory'];
+  if ($status) {
+    $node->field_equipment_item_status[LANGUAGE_NONE][0]['tid'] =
+      $status;
+  }
+  if ($inventory) {
+    $node->field_reservations_inventory[LANGUAGE_NONE][0]['tid'] =
+      $inventory;
+  }
+
+  drupal_set_message($message);
+}
