@@ -1,0 +1,61 @@
+<?php
+
+/**
+ * @file
+ * cma_reservation_cache functions
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function cma_reservation_cache_permission() {
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function cma_reservation_cache_menu() {
+  // Standard Administration settings.
+    $items['admin/config/cma_reservation_cache'] =
+    array(
+	  'title' => 'CMA Reservation Cache',
+	  'description' => 'Configure settings for CMA Reservation Cache.',
+	  'page callback' => 'cma_reservation_cache_settings_home',
+	  'access arguments' => array('administer reservations'),
+	  'type' => MENU_NORMAL_ITEM,
+	  );
+  $items['admin/config/cma_reservation_cache/default'] =
+    array(
+	  'title' => 'Default Settings',
+	  'description' => 'Configure settings for CMA Reservation Cache.',
+	  'page callback' => 'drupal_get_form',
+	  'page arguments' => array('cma_reservation_cache_settings_form'),
+	  'access arguments' => array('administer reservations'),
+	  );    
+  return $items;
+}
+
+/**
+ * Loads the general settings form.
+ *
+ * @see cma_reservation_cache_admin_form()
+ */
+function cma_reservation_cache_settings_home() {
+  return drupal_get_form('cma_reservation_cache_settings_form');
+}
+
+/**
+ * Modified version of the Drupal core system_settings_form that allows
+ * for not saving all the form variables since there are so many
+ * and they do not need to be save separately; the variables are saved as 
+ * an array by a submit function
+ * 
+ * @param type $form
+ * @return $form
+ */
+function cma_reservation_cache_settings_form($form) {
+  $form = array();
+  
+  return system_settings_form($form);
+}

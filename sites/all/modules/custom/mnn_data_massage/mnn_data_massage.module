@@ -72,10 +72,10 @@ function mnn_data_massage_page($function) {
 		     //"create_archive_shows",
 		     //"update_premiere_date_and_channels",
 		     //"update_class_titles",
-		     "update_class_titles2",
+		     //"update_class_titles2",
 		     //"update_class_short_date",
-		     "backup_short_description",
-		     "reload_short_description",
+		     //"backup_short_description",
+		     //"reload_short_description",
 		     );
   $ret = "";
   if ($function && in_array($function, $functions)) {
@@ -94,6 +94,10 @@ function mnn_data_massage_page($function) {
   return $ret;
 }
 function mnn_data_massage_function_tester() {
+
+  require_once DRUPAL_ROOT . '/sites/all/modules/contrib-cm/cma_reservation_cache/cma_reservation_cache.install';
+  dsm(cma_reservation_cache_schema());
+  return;
   /**
     $file_data = array(
 		       'filename' => 'name.mp4',

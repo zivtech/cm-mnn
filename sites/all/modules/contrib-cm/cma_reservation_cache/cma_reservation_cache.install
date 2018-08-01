@@ -1,0 +1,203 @@
+<?php
+
+
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function cma_reservation_cache_schema() {
+  $schema['cma_reservation_group'] =
+    array(
+	  'description' => 'For grouping cached reservations to allow ' .
+	  'things like partial returns.',
+	  'fields' =>
+	  array(
+		'id' => array(
+			      'type' => 'serial',
+			      'description' => 'Group ID',
+			      ),
+		),
+	  'indexes' => array(
+			     'id' => array('id'),
+			     ),
+	  'primary key' => array('id'),
+	  );
+  
+  $schema['cma_reservation_group_item'] =
+    array(
+	  'description' =>
+	  'A reservation in a group, for things like partial returns.',
+	  'fields' => array(
+			    'id' => array(
+					  'type' => 'serial',
+					  'description' => 'Group ID',
+					  ),
+			    'reservation_group_id' => array(
+							    'type' => 'int',
+							    'unsigned' => TRUE,
+							    'not null' => TRUE,
+							    ),
+			    'reservation_id' => array(
+						      'type' => 'int',
+						      'unsigned' => TRUE,
+						      'not null' => TRUE,
+						      
+						      ),
+			    ),
+	  'indexes' => array(
+			     'id' => array('id'),
+			     'reservation_group_id' =>
+			     array('reservation_group_id'),
+			     'reservation_id' => array('reservation_id'),
+			     ),
+	  'primary key' => array('id'),
+	  );
+  
+
+
+
+
+  /*
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'in_path' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Original file path',
+      ),
+      'file_name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'File Name',
+      ),
+      'file_size' => array(
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+        'description' => 'File Size',
+      ),
+      'field_name' => array(
+        'type' => 'varchar',
+	'length' => 255,
+	'default' => '',
+	'description' => 'The field name of the Drupal Entity',
+      ),
+      'file_location' => array(
+        'type' => 'varchar',
+	'length' => 255,
+	'default' => '',
+	'description' => 'The field name of the Drupal Entity',
+      ),
+      'archive_url' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Path',
+      ),
+      'md5' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'MD5 hash of file',
+      ),
+      'item' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Item / Bucket',
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+        'description' => 'Internet Archive Transfer Status',
+      ),
+      'derivatives' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'All available derivative information',
+      ),
+      'attempts' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'transfer_initiated' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer start date as unix timestamp',
+      ),
+      'date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Transfer finish date as unix timestamp',
+      ),
+    ),
+    'indexes' => array(
+      'tid' => array('tid'),
+    ),
+    'primary key' => array('in_path'),
+  );
+
+  $schema['cma_reservation_log'] = array(
+    'description' => 'Holds log entries for file transfer actions',
+    'fields' => array(
+      'lid' => array(
+        'type' => 'serial',
+        'description' => 'Log ID',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'message' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message',
+      ),
+      'message_data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'Message data',
+      ),
+      'type' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'date' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Log entry date',
+      ),
+    ),
+    'indexes' => array(
+      'lid' => array('lid'),
+    ),
+    'primary key' => array('lid'),
+  );
+  */
+  return $schema;
+}
+
+function cma_reservation_cache_uninstall() {
+  drupal_uninstall_schema('cma_reservation_cache');
+}
