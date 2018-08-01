@@ -5,6 +5,80 @@
  * @file
  */
 
+
+function cma_reservation_cache_db_field_type_info($field_info) {
+  $info = array();
+  switch ($field_info['type']) {
+  case 'computed':
+    $db_settings = $field_info['settings']['database'];
+    $info['type'] = $db_settings['data_type'];
+    //find computed field settings to set our db cache field settings
+    if ($db_settings['data_type'] == 'int' ||
+	$db_settings['data_type'] == 'float' ) {
+      $info['size'] = $db_settings['data_size'];
+    }
+    if ($db_settings['data_type'] == 'varchar' ||
+	$db_settings['data_type'] == 'text' ) {
+      $info['length'] = $db_settings['data_length'];
+    }
+    else if ($db_settings['data_type'] == 'numeric') {
+      $info['precision'] = $db_settings['data_precision'];
+      $info['scale'] = $db_settings['data_scale'];
+    }
+    break;
+    
+  case 'entityreference':
+    $info = $field_info['columns']['target_id'];
+    break;
+    
+  case 'taxonomy_term_reference':
+    $info = $field_info['columns']['tid'];
+    break;
+
+  case 'datetime':
+  case 'number_integer':
+  case 'text':
+  case 'text_long':
+  default:
+    $info = $field_info['columns']['value'];
+    break;
+    
+  }
+  return $info;
+}
+
+/**
+ * Function array of fields to add to the cma_reservation_bucket_cache and the
+ * cma_reservation_resource_cache tables. Many of the fields are added by 
+ * looking at the fields currently on the main reservations content type
+ */
+function cma_reservation_cache_get_db_fields($main_cache_fields = array(),
+					     $reservable_type = 'bucket') {
+  $fields = $main_cache_fields;
+
+  $skip_types = array(
+		      'viewfield',
+		      );
+
+  $skip_names = array(
+		      'field_reservations_inventory'
+		      );
+  $fields_info = field_info_instances('node', 'reservations_reservation');
+  foreach ($fields_info as $field_name => $value) {
+    $field_info = field_info_field($field_name);
+    if (in_array($field_info['type'], $skip_types)) {
+      continue;
+    }
+    if (in_array($field_name, $skip_names)) {
+      continue;
+    }
+    
+    $fields[$field_name] =
+      cma_reservation_cache_db_field_type_info($field_info);
+  }
+  dsm($fields, 'fields at end');
+  return $fields;
+}
 /**
  * Implements hook_schema().
  */
@@ -15,48 +89,80 @@ function cma_reservation_cache_schema() {
 	  'things like partial returns.',
 	  'fields' =>
 	  array(
-		'id' => array(
-			      'type' => 'serial',
-			      'description' => 'Group ID',
-			      ),
+		'id' =>
+		array(
+		      'type' => 'serial',
+		      'description' => 'Group ID',
+		      ),
 		),
-	  'indexes' => array(
-			     'id' => array('id'),
-			     ),
+	  'indexes' =>
+	  array(
+		'id' => array('id'),
+		),
 	  'primary key' => array('id'),
 	  );
-  
+  //EACH ROW IN THIS TABLE IS A RESERVATION IN A GROUP
   $schema['cma_reservation_group_item'] =
     array(
 	  'description' =>
 	  'A reservation in a group, for things like partial returns.',
-	  'fields' => array(
-			    'id' => array(
-					  'type' => 'serial',
-					  'description' => 'Group ID',
+	  'fields' =>
+	  array(
+		'id' => array(
+			      'type' => 'serial',
+			      'description' => 'Group ID',
+			      ),
+		'reservation_group_id' => array(
+						'type' => 'int',
+						'unsigned' => TRUE,
+						'not null' => TRUE,
+						),
+		'reservation_id' => array(
+					  'type' => 'int',
+					  'unsigned' => TRUE,
+					  'not null' => TRUE,
 					  ),
-			    'reservation_group_id' => array(
-							    'type' => 'int',
-							    'unsigned' => TRUE,
-							    'not null' => TRUE,
-							    ),
-			    'reservation_id' => array(
-						      'type' => 'int',
-						      'unsigned' => TRUE,
-						      'not null' => TRUE,
-						      
-						      ),
-			    ),
-	  'indexes' => array(
-			     'id' => array('id'),
-			     'reservation_group_id' =>
-			     array('reservation_group_id'),
-			     'reservation_id' => array('reservation_id'),
-			     ),
+		),
+	  'indexes' =>
+	  array(
+		'id' => array('id'),
+		'reservation_group_id' =>
+		array('reservation_group_id'),
+		'reservation_id' => array('reservation_id'),
+		),
 	  'primary key' => array('id'),
 	  );
-  
 
+  //these are the main cache fields for both the cma_reservation_bucket_cache
+  //and the cma_reservation_resource_cache tables
+  $main_cache_fields = cma_reservation_cache_main_cache_fields();
+    
+  $indexes = array();
+  foreach ($main_cache_fields as $field=>$field_info) {
+    $indexes[$field] = array($field);
+  }
+  
+  $schema['cma_reservation_bucket_cache'] =
+    array(
+	  'description' =>
+	  'This is the main cache table for all nodes with content types ' .
+	  'enabled for reservations that are buckets, (not resources).',
+	  'fields' => cma_reservation_cache_get_db_fields($main_cache_fields,
+							  'bucket'),
+	  'indexes' => $indexes,
+	  'primary key' => array('cache_id'),
+	  );
+
+    $schema['cma_reservation_resource_cache'] =
+    array(
+	  'description' =>
+	  'This is the main cache table for all nodes with content types ' .
+	  'enabled for reservations that are resources, (not buckets ).',
+	  'fields' => cma_reservation_cache_get_db_fields($main_cache_fields,
+							  'resource'),
+	  'indexes' => $indexes,
+	  'primary key' => array('cache_id'),
+	  );
 
 
 
@@ -200,4 +306,70 @@ function cma_reservation_cache_schema() {
 
 function cma_reservation_cache_uninstall() {
   drupal_uninstall_schema('cma_reservation_cache');
+}
+
+function cma_reservation_cache_main_cache_fields() {
+  return
+    array(
+	  'cache_id' => array('type' => 'serial',
+			      'description' => 'Cache Primary Key',
+			      ),
+	  'content_type' => array(
+				  'type' => 'varchar',
+				  'length' => 255,
+				  'default' => '',
+				  'description' =>
+				  'reservable content type of the item',
+				  ),
+	  'bucket_slot_id' => array(
+				    'type' => 'int',
+				    'unsigned' => TRUE,
+				    'not null' => TRUE,
+				    ),
+	  'start_time' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				),
+	  'end_time' => array(
+			      'type' => 'int',
+			      'unsigned' => TRUE,
+			      'not null' => TRUE,
+			      ),
+	  'item_slot_status' => array(
+				      'type' => 'int',
+				      'unsigned' => TRUE,
+				      'not null' => TRUE,
+				      ),
+	  'inventory' => array(
+			       'type' => 'int',
+			       'unsigned' => TRUE,
+			       'not null' => TRUE,
+			       ),
+	  'bucket_category' => array(
+				     'type' => 'int',
+				     'unsigned' => TRUE,
+				     'not null' => TRUE,
+				     ),
+	  'item_nid' => array(
+			      'type' => 'int',
+			      'unsigned' => TRUE,
+			      'not null' => TRUE,
+			      ),
+	  'reservation_nid' => array(
+				    'type' => 'int',
+				    'unsigned' => TRUE,
+				    'not null' => TRUE,
+				    ),
+	  'reservation_group_id' => array(
+					  'type' => 'int',
+					  'unsigned' => TRUE,
+					  'not null' => TRUE,
+					  ),
+	  'reservation_status' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					),
+	  );
 }
