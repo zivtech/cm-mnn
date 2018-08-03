@@ -6,81 +6,9 @@
  */
 
 
-function cma_reservation_cache_db_field_type_info($field_info) {
-  $info = array();
-  switch ($field_info['type']) {
-  case 'computed':
-    $db_settings = $field_info['settings']['database'];
-    $info['type'] = $db_settings['data_type'];
-    //find computed field settings to set our db cache field settings
-    if ($db_settings['data_type'] == 'int' ||
-	$db_settings['data_type'] == 'float' ) {
-      $info['size'] = $db_settings['data_size'];
-    }
-    if ($db_settings['data_type'] == 'varchar' ||
-	$db_settings['data_type'] == 'text' ) {
-      $info['length'] = $db_settings['data_length'];
-    }
-    else if ($db_settings['data_type'] == 'numeric') {
-      $info['precision'] = $db_settings['data_precision'];
-      $info['scale'] = $db_settings['data_scale'];
-    }
-    break;
-    
-  case 'entityreference':
-    $info = $field_info['columns']['target_id'];
-    break;
-    
-  case 'taxonomy_term_reference':
-    $info = $field_info['columns']['tid'];
-    break;
-
-  case 'datetime':
-  case 'number_integer':
-  case 'text':
-  case 'text_long':
-  default:
-    $info = $field_info['columns']['value'];
-    break;
-    
-  }
-  return $info;
-}
-
-/**
- * Function array of fields to add to the cma_reservation_bucket_cache and the
- * cma_reservation_resource_cache tables. Many of the fields are added by 
- * looking at the fields currently on the main reservations content type
- */
-function cma_reservation_cache_get_db_fields($main_cache_fields = array(),
-					     $reservable_type = 'bucket') {
-  $fields = $main_cache_fields;
-
-  $skip_types = array(
-		      'viewfield',
-		      );
-
-  $skip_names = array(
-		      'field_reservations_inventory'
-		      );
-  $fields_info = field_info_instances('node', 'reservations_reservation');
-  foreach ($fields_info as $field_name => $value) {
-    $field_info = field_info_field($field_name);
-    if (in_array($field_info['type'], $skip_types)) {
-      continue;
-    }
-    if (in_array($field_name, $skip_names)) {
-      continue;
-    }
-    
-    $fields[$field_name] =
-      cma_reservation_cache_db_field_type_info($field_info);
-  }
-  dsm($fields, 'fields at end');
-  return $fields;
-}
 /**
  * Implements hook_schema().
+ * Creates the custom tables for the caching layer of reservations
  */
 function cma_reservation_cache_schema() {
   $schema['cma_reservation_group'] =
@@ -135,7 +63,7 @@ function cma_reservation_cache_schema() {
 
   //these are the main cache fields for both the cma_reservation_bucket_cache
   //and the cma_reservation_resource_cache tables
-  $main_cache_fields = cma_reservation_cache_main_cache_fields();
+  $main_cache_fields = cma_reservation_cache_main_cache_fields('bucket');
     
   $indexes = array();
   foreach ($main_cache_fields as $field=>$field_info) {
@@ -153,6 +81,15 @@ function cma_reservation_cache_schema() {
 	  'primary key' => array('cache_id'),
 	  );
 
+  //these are the main cache fields for both the cma_reservation_bucket_cache
+  //and the cma_reservation_resource_cache tables
+  $main_cache_fields = cma_reservation_cache_main_cache_fields('resource');
+    
+  $indexes = array();
+  foreach ($main_cache_fields as $field=>$field_info) {
+    $indexes[$field] = array($field);
+  }
+
     $schema['cma_reservation_resource_cache'] =
     array(
 	  'description' =>
@@ -163,213 +100,190 @@ function cma_reservation_cache_schema() {
 	  'indexes' => $indexes,
 	  'primary key' => array('cache_id'),
 	  );
-
-
-
-  /*
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'in_path' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'Original file path',
-      ),
-      'file_name' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'File Name',
-      ),
-      'file_size' => array(
-        'type' => 'int',
-        'size' => 'big',
-        'not null' => TRUE,
-        'description' => 'File Size',
-      ),
-      'field_name' => array(
-        'type' => 'varchar',
-	'length' => 255,
-	'default' => '',
-	'description' => 'The field name of the Drupal Entity',
-      ),
-      'file_location' => array(
-        'type' => 'varchar',
-	'length' => 255,
-	'default' => '',
-	'description' => 'The field name of the Drupal Entity',
-      ),
-      'archive_url' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'Internet Archive Path',
-      ),
-      'md5' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'MD5 hash of file',
-      ),
-      'item' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'Internet Archive Item / Bucket',
-      ),
-      'status' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default' => '',
-        'description' => 'Internet Archive Transfer Status',
-      ),
-      'derivatives' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-        'size' => 'big',
-        'serialize' => TRUE,
-        'description' => 'All available derivative information',
-      ),
-      'attempts' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'transfer_initiated' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'description' => 'Transfer start date as unix timestamp',
-      ),
-      'date' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'description' => 'Transfer finish date as unix timestamp',
-      ),
-    ),
-    'indexes' => array(
-      'tid' => array('tid'),
-    ),
-    'primary key' => array('in_path'),
-  );
-
-  $schema['cma_reservation_log'] = array(
-    'description' => 'Holds log entries for file transfer actions',
-    'fields' => array(
-      'lid' => array(
-        'type' => 'serial',
-        'description' => 'Log ID',
-      ),
-      'tid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'message' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-        'size' => 'big',
-        'serialize' => TRUE,
-        'description' => 'Message',
-      ),
-      'message_data' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-        'size' => 'big',
-        'serialize' => TRUE,
-        'description' => 'Message data',
-      ),
-      'type' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'date' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'description' => 'Log entry date',
-      ),
-    ),
-    'indexes' => array(
-      'lid' => array('lid'),
-    ),
-    'primary key' => array('lid'),
-  );
-  */
   return $schema;
 }
 
-function cma_reservation_cache_uninstall() {
-  drupal_uninstall_schema('cma_reservation_cache');
+/**
+ * Function array of fields to add to the cma_reservation_bucket_cache and the
+ * cma_reservation_resource_cache tables. Many of the fields are added by 
+ * looking at the fields currently on the main reservations content type
+ */
+function cma_reservation_cache_get_db_fields($main_cache_fields = array(),
+					     $reservable_type = 'bucket') {
+  $fields = $main_cache_fields;
+
+  $skip_types = array(
+		      'viewfield',
+		      );
+
+  $skip_names = array(
+		      'field_reservations_inventory'
+		      );
+  $fields_info = field_info_instances('node', 'reservations_reservation');
+  foreach ($fields_info as $field_name => $value) {
+    $field_info = field_info_field($field_name);
+    if (in_array($field_info['type'], $skip_types)) {
+      continue;
+    }
+    if (in_array($field_name, $skip_names)) {
+      continue;
+    }
+
+    if ($field_info['type'] == 'datetime' &&
+	isset($field_info['columns']['value']) &&
+	isset($field_info['columns']['value2'])) {
+
+      $fields[$field_name."_start"] =
+	cma_reservation_cache_db_field_type_info($field_info);
+      $fields[$field_name."_end"] =
+	cma_reservation_cache_db_field_type_info($field_info);
+      
+    }
+    else {
+    $fields[$field_name] =
+      cma_reservation_cache_db_field_type_info($field_info);
+
+    }
+  }
+  return $fields;
 }
 
-function cma_reservation_cache_main_cache_fields() {
-  return
-    array(
-	  'cache_id' => array('type' => 'serial',
-			      'description' => 'Cache Primary Key',
-			      ),
-	  'content_type' => array(
-				  'type' => 'varchar',
-				  'length' => 255,
-				  'default' => '',
-				  'description' =>
-				  'reservable content type of the item',
-				  ),
-	  'bucket_slot_id' => array(
+/**
+ * Returns the main cache fields for both the cma_reservation_bucket_cache
+ * and the cma_reservation_resource_cache tables. The other fields on the
+ * reservations_reservation will be used for the other columns
+ */
+function cma_reservation_cache_main_cache_fields($type) {
+  $ret = array();
+   
+  $ret['cache_id'] = array('type' => 'serial',
+			   'description' => 'Cache Primary Key',
+			      );
+  $ret['content_type'] = array(
+			       'type' => 'varchar',
+			       'length' => 255,
+			       'default' => '',
+			       'description' =>
+			       'reservable content type of the item',
+			       );
+
+  if ($type == 'bucket') {
+    $ret['bucket_slot_id'] = array(
+				 'type' => 'int',
+				 'unsigned' => TRUE,
+				 'not null' => TRUE,
+				 );
+  }
+  $ret['cache_slot_start_time'] = array(
+			     'type' => 'int',
+			     'unsigned' => TRUE,
+			     'not null' => TRUE,
+			     );
+  $ret['cache_slot_end_time'] = array(
+			   'type' => 'int',
+			   'unsigned' => TRUE,
+			   'not null' => TRUE,
+			   );
+  $ret['cache_slot_status'] = array(
 				    'type' => 'int',
 				    'unsigned' => TRUE,
 				    'not null' => TRUE,
-				    ),
-	  'start_time' => array(
-				'type' => 'int',
-				'unsigned' => TRUE,
-				'not null' => TRUE,
-				),
-	  'end_time' => array(
-			      'type' => 'int',
-			      'unsigned' => TRUE,
-			      'not null' => TRUE,
-			      ),
-	  'item_slot_status' => array(
-				      'type' => 'int',
-				      'unsigned' => TRUE,
-				      'not null' => TRUE,
-				      ),
-	  'inventory' => array(
-			       'type' => 'int',
-			       'unsigned' => TRUE,
-			       'not null' => TRUE,
-			       ),
-	  'bucket_category' => array(
+					 );
+  $ret['inventory'] = array(
+			    'type' => 'int',
+			    'unsigned' => TRUE,
+			    'not null' => TRUE,
+			    );
+  $ret['bucket_category'] = array(
+				  'type' => 'int',
+				  'unsigned' => TRUE,
+				  'not null' => TRUE,
+				  );
+  $ret['item_nid'] = array(
+			   'type' => 'int',
+			   'unsigned' => TRUE,
+			   'not null' => TRUE,
+			   );
+  $ret['item_title'] = array(
+			     'type' => 'varchar',
+			     'length' => 255,
+			     'default' => '',
+			     'description' =>
+			     'Title of the node of a reservable content '.
+			     'type',
+			     );
+  $ret['reservation_nid'] = array(
+				  'type' => 'int',
+				  'unsigned' => TRUE,
+				  'not null' => TRUE,
+				  );
+  $ret['reservation_group_id'] = array(
+				       'type' => 'int',
+				       'unsigned' => TRUE,
+				       'not null' => TRUE,
+				       );
+  $ret['reservation_status'] = array(
 				     'type' => 'int',
 				     'unsigned' => TRUE,
 				     'not null' => TRUE,
-				     ),
-	  'item_nid' => array(
-			      'type' => 'int',
-			      'unsigned' => TRUE,
-			      'not null' => TRUE,
-			      ),
-	  'reservation_nid' => array(
-				    'type' => 'int',
-				    'unsigned' => TRUE,
-				    'not null' => TRUE,
-				    ),
-	  'reservation_group_id' => array(
-					  'type' => 'int',
-					  'unsigned' => TRUE,
-					  'not null' => TRUE,
-					  ),
-	  'reservation_status' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					),
-	  );
+				     );
+  $ret['project_title'] = array(
+				'type' => 'varchar',
+				'length' => 255,
+				'default' => '',
+				'description' =>
+				'Title of the project node associated  '.
+				'with the reservation',
+				);
+
+  return $ret;
+}
+
+
+/**
+ * Function is passed an array of information about the drupal field,
+ * it uses that information to create and array for use in hook_schema
+ *
+ * @param $field_info drupal field info array
+ * @return $info db field info array
+ */
+function cma_reservation_cache_db_field_type_info($field_info) {
+  $info = array();
+  switch ($field_info['type']) {
+  case 'computed':
+    $db_settings = $field_info['settings']['database'];
+    $info['type'] = $db_settings['data_type'];
+    //find computed field settings to set our db cache field settings
+    if ($db_settings['data_type'] == 'int' ||
+	$db_settings['data_type'] == 'float' ) {
+      $info['size'] = $db_settings['data_size'];
+    }
+    if ($db_settings['data_type'] == 'varchar' ||
+	$db_settings['data_type'] == 'text' ) {
+      $info['length'] = $db_settings['data_length'];
+    }
+    else if ($db_settings['data_type'] == 'numeric') {
+      $info['precision'] = $db_settings['data_precision'];
+      $info['scale'] = $db_settings['data_scale'];
+    }
+    break;
+    
+  case 'entityreference':
+    $info = $field_info['columns']['target_id'];
+    break;
+    
+  case 'taxonomy_term_reference':
+    $info = $field_info['columns']['tid'];
+    break;
+
+  case 'datetime':
+  case 'number_integer':
+  case 'text':
+  case 'text_long':
+  default:
+    $info = $field_info['columns']['value'];
+    break;
+    
+  }
+  return $info;
 }
