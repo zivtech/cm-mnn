@@ -299,7 +299,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   $prev_object = clone $cache_start_object;
 
   dsm(date('H:i:s'), 'start of time loop');
-  
+  $row_counter = 0;
   while ($prev_object < $cache_end_object) {
     $next_object = clone $prev_object;
     $next_object->modify('+'.$increment.' minutes');
@@ -314,6 +314,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
     dsm($next_ts, 'next');
     */
     foreach($reservable_content_type_items as $item) {
+      $row_counter ++;
       //GET CONTENT TYPE INFO
       $content_type = $content_types[$item['type']];
 
@@ -517,10 +518,10 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       
       //FIXME ONLY HERE FOR TESTING
       if ($reservation_node) {
-	dsm($db_row, 'db row');
-	return;
+	//dsm($db_row, 'db row');
+	//return;
       }
-      
+
     } //done looping through the item for a particular time slot
 
     
@@ -529,6 +530,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   }//done looping through the particular time slot
   
   dsm(date('H:i:s'), 'end of loop');
+  dsm($row_counter, 'number of rows');
 }
 
 /**                                                                            
