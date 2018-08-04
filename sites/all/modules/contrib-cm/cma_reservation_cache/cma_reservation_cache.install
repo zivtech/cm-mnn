@@ -159,6 +159,13 @@ function cma_reservation_cache_main_cache_fields($type) {
   $ret['cache_id'] = array('type' => 'serial',
 			   'description' => 'Cache Primary Key',
 			      );
+  $ret['cache_time'] = array(
+			     'type' => 'datetime',
+			     'mysql_type' => 'datetime',
+			     'description' =>
+			     'The time the cache was written',
+			     );
+
   $ret['content_type'] = array(
 			       'type' => 'varchar',
 			       'length' => 255,
@@ -212,6 +219,12 @@ function cma_reservation_cache_main_cache_fields($type) {
 			     'Title of the node of a reservable content '.
 			     'type',
 			     );
+  $ret['item_status'] = array(
+			      'type' => 'int',
+			      'unsigned' => TRUE,
+			      'not null' => TRUE,
+			      );
+
   $ret['reservation_nid'] = array(
 				  'type' => 'int',
 				  'unsigned' => TRUE,
@@ -227,6 +240,11 @@ function cma_reservation_cache_main_cache_fields($type) {
 				     'unsigned' => TRUE,
 				     'not null' => TRUE,
 				     );
+  $ret['project_nid'] = array(
+			      'type' => 'int',
+			      'unsigned' => TRUE,
+			      'not null' => TRUE,
+			      );
   $ret['project_title'] = array(
 				'type' => 'varchar',
 				'length' => 255,
