@@ -300,7 +300,13 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 
   dsm(date('H:i:s'), 'start of time loop');
   $row_counter = 0;
+      
+    
   while ($prev_object < $cache_end_object) {
+    //this will store all the db rows for a time slot for all content types
+    //it gets refreshed every new 
+    $db_rows = array();
+
     $next_object = clone $prev_object;
     $next_object->modify('+'.$increment.' minutes');
 
@@ -313,18 +319,21 @@ function cma_reservation_cache_report_submit($form, $form_state) {
     dsm($prev_ts, 'prev');
     dsm($next_ts, 'next');
     */
-    foreach($reservable_content_type_items as $item) {
+     foreach($reservable_content_type_items as $item) {
       $row_counter ++;
+
       //GET CONTENT TYPE INFO
       $content_type = $content_types[$item['type']];
 
       //LOOK UP ANY RESERVATIONS FOR THIS TIMESLOT AND CONTENT TYPE
+      $reservation_result = NULL;
+      $reservation_node = NULL;
       $reservations =
 	isset($reserved_timeslots[$prev_ts]) &&
 	isset($reserved_timeslots[$prev_ts][$item['type']]) ?
 	$reserved_timeslots[$prev_ts][$item['type']] :
 	array();
-      if ($reservations) {
+      if ($reservations) {	
 	if ($content_type['reservations_type_setting'] == 'bucket') {
 	  //POP AN ARRAY OFF THE STACK
 	  $reservation_result =
@@ -333,8 +342,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 	    $cached_reservations[$reservation_result->res_id];
 	}
 	else if($content_type['reservations_type_setting'] == 'resource') {
-	  $reservation_result = NULL;
-	  $reservation_node = NULL;
 	  foreach($reservations as $reservation) {
 	    if ($reservation->item_nid == $item['nid']) {
 	      //this is a reservation against this resource, use as the
@@ -345,9 +352,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 		$cached_reservations[$reservation_result->res_id];
 	    }
 	  }
-	  if (!$reservation_result) {
-	    $reservation = NULL;
-	  }
 	}
 	/**
 	dsm($content_type, 'ct');
@@ -355,10 +359,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 	dsm($reservation_result, 'result');
 	dsm($reservation_node, 'reservation');
 	**/
-      }
-      else {
-	$reservation_result = NULL;
-	$reservation_node = NULL;
       }
 
       $db_row = array();
@@ -413,7 +413,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 	$skip_types = array('viewfield',);
 	
 	$skip_names = array('field_reservations_inventory');
-      
 	foreach ($reservation_fields as $field_name => $value) {
 	  $field_info = field_info_field($field_name);
 	  if (in_array($field_info['type'], $skip_types)) {
@@ -515,7 +514,8 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       else if($content_type['reservations_type_setting'] == 'resource') {
 	//insert into resource cache table
       }
-      
+    
+      $db_rows[] = $db_row;
       //FIXME ONLY HERE FOR TESTING
       if ($reservation_node) {
 	//dsm($db_row, 'db row');
@@ -523,12 +523,13 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       }
 
     } //done looping through the item for a particular time slot
-
+    
     
     $prev_object = clone $next_object;
+    //done looping through the particular time slot
+    dsm($db_rows, 'db rows');
 
-  }//done looping through the particular time slot
-  
+  }  
   dsm(date('H:i:s'), 'end of loop');
   dsm($row_counter, 'number of rows');
 }
