@@ -144,6 +144,7 @@ function cma_reservation_cache_get_db_fields($main_cache_fields = array(),
       cma_reservation_cache_db_field_type_info($field_info);
 
     }
+    unset($fields[$field_name]['not null']);
   }
   return $fields;
 }
@@ -162,6 +163,7 @@ function cma_reservation_cache_main_cache_fields($type) {
   $ret['cache_time'] = array(
 			     'type' => 'datetime',
 			     'mysql_type' => 'datetime',
+			     'not null' => TRUE,
 			     'description' =>
 			     'The time the cache was written',
 			     );
@@ -170,6 +172,7 @@ function cma_reservation_cache_main_cache_fields($type) {
 			       'type' => 'varchar',
 			       'length' => 255,
 			       'default' => '',
+			       'not null' => TRUE,
 			       'description' =>
 			       'reservable content type of the item',
 			       );
@@ -195,21 +198,18 @@ function cma_reservation_cache_main_cache_fields($type) {
 				    'type' => 'int',
 				    'unsigned' => TRUE,
 				    'not null' => TRUE,
-					 );
+				    );
   $ret['inventory'] = array(
 			    'type' => 'int',
 			    'unsigned' => TRUE,
-			    'not null' => TRUE,
 			    );
   $ret['bucket_category'] = array(
 				  'type' => 'int',
 				  'unsigned' => TRUE,
-				  'not null' => TRUE,
 				  );
   $ret['item_nid'] = array(
 			   'type' => 'int',
 			   'unsigned' => TRUE,
-			   'not null' => TRUE,
 			   );
   $ret['item_title'] = array(
 			     'type' => 'varchar',
@@ -222,28 +222,23 @@ function cma_reservation_cache_main_cache_fields($type) {
   $ret['item_status'] = array(
 			      'type' => 'int',
 			      'unsigned' => TRUE,
-			      'not null' => TRUE,
 			      );
 
   $ret['reservation_nid'] = array(
 				  'type' => 'int',
 				  'unsigned' => TRUE,
-				  'not null' => TRUE,
 				  );
   $ret['reservation_group_id'] = array(
 				       'type' => 'int',
 				       'unsigned' => TRUE,
-				       'not null' => TRUE,
 				       );
   $ret['reservation_status'] = array(
 				     'type' => 'int',
 				     'unsigned' => TRUE,
-				     'not null' => TRUE,
 				     );
   $ret['project_nid'] = array(
 			      'type' => 'int',
 			      'unsigned' => TRUE,
-			      'not null' => TRUE,
 			      );
   $ret['project_title'] = array(
 				'type' => 'varchar',
