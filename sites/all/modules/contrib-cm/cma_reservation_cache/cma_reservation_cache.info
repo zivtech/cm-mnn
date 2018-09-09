@@ -1,0 +1,19 @@
+name = CMA Reservations Cache
+package = Community Media Advanced
+description = "A module to provide a caching layer to work with the reservations module"
+
+core = 7.x
+
+dependencies[] = reservations
+dependencies[] = reservations_inventory
+dependencies[] = reservations_staff
+dependencies[] = views
+
+
+files[] = cma_reservation_cache.module
+
+configure = admin/config/cma_reservation_cache
+
+project = cma_reservation_cache
+
+
