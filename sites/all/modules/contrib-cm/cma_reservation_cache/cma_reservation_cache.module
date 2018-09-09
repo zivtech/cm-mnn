@@ -158,6 +158,10 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   $increment = $reservation_fields['field_reservations_date']
     ['widget']['settings']['increment'];
 
+
+  //FIXME ONLY HERE FOR TESTING
+  //$increment = 60;
+  
   //FIND THE FIELDS FOR THE BUCKET AND RESOURCE CACHE TABLES
   $sql = "show columns from cma_reservation_bucket_cache";
   $results = db_query($sql);
@@ -184,13 +188,14 @@ function cma_reservation_cache_report_submit($form, $form_state) {
      FROM {node} n
      INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid
      WHERE rin.reservations_sub_type = :reservations_sub_type
-
-AND n.type='lowel_o110_p_' 
-
-
-     ORDER BY n.type ASC
-    ";
-  //     AND n.type='firehouse_express_studios_fh_'
+   ORDER BY n.type ASC
+";
+  //   ORDER BY n.type ASC
+  //  ";
+  // FIXME, MAKE SURE ABOVE IS GONE AFTER TESTING
+  // AND n.type='lowel_o110_p_'
+  // AND n.type='firehouse_express_studios_fh_'
+  // LIMIT 1
   
   $args = array(':reservations_sub_type' => RESERVATIONS_SUB_TYPE_ITEM);
   $results = db_query($query, $args);
@@ -241,8 +246,12 @@ AND n.type='lowel_o110_p_'
 
   $query .=
     "WHERE field_reservations_date_value2 >= :start
-     AND field_reservations_date_value <= :end 
-     ORDER BY field_reservations_date_value ";
+     AND field_reservations_date_value <= :end ";
+
+  //FIXME ONLY HERE FOR TESTING
+  //$query .= " and n.type = 'lowel_o110_p_' ";
+
+  $query .= "ORDER BY field_reservations_date_value ";
   $args = array(':start' => $cache_start,":end" => $cache_end);;
 
   $results = db_query($query, $args);
@@ -311,20 +320,18 @@ AND n.type='lowel_o110_p_'
   dsm($reserved_timeslots, 'reserved_timeslots');
   dsm($cached_reservations, 'reservations');
 
+  //FIXME ONLY HERE FOR TESTING
   foreach($reserved_timeslots as $timestamp_tmp => $slot_tmp) {
-    dsm($slot_tmp, date('Y-m-d H:i:s', $timestamp_tmp).' *  '.$timestamp_tmp);
+    //dsm($slot_tmp, date('Y-m-d H:i:s',$timestamp_tmp).' *  '.$timestamp_tmp);
   }
   //////////////////////////////////////////////////////////////////////////
   //FILL THE $timeslots ARRAY WITH ALL TIMESLOTS
   $cache_start_object = new DateTime($cache_start);
   $cache_end_object = new DateTime($cache_end);
 
-  
-
   dsm(date('H:i:s'), 'start of time loop');
   $row_counter = 0;
       
-    
   foreach($reservable_content_type_items as $item) {
   
     $prev_object = clone $cache_start_object;
@@ -343,11 +350,11 @@ AND n.type='lowel_o110_p_'
       $next_ts = $next_object->getTimestamp();
       
       /**
-	 dsm($prev_object->format('Y-m-d H:i:s'), 'prev');
-	 dsm($next_object->format('Y-m-d H:i:s'), 'next');
-	 dsm($prev_ts, 'prev');
-	 dsm($next_ts, 'next');
-      */
+      dsm($prev_object->format('Y-m-d H:i:s'), 'prev');
+      dsm($next_object->format('Y-m-d H:i:s'), 'next');
+      dsm($prev_ts, 'prev');
+      dsm($next_ts, 'next');
+      **/
       
       
       //GET CONTENT TYPE INFO
@@ -360,7 +367,8 @@ AND n.type='lowel_o110_p_'
 	isset($reserved_timeslots[$prev_ts][$item['type']]) ?
 	$reserved_timeslots[$prev_ts][$item['type']] :
 	array();
-      dsm($reservations, 'find reservations?');
+
+      //dsm($reservations, 'find reservations?');
       if ($reservations) {	
 	if ($content_type['reservations_type_setting'] == 'bucket') {
 	  //POP AN ARRAY OFF THE STACK
@@ -368,8 +376,6 @@ AND n.type='lowel_o110_p_'
 	    array_shift($reserved_timeslots[$prev_ts][$item['type']]);
 	  $reservation_node =
 	    $cached_reservations[$reservation_result->res_id];
-	  dsm($reservation_node, 'rn1');
-	  dsm($reservation_result, 'rr1');
        	}
 	else if($content_type['reservations_type_setting'] == 'resource') {
 	  foreach($reservations as $reservation) {
@@ -396,6 +402,12 @@ AND n.type='lowel_o110_p_'
       $db_row['cache_time'] = date("Y-m-d H:i:s");
       $db_row['cache_slot_start_time'] = $prev_ts;
       $db_row['cache_slot_end_time'] = $next_ts;
+      $db_row['cache_slot_start_time_formatted'] =
+	date('Y-m-d H:i:s',$prev_ts);
+      $db_row['cache_slot_end_time_formatted'] =
+	date('Y-m-d H:i:s',$next_ts);
+      
+      
       $db_row['inventory'] = isset($content_type['inventory_tids']) &&
 	isset($content_type['inventory_tids'][0]) ?
 	$content_type['inventory_tids'][0] : NULL;
@@ -433,8 +445,8 @@ AND n.type='lowel_o110_p_'
 	$db_row['item_title'] = $item['title'];
 	$db_row['item_status'] = $item['status'];
       }
-    	  dsm($reservation_node, 'rn2');
-	  dsm($reservation_result, 'rr2');
+      //dsm($reservation_node, 'reservation node');
+      //  dsm($reservation_result, 'reservation db result');
 
       if ($reservation_node) {
 	$db_row['reservation_nid'] = $reservation_node->nid;
@@ -493,7 +505,7 @@ AND n.type='lowel_o110_p_'
 	  }
 	}
       }
-
+      
       //IF BAD ITEM STATUS ITEM IS UNAVAIALABLE
       if ($item['status'] != RESERVATIONS_AVA_F) {
 	$db_row['cache_slot_status'] = 0;
@@ -541,12 +553,9 @@ AND n.type='lowel_o110_p_'
 	$db_row['project_nid'] = $reservation_result->project_nid;
 	$db_row['project_title'] = $reservation_result->project_title;
       }
-      dsm($db_row, 'db row in array');          
       $db_rows[] = $db_row;
       $prev_object = clone $next_object;
-   
     } //done looping through the item for all time slots
-        
     if ($content_type['reservations_type_setting'] == 'bucket') {
       $table = 'cma_reservation_bucket_cache';
       $insert_fields = array_diff($bucket_cache_fields, array('cache_id'));
@@ -562,6 +571,7 @@ AND n.type='lowel_o110_p_'
     $is_first_row = TRUE;
     $args = array();
     $insert_counter = 0;
+
     foreach($db_rows as $row) {
       if ($is_first_row) {
 	$is_first_row = FALSE;
@@ -581,20 +591,22 @@ AND n.type='lowel_o110_p_'
 	}
 	$arg_name =  ':' . $value . '_' . $insert_counter;
 	$sql .= $arg_name;
-	$args[$arg_name] = $db_row[$value];
+	$args[$arg_name] = $row[$value];
       }
       $sql .= " ) ";
       $insert_counter ++;
     }
-    dsm($db_rows, 'db rows');
+
     //dsm($sql, 'sql');
-    dsm($args, 'args');
-    db_query($sql, $args);
+    //dsm($args, 'args');
+    //db_query($sql, $args);
     dsm(date('H:i:s'), 'after insert');
   }  
   dsm(date('H:i:s'), 'end of loop');
   dsm($row_counter, 'number of rows');
-  db_query("select dfjd from dfjdlk");
+
+  //FIXME ONLY HERE FOR TESTING
+  //db_query("select dfjd from dfjdlk");
   
 }
 
