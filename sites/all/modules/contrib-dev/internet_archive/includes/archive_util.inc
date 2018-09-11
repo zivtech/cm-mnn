@@ -576,8 +576,7 @@ function internet_archive_validate_transfers($nid = null) {
 		       "AND status = :transferred ".
 		       "LIMIT 10",
 		       array(':nid' => $nid,
-			     ':transferred' => ARCHIVE_TRANSFERRED,
-			     ':attempts' => $attempts));
+			     ':transferred' => ARCHIVE_TRANSFERRED));
   }
   else {
     //only grab 10 at a time to avoid pounding archive.org
