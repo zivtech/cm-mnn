@@ -91,7 +91,7 @@ function mnn_internet_archive_internet_archive_metadata($node = NULL,
       mnn_internet_archive_get_single_field_value($node,
 						  'field_show_premiere_date');
     if ($premiere_date) {
-      $metadata['premiere_date'] = $premiere_date;
+      $metadata['premiere-date'] = $premiere_date;
     }
     //find project
     $project_id = mnn_internet_archive_get_single_field_value($node,
