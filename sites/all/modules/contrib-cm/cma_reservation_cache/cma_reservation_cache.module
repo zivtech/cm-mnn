@@ -188,7 +188,17 @@ function cma_reservation_cache_report_submit($form, $form_state) {
      FROM {node} n
      INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid
      WHERE rin.reservations_sub_type = :reservations_sub_type
+
+  
+     AND n.type='lowel_o110_p_'
+     
    ORDER BY n.type ASC
+
+
+LIMIT 1
+
+
+
 ";
   //   ORDER BY n.type ASC
   //  ";
@@ -329,17 +339,21 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   $cache_start_object = new DateTime($cache_start);
   $cache_end_object = new DateTime($cache_end);
 
-  dsm(date('H:i:s'), 'start of time loop');
+  dsm(date('H:i:s'), 'start of item loop');
   $row_counter = 0;
-      
-  foreach($reservable_content_type_items as $item) {
+  $bucket_slot_id = 0;
   
+  //loop over all of the items/slots (no times though)
+  foreach($reservable_content_type_items as $item) {
+    $bucket_slot_id ++;
+    
     $prev_object = clone $cache_start_object;
 
     //this will store all the db rows for a time slot for all content types
     //it gets refreshed every new 
     $db_rows = array();
-    
+
+    //loop over each time block
     while ($prev_object < $cache_end_object) {
       $row_counter ++;
       
@@ -407,7 +421,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       $db_row['cache_slot_end_time_formatted'] =
 	date('Y-m-d H:i:s',$next_ts);
       
-      
+        
       $db_row['inventory'] = isset($content_type['inventory_tids']) &&
 	isset($content_type['inventory_tids'][0]) ?
 	$content_type['inventory_tids'][0] : NULL;
@@ -415,23 +429,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       $db_row['bucket_category'] = $content_type['reservations_grouping'];
 
       if ($content_type['reservations_type_setting'] == 'bucket') {
-	//THIS GLOBAL WILL BE AN ARRAY OF BUCKET COUNTS BY CONTENT TYPE
-	global $cma_bucket_count_global_array;
-	
-	$cma_bucket_count_global_array =
-	  isset($cma_bucket_count_global_array) && 
-	  $cma_bucket_count_global_array ?
-	  $cma_bucket_count_global_array : array();
-	
-	$cma_bucket_count_global_array[$item->type] =
-	  isset($cma_bucket_count_global_array[$item->type]) &&
-	  $cma_bucket_count_global_array[$item->type] ?
-	  $cma_bucket_count_global_array[$item->type] : 0;
-	
-	$cma_bucket_count_global_array[$item->type]++;
-	
-	$db_row['bucket_slot_id'] =
-	  $cma_bucket_count_global_array[$item->type];
+	$db_row['bucket_slot_id'] = $bucket_slot_id;
 		
 	if ($reservation_result && $reservation_result->item_nid) {
 	  $db_row['item_nid'] = $reservation_result->item_nid;
@@ -555,7 +553,8 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       }
       $db_rows[] = $db_row;
       $prev_object = clone $next_object;
-    } //done looping through the item for all time slots
+    } //done looping through the item for all time blocks
+    
     if ($content_type['reservations_type_setting'] == 'bucket') {
       $table = 'cma_reservation_bucket_cache';
       $insert_fields = array_diff($bucket_cache_fields, array('cache_id'));
@@ -599,14 +598,26 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 
     //dsm($sql, 'sql');
     //dsm($args, 'args');
-    //db_query($sql, $args);
+    $delete_sql = "DELETE FROM $table where ";
+
+    if ($table == 'cma_reservation_bucket_cache') {
+      $delete_sql .= " bucket_slot_id = :bucket_slot_id";
+      $delete_args = array(':bucket_slot_id' => $db_row['bucket_slot_id']);
+    }
+    else {
+      $delete_sql .= " item_nid = :item_nid";
+      $delete_args = array(':bucket_slot_id' => $db_row['item_nid']);
+    }
+    db_query($delete_sql, $delete_args);
+    
+    db_query($sql, $args);
     dsm(date('H:i:s'), 'after insert');
   }  
-  dsm(date('H:i:s'), 'end of loop');
+  dsm(date('H:i:s'), 'end of item loop');
   dsm($row_counter, 'number of rows');
 
   //FIXME ONLY HERE FOR TESTING
-  //db_query("select dfjd from dfjdlk");
+  db_query("select dfjd from dfjdlk");
   
 }
 
