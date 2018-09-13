@@ -273,12 +273,20 @@ function cma_reservation_cache_db_field_type_info($field_info) {
     }
     if ($db_settings['data_type'] == 'varchar' ||
 	$db_settings['data_type'] == 'text' ) {
-      $info['length'] = $db_settings['data_length'];
+      if ($field_info['settings']['store'] == 1) {
+	$info['length'] = $db_settings['data_length'];	
+      }
+      else {
+	//FIXME WHAT SHOULD I SET IT TO? HARD TO SAY SINCE THIS COMPUTED FIELD
+	//IS NOT ACTUALLY STORED IN DB
+	$info['length'] = 1000;
+      }
     }
     else if ($db_settings['data_type'] == 'numeric') {
       $info['precision'] = $db_settings['data_precision'];
       $info['scale'] = $db_settings['data_scale'];
     }
+    
     break;
     
   case 'entityreference':

@@ -188,16 +188,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
      FROM {node} n
      INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid
      WHERE rin.reservations_sub_type = :reservations_sub_type
-
-  
-     AND n.type='lowel_o110_p_'
-     
-   ORDER BY n.type ASC
-
-
-LIMIT 1
-
-
+     ORDER BY n.type ASC
 
 ";
   //   ORDER BY n.type ASC
@@ -211,7 +202,7 @@ LIMIT 1
   $results = db_query($query, $args);
 
   $reservable_content_type_items = array();
-  dsm(date('H:i:s'), 'start of item loop');
+  dsm(date('H:i:s'), 'start of item discover loop');
 
   while ($result = $results->fetchObject()) {
 
@@ -598,7 +589,11 @@ LIMIT 1
 
     //dsm($sql, 'sql');
     //dsm($args, 'args');
-    $delete_sql = "DELETE FROM $table where ";
+    $delete_sql =
+      "DELETE FROM $table " .
+      "WHERE cache_slot_start_time >= :start " .
+      "AND cache_slot_start_time <= :end " .
+      "AND ";
 
     if ($table == 'cma_reservation_bucket_cache') {
       $delete_sql .= " bucket_slot_id = :bucket_slot_id";
@@ -606,10 +601,15 @@ LIMIT 1
     }
     else {
       $delete_sql .= " item_nid = :item_nid";
-      $delete_args = array(':bucket_slot_id' => $db_row['item_nid']);
+      $delete_args = array(':item_nid' => $db_row['item_nid']);
     }
+    $delete_args[':start'] = $cache_start_object->getTimestamp();
+    $delete_args[':end'] = $cache_end_object->getTimestamp();
+
+    //delete all timeblocks within time range for this item/bucket slot
     db_query($delete_sql, $delete_args);
-    
+
+    //add all timeblocks within time range for this item/bucket slot
     db_query($sql, $args);
     dsm(date('H:i:s'), 'after insert');
   }  
@@ -617,7 +617,7 @@ LIMIT 1
   dsm($row_counter, 'number of rows');
 
   //FIXME ONLY HERE FOR TESTING
-  db_query("select dfjd from dfjdlk");
+  //db_query("select dfjd from dfjdlk");
   
 }
 
