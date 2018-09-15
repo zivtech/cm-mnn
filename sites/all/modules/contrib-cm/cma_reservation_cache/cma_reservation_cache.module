@@ -118,6 +118,94 @@ function cma_reservation_cache_settings_form($form) {
 	    '#default_value' => $default_value,
 	    );
 
+
+  //////////////////////////////////////////////////////////////////////////
+  $rows = array();
+  $row_elements = array();
+  $data=array();
+
+
+  //BUCKET CATEGORIES  
+  $vid = variable_get('reservations_grouping_vid', 0);
+  $terms = taxonomy_get_tree($vid);
+  $bucket_categories = array();
+  foreach ($terms as $term) {
+    $bucket_categories[$term->tid] = $term->name; 
+  }
+  natcasesort($bucket_categories);
+
+  $default_weight = -100;
+  foreach ($bucket_categories as $k =>$v) {
+    $default = variable_get($k.'_rank_weight',  $default_weight++);
+    // Build the table rows.
+    $rows[$k] =
+      array(
+	    'data' =>
+	    array(
+		  // Cell for the cross drag&drop element.
+		  array('class' => array('item-cross')),
+		  // Weight item for the tabledrag.
+		  array('data' =>
+			array(
+			      '#type' => 'weight',
+			      '#title' => t('Weight'),
+			      '#title_display' => 'invisible',
+			      '#default_value'=>$default, 
+			      '#delta' => 500,
+			      '#attributes' =>
+			      array('class' => array('item-order-weight'),),
+			      )),
+		  //CONTENT TYPE NAME MARKUP
+		  array('data' => array('#markup' => "$v",)),
+		  
+		  ),
+	    'class' => array('draggable'),
+	    );
+    
+    // Build rows of the form elements in the table.
+    $row_elements[$k] =
+      array(
+	    $k.'_rank_weight' => &$rows[$k]['data'][1]['data'],
+	    'content_type'.$k => &$rows[$k]['data'][2]['data'],
+	    );
+  }
+
+  //sort rows on the weight value
+  uasort($rows, function($a, $b) {
+      return $a['data'][1]['data']['#default_value'] >=
+	$b['data'][1]['data']['#default_value'];
+    });
+
+  $form['cma_reservation_chart'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t("Chart Settings"),
+	  );
+
+  $form['cma_reservation_chart']['sort'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t('Order of Categories on Chart'),
+	  );
+
+  // add this to parent form
+  $form['cma_reservation_chart']['sort']['content_types'] =
+    array(
+	  '#theme' => 'table',
+	  // The row form elements need to be processed and build,
+	  // therefore pass them as element children.
+	  'elements' => $row_elements,
+	  '#header' =>
+	  // We need two empty columns for the weigth field and th10e cross.
+	  array(
+		array('data' => t('Sort'), 'colspan' => 2),
+		array('data' => t('Reservable Content Type Category')),
+		),
+	  '#rows' => $rows,
+	  '#attributes' => array('id' => 'item-order'),
+	  '#sufix'=>'</div>',
+	  );
+  drupal_add_tabledrag('item-order', 'order', 'sibling','item-order-weight');
   
   return system_settings_form($form);
 }
@@ -181,10 +269,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 
   $increment = $reservation_fields['field_reservations_date']
     ['widget']['settings']['increment'];
-
-
-  //FIXME ONLY HERE FOR TESTING
-  //$increment = 60;
   
   //FIND THE FIELDS FOR THE BUCKET AND RESOURCE CACHE TABLES
   $sql = "show columns from cma_reservation_bucket_cache";
@@ -659,6 +743,18 @@ function cma_reservation_cache_chart() {
   $item_time_slots = cma_reservation_cache_get_item_time_slots($values);
 
 
+  $vid = variable_get('reservations_grouping_vid', 0);
+  $terms = taxonomy_get_tree($vid);
+  $bucket_categories = array();
+  $default_index = 1000000;
+  foreach ($terms as $term) {
+    $weight = variable_get($term->tid.'_rank_weight', $default_index++);
+    $bucket_categories[$weight] = $term->name; 
+  }
+  ksort($bucket_categories);
+  dsm($bucket_categories, 'bc');
+
+  
   dsm(date('h:i:s'), 'form end');
   return $form;
 }
@@ -728,12 +824,11 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
     }
 
     if ($type == 'resource') {
-      $sql .= " ORDER BY item_nid, cache_slot_start_time ";
+      $sql .= " ORDER BY content_type, item_nid, cache_slot_start_time ";
     }
     else {
       $sql .= " ORDER BY content_type, bucket_slot_id, cache_slot_start_time ";
     }
-    dsm($sql, $type);
     
     $results = db_query($sql, $args);
     $chart_html = '';
@@ -741,7 +836,6 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
       $chart_html .= "<div>" . $result->field_reservation_cmptd_producer .
       	"</div>";
     }
-    dsm($chart_html, 'yo');
   }  
 }
 
