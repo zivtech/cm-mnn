@@ -167,15 +167,24 @@ function cma_reservation_cache_main_cache_fields($type) {
 			     'description' =>
 			     'The time the cache was written',
 			     );
-
-  $ret['content_type'] = array(
-			       'type' => 'varchar',
-			       'length' => 255,
-			       'default' => '',
-			       'not null' => TRUE,
-			       'description' =>
-			       'reservable content type of the item',
-			       );
+  $ret['content_type'] =
+    array(
+	  'type' => 'varchar',
+	  'length' => 255,
+	  'default' => '',
+	  'not null' => TRUE,
+	  'description' =>
+	  'human readable version of the reservable content type of the item',
+	  );
+  $ret['content_type_machine_name'] =
+    array(
+	  'type' => 'varchar',
+	  'length' => 255,
+	  'default' => '',
+	  'not null' => TRUE,
+	  'description' =>
+	  'machine name of the reservable content type of the item',
+	  );
 
   if ($type == 'bucket') {
     $ret['bucket_slot_id'] = array(

@@ -16,6 +16,7 @@ define('CMA_RESERVATION_CACHE_ITEM_TYPE', 'item_type');
 define('CMA_RESERVATION_CACHE_ITEM_NID', 'item_nid');
 define('CMA_RESERVATION_CACHE_DOW', 'dow');
 define('CMA_RESERVATION_CACHE_COL_SPAN', 'col_span');
+define('CMA_RESERVATION_CACHE_BY_DAY', 'by_day');
 
 
 /**
@@ -155,7 +156,7 @@ function cma_reservation_cache_settings_form($form) {
 			      '#attributes' =>
 			      array('class' => array('item-order-weight'),),
 			      )),
-		  //CONTENT TYPE NAME MARKUP
+		  //BUCKET CATEGORY NAME MARKUP
 		  array('data' => array('#markup' => "$v",)),
 		  
 		  ),
@@ -166,7 +167,7 @@ function cma_reservation_cache_settings_form($form) {
     $row_elements[$k] =
       array(
 	    $k.'_rank_weight' => &$rows[$k]['data'][1]['data'],
-	    'content_type'.$k => &$rows[$k]['data'][2]['data'],
+	    'bucket_category_'.$k => &$rows[$k]['data'][2]['data'],
 	    );
   }
 
@@ -189,7 +190,7 @@ function cma_reservation_cache_settings_form($form) {
 	  );
 
   // add this to parent form
-  $form['cma_reservation_chart']['sort']['content_types'] =
+  $form['cma_reservation_chart']['sort']['bucket_categories'] =
     array(
 	  '#theme' => 'table',
 	  // The row form elements need to be processed and build,
@@ -297,8 +298,8 @@ function cma_reservation_cache_report_submit($form, $form_state) {
      INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid
      WHERE rin.reservations_sub_type = :reservations_sub_type
      ORDER BY n.type ASC
+  ";
 
-";
   //   ORDER BY n.type ASC
   //  ";
   // FIXME, MAKE SURE ABOVE IS GONE AFTER TESTING
@@ -509,9 +510,11 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 	dsm($reservation_node, 'reservation');
 	**/
       }
-
+      
+      //DONE FETCHING ALL DATA INTO ARRAYS, NOW TIME TO BUILD A DB ROW
       $db_row = array();
-      $db_row['content_type'] = $item['type'];
+      $db_row['content_type_machine_name'] = $item['type'];
+      $db_row['content_type'] = $content_type['type_name'];
       $db_row['cache_time'] = date("Y-m-d H:i:s");
       $db_row['cache_slot_start_time'] = $prev_ts;
       $db_row['cache_slot_end_time'] = $next_ts;
@@ -735,30 +738,48 @@ function cma_reservation_cache_report_submit($form, $form_state) {
  */
 function cma_reservation_cache_chart() {
   dsm(date('h:i:s'), 'form start');
+  
   $form = array();
   $filters = cma_reservation_cache_chart_filters();
   $values = cma_reservation_cache_chart_filter_values($filters);
-  dsm($values, 'values');
-
+  $bucket_categories = cma_reservation_cache_get_bucket_categories();
   $item_time_slots = cma_reservation_cache_get_item_time_slots($values);
 
+  dsm($values, 'form values');
+  dsm($bucket_categories, 'bc');
+
+  foreach ($item_time_slots as $slot) {
+
+    //$chart_html .= "<div>" . $result->field_reservation_cmptd_producer .
+    //  "</div>";
+  }
+
+
+  
+  
+  dsm(date('h:i:s'), 'form end');
+  return $form;
+}
+
+/**
+ * Function will return array of bucket categories sorted with their weight 
+ * as array index
+ */
+function cma_reservation_cache_get_bucket_categories() {
 
   $vid = variable_get('reservations_grouping_vid', 0);
   $terms = taxonomy_get_tree($vid);
   $bucket_categories = array();
+  //set to arbitrarly large number for terms that haven't yet been weighted
+  //on the config page admin/config/cma_reservation_cache/default
   $default_index = 1000000;
   foreach ($terms as $term) {
     $weight = variable_get($term->tid.'_rank_weight', $default_index++);
     $bucket_categories[$weight] = $term->name; 
   }
   ksort($bucket_categories);
-  dsm($bucket_categories, 'bc');
-
-  
-  dsm(date('h:i:s'), 'form end');
-  return $form;
+  return $bucket_categories;
 }
-
 /**
  * Function will return an array of retults form the cache table, each result
  * is a unique combination of item nid/slot id, content type, start, and end
@@ -767,12 +788,12 @@ function cma_reservation_cache_chart() {
  */
 function cma_reservation_cache_get_item_time_slots($filter_values) {
   module_load_install('cma_reservation_cache');
-  
+  $item_time_slots = array();
   $types = array('bucket', 'resource');
   foreach($types as $type) {
     $args = array();
     
-    $fields = cma_reservation_cache_main_cache_fields('resource');
+    $fields = cma_reservation_cache_main_cache_fields($type);
     $fields = cma_reservation_cache_get_db_fields($fields);
     $field_list = implode(', ', array_keys($fields));
     $sql = "SELECT " . $field_list . " FROM cma_reservation_".$type."_cache ";
@@ -829,14 +850,37 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
     else {
       $sql .= " ORDER BY content_type, bucket_slot_id, cache_slot_start_time ";
     }
-    
+
     $results = db_query($sql, $args);
     $chart_html = '';
     foreach ($results as $result) {
-      $chart_html .= "<div>" . $result->field_reservation_cmptd_producer .
-      	"</div>";
+      if (isset($result->bucket_slot_id)) {
+	
+      }
+      else {
+
+      }
+
+      
+      //if the by_day filter is set, group slots by day
+      if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
+	$day = date('Y-m-d', $result->cache_slot_start_time);
+	
+	dsm($day, 'day');
+	dsm($result, 'result');
+      }
+
+
+
+
+
+
+
+      
+      break;
     }
-  }  
+  }
+  return $item_time_slots;
 }
 
 /**
@@ -864,6 +908,7 @@ function cma_reservation_cache_chart_filters() {
 	       CMA_RESERVATION_CACHE_ITEM_NID,
 	       CMA_RESERVATION_CACHE_DOW,
 	       CMA_RESERVATION_CACHE_COL_SPAN,
+	       CMA_RESERVATION_CACHE_BY_DAY,
 	       );
 }
 
