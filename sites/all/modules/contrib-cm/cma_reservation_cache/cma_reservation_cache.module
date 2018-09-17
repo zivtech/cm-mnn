@@ -289,7 +289,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
      FROM {node} n
      INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid
      WHERE rin.reservations_sub_type = :reservations_sub_type
-AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
      ORDER BY n.type ASC, n.nid ASC
 
   ";
@@ -366,7 +365,7 @@ AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
 
   while ($result = $results->fetchObject()) {
     //LOOK TO SEE IF WE HAVE FETCHED THIS RESERVATION BEFORE
-    $reservation = empty($cached_reservations[$result->res_id]) ?
+    $reservation = !empty($cached_reservations[$result->res_id]) ?
       $cached_reservations[$result->res_id] : NULL;
     if (!$reservation) {
       $reservation = node_load($result->res_id);
@@ -477,8 +476,8 @@ AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
       $reservation_result = NULL;
       $reservation_node = NULL;
       $reservations =
-	empty($reserved_timeslots[$prev_ts]) &&
-	empty($reserved_timeslots[$prev_ts][$item['type']]) ?
+	!empty($reserved_timeslots[$prev_ts]) &&
+	!empty($reserved_timeslots[$prev_ts][$item['type']]) ?
 	$reserved_timeslots[$prev_ts][$item['type']] :
 	array();
 
@@ -539,10 +538,6 @@ AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
       $db_row['inventory'] = $tid;
       $db_row['inventory_name'] = $name;
 
-      dsm($content_type['inventory_tids'], 'ct yooooooo');
-      dsm($db_row['inventory'], 'ct yooooooo2');
-
-	  
       $term = taxonomy_term_load($content_type['reservations_grouping']);
       if ($term) {
 	$db_row['bucket_category'] = $content_type['reservations_grouping'];
@@ -613,8 +608,8 @@ AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
 	  }
 	  
 	  if ($field_info['type'] == 'datetime' &&
-	      empty($field_info['columns']['value']) &&
-	      empty($field_info['columns']['value2'])) {
+	      !empty($field_info['columns']['value']) &&
+	      !empty($field_info['columns']['value2'])) {
 	    $db_row[$field_name."_start"] =
 	      cma_reservations_cache_get_single_field_value($reservation_node,
 							    $field_name,
@@ -771,8 +766,6 @@ function cma_reservation_cache_chart() {
   
   cma_reservation_cache_log_microsec('before chart loop');
   foreach ($item_time_slots as $slot) {
-    dsm($slot, 'slot');
-    break;
     //dsm($slot->day . "||" . $slot->bucket_weight . "||" .
     //	$slot->bucket_category . "||" . $slot->content_type . "||" .
     //	$slot->bucket_slot_id. "||" . $slot->item_title. "||" .
@@ -951,11 +944,11 @@ function cma_reservation_cache_chart_filters() {
 */
 function cma_reservations_cache_get_single_field_value($entity, $field_name,
 						       $index = 'value') {
-  if (empty($entity->{$field_name})) {
+  if (!empty($entity->{$field_name})) {
     $field = $entity->{$field_name};
-    if (empty($field[LANGUAGE_NONE]) &&
-        empty($field[LANGUAGE_NONE][0]) &&
-        empty($field[LANGUAGE_NONE][0][$index])) {
+    if (!empty($field[LANGUAGE_NONE]) &&
+        !empty($field[LANGUAGE_NONE][0]) &&
+        !empty($field[LANGUAGE_NONE][0][$index])) {
       return $field[LANGUAGE_NONE][0][$index];
     }
   }
