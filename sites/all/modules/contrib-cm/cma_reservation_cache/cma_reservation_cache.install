@@ -188,6 +188,14 @@ function cma_reservation_cache_main_cache_fields() {
 			    'type' => 'int',
 			    'unsigned' => TRUE,
 			    );
+  $ret['inventory_name'] = array(
+				 'type' => 'varchar',
+				 'length' => 255,
+				 'default' => '',
+				 'description' =>
+				 'Term name of inventory',
+			     );
+
   $ret['bucket_category'] = array(
 				  'type' => 'int',
 				  'unsigned' => TRUE,

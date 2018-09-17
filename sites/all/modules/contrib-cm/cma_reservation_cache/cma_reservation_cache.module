@@ -523,11 +523,26 @@ AND (n.type='firehouse_express_studios_fh_' OR n.type='lowel_o110_p_')
 	date('Y-m-d H:i:s',$prev_ts);
       $db_row['cache_slot_end_time_formatted'] =
 	date('Y-m-d H:i:s',$next_ts);
-              
-      $db_row['inventory'] = empty($content_type['inventory_tids']) &&
-	empty($content_type['inventory_tids'][0]) ?
+
+
+      $tid = !empty($content_type['inventory_tids']) &&
+	!empty($content_type['inventory_tids'][0]) ?
 	$content_type['inventory_tids'][0] : NULL;
 
+      $name = '';
+      if ($tid) {
+	$term = taxonomy_term_load($tid);
+	if ($term) {
+	  $name = $term->name;
+	}
+      }
+      $db_row['inventory'] = $tid;
+      $db_row['inventory_name'] = $name;
+
+      dsm($content_type['inventory_tids'], 'ct yooooooo');
+      dsm($db_row['inventory'], 'ct yooooooo2');
+
+	  
       $term = taxonomy_term_load($content_type['reservations_grouping']);
       if ($term) {
 	$db_row['bucket_category'] = $content_type['reservations_grouping'];
