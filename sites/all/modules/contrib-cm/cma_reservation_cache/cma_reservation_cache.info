@@ -13,6 +13,13 @@ dependencies[] = views
 files[] = cma_reservation_cache.module
 files[] = cma_reservation_cache.css
 
+files[] = inc/chart.inc
+files[] = inc/misc.inc
+files[] = inc/read_cache.inc
+files[] = inc/report.inc
+files[] = inc/settings.inc
+files[] = inc/write_cache.inc
+
 configure = admin/config/cma_reservation_cache
 
 project = cma_reservation_cache
