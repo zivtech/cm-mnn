@@ -1,0 +1,37 @@
+.cma_reservation_cache_chart_table {
+    display:table;
+}
+.cma_reservation_cache_chart_row {
+    display:table-row;
+}
+.cma_reservation_cache_chart_header_row {
+    display:table-header-group;
+}
+.cma_reservation_cache_chart_first_cell {
+    padding: 2px 2px 2px 2px;
+    border-width: thin;
+    border-style: solid;
+    border-color: red;
+    display:table-cell;
+}
+.cma_reservation_cache_chart_cell {
+    padding: 2px 2px 2px 2px;
+    border-width: thin;
+    border-style: solid;
+    border-color: black;
+    display:table-cell;
+}
+.cma_reservation_cache_chart_first_header_cell {
+    padding: 2px 2px 2px 2px;
+    border-width: thin;
+    border-style: solid;
+    border-color: black;
+    display:table-cell;
+}
+.cma_reservation_cache_chart_header_cell {
+    padding: 2px 2px 2px 2px;
+    border-width: thin;
+    border-style: solid;
+    border-color: black;
+    display:table-cell;
+}

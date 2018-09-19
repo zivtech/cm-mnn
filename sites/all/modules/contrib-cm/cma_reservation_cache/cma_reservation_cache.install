@@ -237,6 +237,19 @@ function cma_reservation_cache_main_cache_fields() {
 				       'type' => 'int',
 				       'unsigned' => TRUE,
 				       );
+  $ret['reservation_uid'] = array(
+				  'type' => 'int',
+				  'unsigned' => TRUE,
+				  );
+  $ret['reservation_user_name'] = array(
+					'type' => 'varchar',
+					'length' => 255,
+					'default' => '',
+					'description' =>
+					'User name of the person whose name  '.
+					'reservation the reservation is in',
+				);
+
   $ret['reservation_status'] = array(
 				     'type' => 'int',
 				     'unsigned' => TRUE,

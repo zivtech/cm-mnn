@@ -20,6 +20,14 @@ define('CMA_RESERVATION_CACHE_BY_DAY', 'by_day');
 
 
 /**
+ * Implements hook_init().
+ */
+function cma_reservation_cache_init() {
+  drupal_add_css(drupal_get_path('module', 'cma_reservation_cache') . 
+		 '/cma_reservation_cache.css');
+
+}
+/**
  * Implements hook_permission().
  */
 function cma_reservation_cache_permission() {
@@ -278,7 +286,6 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   while ($result = $results->fetchObject()) {
     $cache_fields[] = $result->Field;
   }
-  dsm($cache_fields, 'cache fields');
   //////////////////////////////////////////////////////////////////////////
   //FILL THE $reservable_content_type_items ARRAY
   
@@ -298,6 +305,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   // FIXME, MAKE SURE ABOVE IS GONE AFTER TESTING
   // AND n.type='lowel_o110_p_'
   // AND n.type='firehouse_express_studios_fh_'
+  //AND n.type = 'headphones_p_'
   // LIMIT 1
   
   $args = array(':reservations_sub_type' => RESERVATIONS_SUB_TYPE_ITEM);
@@ -572,7 +580,11 @@ function cma_reservation_cache_report_submit($form, $form_state) {
       //  dsm($reservation_result, 'reservation db result');
 
       if ($reservation_node) {
+
 	$db_row['reservation_nid'] = $reservation_node->nid;
+	$db_row['reservation_uid'] = $reservation_node->uid;
+	$db_row['reservation_user_name'] = $reservation_node->name;
+	
 	//FIXME SET RESERVATION GROUP ID FOR REAL
 	$db_row['reservation_group_id'] = 0;
 	$db_row['reservation_status'] =
@@ -721,15 +733,16 @@ function cma_reservation_cache_report_submit($form, $form_state) {
     $delete_sql =
       "DELETE FROM cma_reservation_cache " .
       "WHERE cache_slot_start_time >= :start " .
-      "AND cache_slot_start_time <= :end " .
-      "AND ";
+      "AND cache_slot_start_time <= :end ";
 
     if ($db_row['bucket_slot_id'] > 0) {
-      $delete_sql .= " bucket_slot_id = :bucket_slot_id";
-      $delete_args = array(':bucket_slot_id' => $db_row['bucket_slot_id']);
+      $delete_sql .= " AND bucket_slot_id = :bucket_slot_id ";
+      $delete_sql .= " AND content_type_machine_name = :type ";
+      $delete_args = array(':bucket_slot_id' => $db_row['bucket_slot_id'],
+			   ':type' => $db_row['content_type_machine_name']);
     }
     else {
-      $delete_sql .= " item_nid = :item_nid";
+      $delete_sql .= " AND item_nid = :item_nid";
       $delete_args = array(':item_nid' => $db_row['item_nid']);
     }
     $delete_args[':start'] = $cache_start_object->getTimestamp();
@@ -755,31 +768,163 @@ function cma_reservation_cache_report_submit($form, $form_state) {
  * resesrvations
  */
 function cma_reservation_cache_chart() {
-  dsm(date('h:i:s'), 'form start');
-  cma_reservation_cache_log_microsec('form start'); 
+  module_load_install('cma_reservation_cache');
+
   $form = array();
+  $fields = cma_reservation_cache_main_cache_fields();
+  $fields = cma_reservation_cache_get_db_fields($fields);
   $filters = cma_reservation_cache_chart_filters();
   $values = cma_reservation_cache_chart_filter_values($filters);
+
+  dsm(date('h:i:s'), 'form start');
+  cma_reservation_cache_log_microsec('form start'); 
   dsm($values, 'form values');
   
-  $item_time_slots = cma_reservation_cache_get_item_time_slots($values);
-  
-  cma_reservation_cache_log_microsec('before chart loop');
-  foreach ($item_time_slots as $slot) {
-    //dsm($slot->day . "||" . $slot->bucket_weight . "||" .
-    //	$slot->bucket_category . "||" . $slot->content_type . "||" .
-    //	$slot->bucket_slot_id. "||" . $slot->item_title. "||" .
-    //	date('Y-m-d H:i:s', $slot->cache_slot_start_time));
-    //$chart_html .= "<div>" . $result->field_reservation_cmptd_producer .
-    //  "</div>";
-  }
-  cma_reservation_cache_log_microsec('after chart loop');
+  $item_time_slots =
+    cma_reservation_cache_get_item_time_slots($values, $fields);
 
+  dsm(count($item_time_slots), 'item_time_slots found');
+  cma_reservation_cache_log_microsec('before header loop');
   
-  cma_reservation_cache_log_microsec('form end');
+  $header = cma_reservation_cache_chart_header_row($item_time_slots);
+  
+  cma_reservation_cache_log_microsec('before chart loop');  
+  $chart_html = '<div class="cma_reservation_cache_chart_table">';
+
+  //add all the data rows
+  $identifier = $prev_identifier = '';
+  foreach ($item_time_slots as $slot) {
+    $identifier = cma_reservation_cache_slot_identifier($slot);
+    
+    if ($prev_identifier != $identifier) {
+      //first time through, add header row
+      if (empty($prev_identifier)) {
+	$chart_html .= $header;
+      }
+      else {
+	//close the div on the previous row
+	$chart_html .= "</div>";
+      }
+      //start a new div row
+      $chart_html .= '<div class="cma_reservation_cache_chart_row">';
+
+      //add the row title
+      $chart_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
+	cma_reservation_cache_slot_item_title($slot) . "</div>";
+    }
+    //set prev so subsequent loops can see if item/day changes
+    $prev_identifier = $identifier;
+
+    //this is a normal chart cell
+    $hover = cma_reservation_cache_chart_slot_hover($slot, $fields);
+    $chart_html .=
+      '<div title="'.$hover.'" class="cma_reservation_cache_chart_cell">' .
+      date('h:ip', $slot->cache_slot_start_time) . "<br/>".
+      cma_reservation_cache_chart_slot_link($slot) . "</div>";
+  }
+  //close the div on the last row and the table
+  $chart_html .= "</div></div>";
+  
+  cma_reservation_cache_log_microsec('after chart loop');
+  
+  $form['chart'] = array('#markup'=> $chart_html);
+  
+  cma_reservation_cache_log_microsec('end of cma_reservation_cache_chart');
   dsm(date('h:i:s'), 'form end');
+  
   return $form;
 }
+
+/**
+ * Function will return a header row by iterating over item_time_slots and
+ * finding the first row
+ */
+function cma_reservation_cache_chart_slot_hover($slot, $fields) {
+  $ret = 'Start = ' . date('h:ip', $slot->cache_slot_start_time);
+  $ret .= "\n";
+  $ret .= 'End = ' . date('h:ip', $slot->cache_slot_end_time);
+  $ret .= "\n";
+  
+  foreach($fields as $name => $field) {
+    $ret .= $name . ' = ' . strip_tags($slot->{$name}) . "\n";
+  }
+  return $ret;
+}
+
+/**
+ * Function will return the correct link for a chart slot
+ */
+function cma_reservation_cache_chart_slot_link($slot) {
+  if (!empty($slot->reservation_nid)) {
+    $link = l($slot->reservation_nid, "node/" . $slot->reservation_nid); 
+  }
+  else {
+    $link = l('+', "node/add/reservations_reservation");
+  }
+  return $link;
+}
+/**
+ * Function will return a header row by iterating over item_time_slots and
+ * finding the first row
+ */
+function cma_reservation_cache_chart_header_row($item_time_slots) {
+  $header = '<div class="cma_reservation_cache_chart_header_row">';
+  $header .=
+    '<div class="cma_reservation_cache_chart_first_header_cell">Item</div>';
+
+  $identifer = $prev_identifier = '';
+  
+  //BUILD THE HEADER ROW
+  foreach ($item_time_slots as $slot) {
+    //get unique identifer for row
+    $identifier = cma_reservation_cache_slot_identifier($slot);
+
+    //check to see if we are still on first row of results
+    if (!empty($prev_identifier) && ($prev_identifier != $identifier)) {
+      break;
+    }
+    //add the header cell
+    $header .= '<div class="cma_reservation_cache_chart_header_cell">' .
+      date('m-d', $slot->cache_slot_start_time) . "<br/>" .
+      date('H:i', $slot->cache_slot_start_time) . "</div>";
+    
+    $prev_identifier = $identifier;
+  }
+  //close the header row
+  $header .= "</div>";
+  return $header;
+}
+/**
+ * Function finds the unique item identifier, whether its a bucket or 
+ * resource
+ */
+function cma_reservation_cache_slot_identifier($slot) {
+  $ret = '';
+  if ($slot->bucket_slot_id > 0) {
+    $ret = $slot->content_type_machine_name . "||" . $slot->bucket_slot_id;
+  }
+  else {
+    $ret = $slot->content_type . "||" . $slot->item_nid;
+  }
+  return $ret;
+}
+
+/**
+ * Function finds the unique item title, whether its a bucket or 
+ * resource
+ */
+function cma_reservation_cache_slot_item_title($slot) {
+  $ret = '';
+  if ($slot->bucket_slot_id > 0) {
+    $ret = $slot->content_type . " #" . $slot->bucket_slot_id;
+  }
+  else {
+    $ret = $slot->item_title;
+  }
+  return $ret;
+}
+
+
 
 /**
  * Function will return array of bucket categories sorted with their weight 
@@ -805,15 +950,13 @@ function cma_reservation_cache_get_bucket_category_weights() {
  * time.
  *
  */
-function cma_reservation_cache_get_item_time_slots($filter_values) {
-  module_load_install('cma_reservation_cache');
+function cma_reservation_cache_get_item_time_slots($filter_values, $fields) {
+
   $item_time_slots = array();
   
   cma_reservation_cache_log_microsec('get_item_time_slots()');
   $args = array();
     
-  $fields = cma_reservation_cache_main_cache_fields();
-  $fields = cma_reservation_cache_get_db_fields($fields);
   $field_list = implode(', ', array_keys($fields));
   $sql = "SELECT " . $field_list . " ";
   if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
@@ -906,7 +1049,7 @@ function cma_reservation_cache_log_microsec($label = 'Microseconds expired:') {
     
   $total_microsec_time_log += $microsecs;
 
-  dsm("$microsecs of $total_microsec_time_log", $label);
+  dsm("$microsecs of $total_microsec_time_log microseconds", $label);
   $prev_microsec_time_log = $current;
 }
 /**
