@@ -17,7 +17,7 @@ define('CMA_RESERVATION_CACHE_ITEM_NID', 'item_nid');
 define('CMA_RESERVATION_CACHE_DOW', 'dow');
 define('CMA_RESERVATION_CACHE_COL_SPAN', 'col_span');
 define('CMA_RESERVATION_CACHE_BY_DAY', 'by_day');
-
+define('CMA_RESERVATION_CACHE_MODE', 'mode');
 
 /**
  * Implements hook_init().
@@ -80,7 +80,7 @@ function cma_reservation_cache_menu() {
 	  'title' => 'Reservation Chart',
 	  'description'=>t('View chart of reservable items and reservations.'),
 	  'page callback' => 'drupal_get_form',
-	  'page arguments' => array('cma_reservation_cache_chart'),
+	  'page arguments' => array('cma_reservation_cache_chart_form'),
 	  'access arguments' => array('access content'),
 	  'type' => MENU_NORMAL_ITEM,
 	  );
@@ -763,70 +763,42 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   
 }
 
+/** 
+ * Function will return all of the fields in the cache table
+ */
+function cma_reservation_cache_db_table_columns() {
+  global $cma_reservation_cache_cache_table_fields;
+
+  if (empty($cma_reservation_cache_cache_table_fields)) {
+    module_load_install('cma_reservation_cache');
+    $fields = cma_reservation_cache_main_cache_fields();
+    $cma_reservation_cache_cache_table_fields =
+      cma_reservation_cache_get_db_fields($fields);  
+  }
+  return $cma_reservation_cache_cache_table_fields;
+}
+
 /**
  * Function will build the form and the chart of reservable items and their
- * resesrvations
+ * resesrvations. This function is called from menu item "reservations/chart"
  */
-function cma_reservation_cache_chart() {
-  module_load_install('cma_reservation_cache');
-
-  $form = array();
-  $fields = cma_reservation_cache_main_cache_fields();
-  $fields = cma_reservation_cache_get_db_fields($fields);
-  $filters = cma_reservation_cache_chart_filters();
-  $values = cma_reservation_cache_chart_filter_values($filters);
-
+function cma_reservation_cache_chart_form() {
   dsm(date('h:i:s'), 'form start');
   cma_reservation_cache_log_microsec('form start'); 
-  dsm($values, 'form values');
-  
-  $item_time_slots =
-    cma_reservation_cache_get_item_time_slots($values, $fields);
 
-  dsm(count($item_time_slots), 'item_time_slots found');
-  cma_reservation_cache_log_microsec('before header loop');
-  
-  $header = cma_reservation_cache_chart_header_row($item_time_slots);
-  
-  cma_reservation_cache_log_microsec('before chart loop');  
-  $chart_html = '<div class="cma_reservation_cache_chart_table">';
+  $form = array();
+  $values = cma_reservation_cache_chart_filter_values();
 
-  //add all the data rows
-  $identifier = $prev_identifier = '';
-  foreach ($item_time_slots as $slot) {
-    $identifier = cma_reservation_cache_slot_identifier($slot);
-    
-    if ($prev_identifier != $identifier) {
-      //first time through, add header row
-      if (empty($prev_identifier)) {
-	$chart_html .= $header;
-      }
-      else {
-	//close the div on the previous row
-	$chart_html .= "</div>";
-      }
-      //start a new div row
-      $chart_html .= '<div class="cma_reservation_cache_chart_row">';
+  //ADD ALL THE FORM ELEMENTS FOR THE FILTERS, $form IS PASSED BY REFERENCE
+  cma_reservation_cache_chart_add_filters_to_form($form, $values);
 
-      //add the row title
-      $chart_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
-	cma_reservation_cache_slot_item_title($slot) . "</div>";
-    }
-    //set prev so subsequent loops can see if item/day changes
-    $prev_identifier = $identifier;
+  //GET ALL THE ITEM TIME SLOTS FROM CACHE TABLE BASED ON FILTER VALUES
+  $item_time_slots = cma_reservation_cache_get_item_time_slots($values);
 
-    //this is a normal chart cell
-    $hover = cma_reservation_cache_chart_slot_hover($slot, $fields);
-    $chart_html .=
-      '<div title="'.$hover.'" class="cma_reservation_cache_chart_cell">' .
-      date('h:ip', $slot->cache_slot_start_time) . "<br/>".
-      cma_reservation_cache_chart_slot_link($slot) . "</div>";
-  }
-  //close the div on the last row and the table
-  $chart_html .= "</div></div>";
-  
-  cma_reservation_cache_log_microsec('after chart loop');
-  
+  //GET THE ACTUAL HTML FOR THE CHART
+  $chart_html = cma_reservation_cache_get_chart_html($item_time_slots);  
+
+  //ADD THE HTML TO THE FORM AS MARKUP
   $form['chart'] = array('#markup'=> $chart_html);
   
   cma_reservation_cache_log_microsec('end of cma_reservation_cache_chart');
@@ -835,11 +807,94 @@ function cma_reservation_cache_chart() {
   return $form;
 }
 
+
+/**
+ * Function is passed in a form array by reference and then adds all the 
+ * form elements and sets default values based on the passed in values
+ */
+function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
+
+  $form['chart_filters'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t("Project Field Settings"),
+	  '#collapsible' => TRUE,
+	  '#collapsed' => TRUE,
+	  );
+
+   $form['chart_filters']['test'] =
+     array(
+	   '#type' => 'textfield',
+	   '#title' => t('Monday hours'),
+	   '#size' => 11,
+	   '#maxlength' => 11,
+	   );
+}
+/**
+ * Function is passed an array of item time slots and builds the html to 
+ * display the actual chart (just the actual chart, not filter form elements
+ * or any other markup 
+ */
+function cma_reservation_cache_get_chart_html($item_time_slots) {
+  cma_reservation_cache_log_microsec('starting to build chart html');
+
+  //adding the start of the table div
+  $chart_html = '<div class="cma_reservation_cache_chart_table">';
+
+  //get the header row div
+  //it will use the times in the first item of the slots array
+  $header = cma_reservation_cache_chart_header_row($item_time_slots);
+  
+  //identifer will be the unique item identifier, whether its a bucket or 
+  //resource
+  $identifier = $prev_identifier = '';
+
+  //add all the data rows
+  foreach ($item_time_slots as $slot) {
+    $identifier = cma_reservation_cache_slot_identifier($slot);
+
+    //if true, this is either first time through or we are starting a new row
+    if ($prev_identifier != $identifier) {
+      //first time through, add header row before we actually add the first row
+      if (empty($prev_identifier)) {
+	$chart_html .= $header;
+      }
+      //not the first time through so we close the div on the previous row
+      else {
+	$chart_html .= "</div>";
+      }
+      //start a new div row div
+      $chart_html .= '<div class="cma_reservation_cache_chart_row">';
+
+      //add a title to the first cell in the row using a function that
+      //contains an overridable hook
+      $chart_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
+	cma_reservation_cache_slot_item_title($slot) . "</div>";
+    }
+    //set prev so subsequent loops can see if item/day changes and therefore
+    //know to start a new row div
+    $prev_identifier = $identifier;
+
+    //add regular chart slot, first calling functions with overridable hooks
+    //to get the hover text and the display html for the actual cell in chart
+    $hover = cma_reservation_cache_chart_slot_hover($slot);
+    $slot_display = cma_reservation_cache_chart_slot_display($slot);
+    $chart_html .= '<div title="' . $hover .
+      '" class="cma_reservation_cache_chart_cell">' . $slot_display . "</div>";
+  }
+  //done with loop, close the div on the last row div and the table div
+  $chart_html .= "</div></div>";
+
+  cma_reservation_cache_log_microsec('finished building chart html');
+  return $chart_html;
+}
+
 /**
  * Function will return a header row by iterating over item_time_slots and
  * finding the first row
  */
-function cma_reservation_cache_chart_slot_hover($slot, $fields) {
+function cma_reservation_cache_chart_slot_hover($slot) {
+  $fields = cma_reservation_cache_db_table_columns();
   $ret = 'Start = ' . date('h:ip', $slot->cache_slot_start_time);
   $ret .= "\n";
   $ret .= 'End = ' . date('h:ip', $slot->cache_slot_end_time);
@@ -848,20 +903,25 @@ function cma_reservation_cache_chart_slot_hover($slot, $fields) {
   foreach($fields as $name => $field) {
     $ret .= $name . ' = ' . strip_tags($slot->{$name}) . "\n";
   }
+
+  //FIXME ADD A HOOK SO THE HOVER CAN BE OVERRIDEN
   return $ret;
 }
 
 /**
  * Function will return the correct link for a chart slot
  */
-function cma_reservation_cache_chart_slot_link($slot) {
+function cma_reservation_cache_chart_slot_display($slot) {
+  $ret = date('h:ip', $slot->cache_slot_start_time) . "<br/>";
   if (!empty($slot->reservation_nid)) {
-    $link = l($slot->reservation_nid, "node/" . $slot->reservation_nid); 
+    $ret .= l($slot->reservation_nid, "node/" . $slot->reservation_nid); 
   }
   else {
-    $link = l('+', "node/add/reservations_reservation");
+    $ret .= l('+', "node/add/reservations_reservation");
   }
-  return $link;
+
+  //FIXME: ADD A HOOK HERE SO CAN OVERRIDE SLOT DISPLAY TEXT
+  return $ret;
 }
 /**
  * Function will return a header row by iterating over item_time_slots and
@@ -950,13 +1010,18 @@ function cma_reservation_cache_get_bucket_category_weights() {
  * time.
  *
  */
-function cma_reservation_cache_get_item_time_slots($filter_values, $fields) {
-
-  $item_time_slots = array();
-  
+function cma_reservation_cache_get_item_time_slots($filter_values) {
   cma_reservation_cache_log_microsec('get_item_time_slots()');
-  $args = array();
-    
+  if (empty($filter_values)) {
+    drupal_set_message('Error Code #329897 Filters are required', 'error');
+    return array();
+  }
+  
+  $item_time_slots = array();
+  $fields = cma_reservation_cache_db_table_columns();
+  
+  //////////////////////////////////////////////////////////////////////////
+  //START BUILDING THE SQL QUERY, START WITH THE FIELDS FOR THE SELECT
   $field_list = implode(', ', array_keys($fields));
   $sql = "SELECT " . $field_list . " ";
   if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
@@ -965,7 +1030,10 @@ function cma_reservation_cache_get_item_time_slots($filter_values, $fields) {
 
   $sql .= " FROM cma_reservation_cache ";
   $where_and = " WHERE ";
-    
+
+  //////////////////////////////////////////////////////////////////////////
+  //BUILD THE WHERE CLAUSE USING $filter_values
+  $args = array();
   foreach($filter_values as $filter => $value) {
     if ($filter == CMA_RESERVATION_CACHE_FIRST_DAY) {
       if (!$value) {
@@ -1009,7 +1077,9 @@ function cma_reservation_cache_get_item_time_slots($filter_values, $fields) {
     }
     $where_and = " AND ";
   }
-
+  
+  //////////////////////////////////////////////////////////////////////////
+  //BUILD THE ORDER BY CLAUSE FOR THE FILTER QUERY
   $order_by = ' ORDER BY ';
 
   if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
@@ -1020,15 +1090,21 @@ function cma_reservation_cache_get_item_time_slots($filter_values, $fields) {
     "bucket_slot_id, item_nid, cache_slot_start_time ";
   
   $sql .= $order_by;
-  cma_reservation_cache_log_microsec('before query');
+
+  //////////////////////////////////////////////////////////////////////////
+  //EXECUTE THE SQL QUERY
+  cma_reservation_cache_log_microsec('before cache table query');
   $results = db_query($sql, $args);
-  cma_reservation_cache_log_microsec('after query');
-  
+  cma_reservation_cache_log_microsec('after cache table query');
+
+  //FIXME, WHEN CMA_RESERVATION_CACHE_COL_SPAN FILTER IS SET, COMBINE
+  //CELLS FOR RESERVATIONS THAT ARE LONGER THAN ONE CELL
   foreach ($results as $result) {
     $item_time_slots[] = $result;
   }
-  cma_reservation_cache_log_microsec('end of get_item_time_slots()');
 
+  dsm("Found " . count($item_time_slots) . " item time slots.");
+  cma_reservation_cache_log_microsec('end of get_item_time_slots()');
   
   return $item_time_slots;
 }
@@ -1055,11 +1131,13 @@ function cma_reservation_cache_log_microsec($label = 'Microseconds expired:') {
 /**
  * Function will return an array of filter values for the chart
  */
-function cma_reservation_cache_chart_filter_values($filters) {
+function cma_reservation_cache_chart_filter_values() {
   $values = array();
+  $filters = cma_reservation_cache_chart_filters();
   foreach ($filters as $filter) {
     $values[$filter] = filter_input(INPUT_GET, $filter);
   }
+  dsm($values, 'submitted query string form values');
   return $values;
 }
 /**
@@ -1078,6 +1156,7 @@ function cma_reservation_cache_chart_filters() {
 	       CMA_RESERVATION_CACHE_DOW,
 	       CMA_RESERVATION_CACHE_COL_SPAN,
 	       CMA_RESERVATION_CACHE_BY_DAY,
+	       CMA_RESERVATION_CACHE_MODE,
 	       );
 }
 
