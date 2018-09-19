@@ -39,6 +39,8 @@ function cma_reservation_cache_chart_form() {
  */
 function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 
+  $defaults = cma_reservation_chart_default_filter_values($values);
+  
   $form['chart_filters'] =
     array(
 	  '#type' => 'fieldset',
@@ -47,18 +49,120 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 	  '#collapsed' => FALSE,
 	  );
 
-   $form['chart_filters']['first_day'] =
+   $form['chart_filters'][CMA_RESERVATION_CACHE_FIRST_DAY] =
      array(
-	   '#title' => t('Start Day'),
+	   '#title' => t('First Day'),
 	   '#date_format' => 'Y-m-d',
 	   '#type' => 'date_popup',
 	   '#date_label_position' => 'within',
 	   '#size' => 15,
-	   '#default_value' => $values[CMA_RESERVATION_CACHE_FIRST_DAY],
+	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_FIRST_DAY],
 	   '#description' => '',
 	   );
+
+   $form['chart_filters'][CMA_RESERVATION_CACHE_LAST_DAY] =
+     array(
+	   '#title' => t('Last Day'),
+	   '#date_format' => 'Y-m-d',
+	   '#type' => 'date_popup',
+	   '#date_label_position' => 'within',
+	   '#size' => 15,
+	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_LAST_DAY],
+	   '#description' => '',
+	   );
+
+   $hours = cma_reservation_cache_hours_array();
+   unset($hours[24]);
+   $form['chart_filters'][CMA_RESERVATION_CACHE_BEGIN_HOUR] =
+     array(
+	   '#title' => t('Begin Hour'),
+	   '#type' => 'select',
+	   '#options' => $hours,
+	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_BEGIN_HOUR],
+	   '#description' => '',
+	   );
+
+   $hours = cma_reservation_cache_hours_array();
+   unset($hours[0]);
+   $form['chart_filters'][CMA_RESERVATION_CACHE_END_HOUR] =
+     array(
+	   '#title' => t('End Hour'),
+	   '#type' => 'select',
+	   '#options' => $hours,
+	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_END_HOUR],
+	   '#description' => '',
+	   );
+
+   $form['chart_filters']['inventories'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t("Select Inventory(ies)"),
+	  );
+
+   $inventories = cma_reservation_cache_inventories_array();
+   $form['chart_filters']['inventories'][CMA_RESERVATION_CACHE_INVENTORY] =
+     array(
+	   '#title' => t('Inventory'),
+	   '#type' => 'multiselect',
+	   '#multiple' => TRUE,
+	   '#options' => $inventories,
+	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_INVENTORY],
+	   '#description' => '',
+	   );
+
    
 }
+
+/**
+ * FUNCTION WILL RETURN AN ARRAY OF DEFAULT VALUES FOR CHART FILTER FORM 
+ * ELEMENTS
+ */
+function cma_reservation_chart_default_filter_values($values) {
+  $defaults = array();
+
+  foreach($values as $key=>$value) {
+    if (empty($value)) {
+      if ($key == CMA_RESERVATION_CACHE_FIRST_DAY) {
+	$value = date('Y-m-d');
+      }
+      else if ($key == CMA_RESERVATION_CACHE_LAST_DAY) {
+	$value = date('Y-m-d');
+      }
+      else if ($key == CMA_RESERVATION_CACHE_BEGIN_HOUR) {
+	$value = 0;
+      }
+      else if ($key == CMA_RESERVATION_CACHE_END_HOUR) {
+	$value = 24;
+      }
+      else if ($key == CMA_RESERVATION_CACHE_INVENTORY) {
+	$inventories = cma_reservation_cache_inventories_array();
+	foreach ($inventories as $k=>$v) {
+	  $value = $k;
+	  break;
+	}
+      }
+      
+    }
+    $defaults[$key] = $value;
+  }
+
+    dsm($defaults, 'def');
+  //FIXME ADD HOOK TO ALLOW DEFAULTS TO BE OVERRIDDEN
+  return $defaults;
+}
+/**
+ * Function will return an array of filter values for the chart
+ */
+function cma_reservation_cache_chart_filter_values() {
+  $values = array();
+  $filters = cma_reservation_cache_filters();
+  foreach ($filters as $filter) {
+    $values[$filter] = filter_input(INPUT_GET, $filter);
+  }
+  dsm($values, 'submitted query string form values');
+  return $values;
+}
+
 /**
  * Function is passed an array of item time slots and builds the html to 
  * display the actual chart (just the actual chart, not filter form elements

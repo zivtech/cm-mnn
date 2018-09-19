@@ -6,18 +6,18 @@
  */
 
 //CHART FILTERS
-define('CMA_RESERVATION_CACHE_FIRST_DAY', 'first_day');
-define('CMA_RESERVATION_CACHE_LAST_DAY', 'last_day');
-define('CMA_RESERVATION_CACHE_DAY_BEGIN', 'day_begin');
-define('CMA_RESERVATION_CACHE_DAY_END', 'day_end');
-define('CMA_RESERVATION_CACHE_INVENTORY', 'inventory');
-define('CMA_RESERVATION_CACHE_ITEM_CATEGORY', 'item_category');
-define('CMA_RESERVATION_CACHE_ITEM_TYPE', 'item_type');
-define('CMA_RESERVATION_CACHE_ITEM_NID', 'item_nid');
+define('CMA_RESERVATION_CACHE_FIRST_DAY', 'fd');
+define('CMA_RESERVATION_CACHE_LAST_DAY', 'ld');
+define('CMA_RESERVATION_CACHE_BEGIN_HOUR', 'bh');
+define('CMA_RESERVATION_CACHE_END_HOUR', 'eh');
+define('CMA_RESERVATION_CACHE_INVENTORY', 'i');
+define('CMA_RESERVATION_CACHE_ITEM_CATEGORY', 'ic');
+define('CMA_RESERVATION_CACHE_ITEM_TYPE', 'it');
+define('CMA_RESERVATION_CACHE_ITEM_NID', 'in');
 define('CMA_RESERVATION_CACHE_DOW', 'dow');
-define('CMA_RESERVATION_CACHE_COL_SPAN', 'col_span');
-define('CMA_RESERVATION_CACHE_BY_DAY', 'by_day');
-define('CMA_RESERVATION_CACHE_MODE', 'mode');
+define('CMA_RESERVATION_CACHE_COL_SPAN', 'cs');
+define('CMA_RESERVATION_CACHE_BY_DAY', 'bd');
+define('CMA_RESERVATION_CACHE_MODE', 'm');
 
 /**
  * Implements hook_init().

@@ -4,6 +4,7 @@ description = "A module to provide a caching layer to work with the reservations
 
 core = 7.x
 
+dependencies[] = multiselect
 dependencies[] = reservations
 dependencies[] = reservations_inventory
 dependencies[] = reservations_staff

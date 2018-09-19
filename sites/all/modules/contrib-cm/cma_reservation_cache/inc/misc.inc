@@ -81,26 +81,64 @@ function cma_reservation_cache_log_microsec($label = 'Microseconds expired:') {
   $prev_microsec_time_log = $current;
 }
 /**
- * Function will return an array of filter values for the chart
+ * Function will return an array of hours in day
  */
-function cma_reservation_cache_chart_filter_values() {
-  $values = array();
-  $filters = cma_reservation_cache_chart_filters();
-  foreach ($filters as $filter) {
-    $values[$filter] = filter_input(INPUT_GET, $filter);
+function cma_reservation_cache_hours_array() {
+  return array(
+	        0 => 'Begin',
+	        1 => '1am',
+	        2 => '2am',
+	        3 => '3am',
+		4 => '4am',
+	        5 => '5am',
+	        6 => '6am',
+	        7 => '7am',
+	        8 => '8am',
+	        9 => '9am',
+	        10 => '10am',
+	        11 => '11am',
+	        12 => '12am',
+	        13 => '1pm',
+	        14 => '2pm',
+	        15 => '3pm',
+	        16 => '4pm',
+	        17 => '5pm',
+	        18 => '6pm',
+	        19 => '7pm',
+	        20 => '8pm',
+	        21 => '9pm',
+	        22 => '10pm',
+	        23 => '11pm',
+	        24 => 'End',
+	       );
+}
+
+/**
+ * Function will return an array of inventories for a form
+ */
+function cma_reservation_cache_inventories_array() {
+  cma_reservation_cache_log_microsec('inv begin');
+  $inventories = array();
+
+  $vid = variable_get('reservations_inventory_vid', 0); 
+  $tree = taxonomy_get_tree($vid);
+  foreach ($tree as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $inventories[$term->tid] = $term->name;
   }
-  dsm($values, 'submitted query string form values');
-  return $values;
+  asort($inventories);
+  cma_reservation_cache_log_microsec('inv end');
+  return $inventories;
 }
 /**
  * Function will return an array of possible filters for the chart
  */
-function cma_reservation_cache_chart_filters() {
+function cma_reservation_cache_filters() {
   return array(
 	       CMA_RESERVATION_CACHE_FIRST_DAY,
 	       CMA_RESERVATION_CACHE_LAST_DAY,
-	       CMA_RESERVATION_CACHE_DAY_BEGIN,
-	       CMA_RESERVATION_CACHE_DAY_END,
+	       CMA_RESERVATION_CACHE_BEGIN_HOUR,
+	       CMA_RESERVATION_CACHE_END_HOUR,
 	       CMA_RESERVATION_CACHE_INVENTORY,
 	       CMA_RESERVATION_CACHE_ITEM_CATEGORY,
 	       CMA_RESERVATION_CACHE_ITEM_TYPE,
