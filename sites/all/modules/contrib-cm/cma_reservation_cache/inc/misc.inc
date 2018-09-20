@@ -117,7 +117,6 @@ function cma_reservation_cache_hours_array() {
  * Function will return an array of inventories for a form
  */
 function cma_reservation_cache_inventories_array() {
-  cma_reservation_cache_log_microsec('inv begin');
   $inventories = array();
 
   $vid = variable_get('reservations_inventory_vid', 0); 
@@ -127,9 +126,25 @@ function cma_reservation_cache_inventories_array() {
     $inventories[$term->tid] = $term->name;
   }
   asort($inventories);
-  cma_reservation_cache_log_microsec('inv end');
   return $inventories;
 }
+
+/**
+ * Function willl return an array of bucket categories 
+ * (taxonomy terms applied to reservable content types
+ */
+function cma_reservation_cache_bucket_categories_array() {
+  $vid = variable_get('reservations_grouping_vid', 0);
+  $terms = taxonomy_get_tree($vid);
+  $bucket_categories = array();
+  foreach ($terms as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $bucket_categories[$term->tid] = $term->name;
+  }
+  asort($bucket_categories);
+  return $bucket_categories;
+}
+
 /**
  * Function will return an array of possible filters for the chart
  */
@@ -140,7 +155,7 @@ function cma_reservation_cache_filters() {
 	       CMA_RESERVATION_CACHE_BEGIN_HOUR,
 	       CMA_RESERVATION_CACHE_END_HOUR,
 	       CMA_RESERVATION_CACHE_INVENTORY,
-	       CMA_RESERVATION_CACHE_ITEM_CATEGORY,
+	       CMA_RESERVATION_CACHE_BUCKET_CATEGORY,
 	       CMA_RESERVATION_CACHE_ITEM_TYPE,
 	       CMA_RESERVATION_CACHE_ITEM_NID,
 	       CMA_RESERVATION_CACHE_DOW,
@@ -338,7 +353,6 @@ function cma_reservation_cache_main_cache_fields() {
 
   return $ret;
 }
-
 
 /**
  * Function is passed an array of information about the drupal field,

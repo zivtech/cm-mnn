@@ -110,7 +110,23 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 	   '#description' => '',
 	   );
 
+   $form['chart_filters']['categories'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t("Select Category(ies)"),
+	  );
    
+   $categories = cma_reservation_cache_bucket_categories_array();
+   $form['chart_filters']['categories'][CMA_RESERVATION_CACHE_BUCKET_CATEGORY]=
+     array(
+	   '#title' => t('Category'),
+	   '#type' => 'multiselect',
+	   '#multiple' => TRUE,
+	   '#options' => $categories,
+	   '#default_value' =>$defaults[CMA_RESERVATION_CACHE_BUCKET_CATEGORY],
+	   '#description' => '',
+	   );
+
 }
 
 /**
@@ -137,6 +153,14 @@ function cma_reservation_chart_default_filter_values($values) {
       else if ($key == CMA_RESERVATION_CACHE_INVENTORY) {
 	$inventories = cma_reservation_cache_inventories_array();
 	foreach ($inventories as $k=>$v) {
+	  $value = $k;
+	  break;
+	}
+      }
+      else if ($key == CMA_RESERVATION_CACHE_BUCKET_CATEGORY) {
+	$categories = cma_reservation_cache_bucket_categories_array();
+	dsm($categories, 'cat');
+	foreach ($categories as $k=>$v) {
 	  $value = $k;
 	  break;
 	}
