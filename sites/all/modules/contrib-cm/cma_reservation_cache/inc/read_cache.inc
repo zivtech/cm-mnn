@@ -1,5 +1,247 @@
 <?php
+/**
+ * Simply a util function that will call one of the "available" functions 
+ * below
+ */
+function cma_reservation_cache_get_available_options($field_name,
+						     $inventories,
+						     $categories,
+						     $content_types) {
 
+  switch($field_name) {
+  case 'inventories':
+    $options = cma_reservation_cache_get_available_inventories();
+    break;
+  case 'categories':
+    $options = cma_reservation_cache_get_available_categories($inventories);
+    break;
+  case 'content_types':
+    $options = cma_reservation_cache_get_available_content_types($inventories,
+								 $categories);
+    break;
+  case 'resources':
+    $options = cma_reservation_cache_get_available_resources($inventories,
+							     $categories,
+							     $content_types);
+    break;
+  }
+  return $options;
+}
+/**
+ * Function will return the set of Inventories available filtered by any
+ * inventory filters that are set
+ */
+function cma_reservation_cache_get_available_inventories() {
+  //the array that we will return 
+  $ret = array();
+  $sql = "SELECT distinct inventory as id, inventory_name as value ";
+  $sql .= " FROM cma_reservation_cache ";
+  $sql .= " WHERE inventory > 0 " ;
+
+  //run query and inventories into an array with the tid as the key
+  $results = db_query($sql);
+  while ($result = $results->fetchObject()) {
+    $ret[$result->id] = $result->value;
+  }
+  asort($ret);
+  return $ret;
+}
+/**
+ * Function will return the set of Categories available filtered by any
+ * inventory filters that are set
+ */
+function cma_reservation_cache_get_available_categories($inventories =
+							array()) {
+  //the array that we will return 
+  $ret = array();
+  $sql =
+    "SELECT distinct bucket_category as id, bucket_category_name as value ";
+  
+  $sql .= " FROM cma_reservation_cache ";
+
+  $first = TRUE;
+  $args = array();
+  //ADD WHERE CLAUSE OF INVENTORIES
+  $index = 0;
+  foreach($inventories as $tid) {
+    $index ++;
+    if ($first) {
+      $first = FALSE;
+      $sql .= " WHERE ";
+    }
+    else {
+      $sql .= " OR ";
+    }
+    $sql .= " inventory = " . ":inventory_tid_$index";
+    $args[":inventory_tid_$index"] = $tid;
+  }
+
+  //run query and categories into an array with the tid as the key
+  $results = db_query($sql, $args);
+  while ($result = $results->fetchObject()) {
+    if ($result->id > 0) {
+      $ret[$result->id] = $result->value;
+    }
+  }
+  asort($ret);
+
+  return $ret;
+}
+/**
+ * Function will return the set of Content Types available filtered by any
+ * inventory or category filters that are set
+ */
+function cma_reservation_cache_get_available_content_types($inventories =
+							   array(),
+							   $categories =
+							   array()){
+  //the array that we will return 
+  $ret = array();
+  $sql =
+    "SELECT distinct content_type_machine_name as id, content_type as value ";
+  
+  $sql .= " FROM cma_reservation_cache ";
+
+  $args = array();
+  
+  //ADD WHERE CLAUSE OF INVENTORIES
+  if (!empty($inventories)) {
+    $sql .= " WHERE (";
+    $first = TRUE;  
+    foreach($inventories as $tid) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR ";
+      }
+      $sql .= " inventory = " . ":inventory_tid";
+      $args[":inventory_tid"] = $tid;
+    }
+
+    $sql .= ") ";
+  }
+
+  if (!empty($categories)) {
+    if (empty($inventories)) {
+      $sql .= " WHERE (";
+    }
+    else {
+      $sql .= " AND (";
+    }
+
+    $first = TRUE;
+    //ADD WHERE CLAUSE OF CATEGORIES
+    foreach($categories as $tid) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR ";
+      }
+      $sql .= " bucket_category = " . ":bucket_category";
+      $args[":bucket_category"] = $tid;
+    }
+    $sql .= ") ";
+  }
+
+  //run query and put the content types into an array with the machinename
+  //as the key
+  $results = db_query($sql, $args);
+  while ($result = $results->fetchObject()) {
+    $ret[$result->id] = $result->value;
+  }
+  asort($ret);
+
+  return $ret;
+}
+/**
+ * Function will return the set of Resorces available filtered by any
+ * inventory, category, or type filters that are set
+ */
+function cma_reservation_cache_get_available_resources($inventories = array(),
+						       $categories = array(),
+						       $content_types=array()){
+  //the array that we will return 
+  $ret = array();
+  $sql = "SELECT distinct item_nid as id, item_title as value ";
+  $sql .= " FROM cma_reservation_cache ";
+
+  $args = array();
+    //ADD WHERE CLAUSE OF INVENTORIES
+  if (!empty($inventories)) {
+    $sql .= " WHERE (";
+    $first = TRUE;  
+    foreach($inventories as $tid) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR ";
+      }
+      $sql .= " inventory = " . ":inventory_tid";
+      $args[":inventory_tid"] = $tid;
+    }
+
+    $sql .= ") ";
+  }
+  
+  if (!empty($categories)) {
+    if (empty($inventories)) {
+      $sql .= " WHERE (";
+    }
+    else {
+      $sql .= " AND (";
+    }
+
+    $first = TRUE;
+    //ADD WHERE CLAUSE OF CATEGORIES
+    foreach($categories as $tid) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR ";
+      }
+      $sql .= " bucket_category = " . ":bucket_category";
+      $args[":bucket_category"] = $tid;
+    }
+    $sql .= ") ";
+  }
+    
+  if (!empty($content_types)) {
+    if (empty($inventories) && empty($categories)) {
+      $sql .= " WHERE (";
+    }
+    else {
+      $sql .= " AND (";
+    }
+
+    $first = TRUE;
+    //ADD WHERE CLAUSE OF CONTENT_TYPES
+    foreach($content_types as $tid) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR ";
+      }
+      $sql .= " bucket_category = " . ":bucket_category";
+      $args[":bucket_category"] = $tid;
+    }
+    $sql .= ") ";
+  }
+
+  //run query and put the resources into an array with the nid as the key
+  $results = db_query($sql, $args);
+  while ($result = $results->fetchObject()) {
+    if ($result->id > 0 ){
+      $ret[$result->id] = $result->value;
+    }
+  }
+  asort($ret);
+  return $ret;
+}
 /**
  * Function will return an array of retults form the cache table, each result
  * is a unique combination of item nid/slot id, content type, start, and end

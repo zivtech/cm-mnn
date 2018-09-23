@@ -40,92 +40,196 @@ function cma_reservation_cache_chart_form() {
 function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 
   $defaults = cma_reservation_chart_default_filter_values($values);
-  
+
+  //parent fields set
   $form['chart_filters'] =
     array(
 	  '#type' => 'fieldset',
-	  '#title' => t("Project Field Settings"),
+	  '#title' => t("Reservation Chart Filters"),
 	  '#collapsible' => TRUE,
 	  '#collapsed' => FALSE,
 	  );
 
-   $form['chart_filters'][CMA_RESERVATION_CACHE_FIRST_DAY] =
-     array(
-	   '#title' => t('First Day'),
-	   '#date_format' => 'Y-m-d',
-	   '#type' => 'date_popup',
-	   '#date_label_position' => 'within',
-	   '#size' => 15,
-	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_FIRST_DAY],
-	   '#description' => '',
-	   );
-
-   $form['chart_filters'][CMA_RESERVATION_CACHE_LAST_DAY] =
-     array(
-	   '#title' => t('Last Day'),
-	   '#date_format' => 'Y-m-d',
-	   '#type' => 'date_popup',
-	   '#date_label_position' => 'within',
-	   '#size' => 15,
-	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_LAST_DAY],
-	   '#description' => '',
-	   );
-
-   $hours = cma_reservation_cache_hours_array();
-   unset($hours[24]);
-   $form['chart_filters'][CMA_RESERVATION_CACHE_BEGIN_HOUR] =
-     array(
-	   '#title' => t('Begin Hour'),
-	   '#type' => 'select',
-	   '#options' => $hours,
-	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_BEGIN_HOUR],
-	   '#description' => '',
-	   );
-
-   $hours = cma_reservation_cache_hours_array();
-   unset($hours[0]);
-   $form['chart_filters'][CMA_RESERVATION_CACHE_END_HOUR] =
-     array(
-	   '#title' => t('End Hour'),
-	   '#type' => 'select',
-	   '#options' => $hours,
-	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_END_HOUR],
-	   '#description' => '',
-	   );
-
-   $form['chart_filters']['inventories'] =
+  ////////////////////////////////////////////////////////////////////////
+  //day and time fields
+  $form['chart_filters']['day_and_time'] =
     array(
 	  '#type' => 'fieldset',
-	  '#title' => t("Select Inventory(ies)"),
+	  '#title' => t("Day and Time Filters"),
+	  '#collapsible' => TRUE,
+	  '#collapsed' => TRUE,	  
 	  );
 
-   $inventories = cma_reservation_cache_inventories_array();
-   $form['chart_filters']['inventories'][CMA_RESERVATION_CACHE_INVENTORY] =
-     array(
-	   '#title' => t('Inventory'),
-	   '#type' => 'multiselect',
-	   '#multiple' => TRUE,
-	   '#options' => $inventories,
-	   '#default_value' => $defaults[CMA_RESERVATION_CACHE_INVENTORY],
-	   '#description' => '',
-	   );
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_FIRST_DAY] =
+    array(
+	  '#title' => t('First Day'),
+	  '#date_format' => 'Y-m-d',
+	  '#type' => 'date_popup',
+	  '#date_label_position' => 'within',
+	  '#size' => 15,
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_FIRST_DAY],
+	  '#description' => '',
+	  );
+  
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_LAST_DAY] =
+    array(
+	  '#title' => t('Last Day'),
+	  '#date_format' => 'Y-m-d',
+	  '#type' => 'date_popup',
+	  '#date_label_position' => 'within',
+	  '#size' => 15,
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_LAST_DAY],
+	  '#description' => '',
+	  );
+  
+  $hours = cma_reservation_cache_hours_array();
+  unset($hours[24]);
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_BEGIN_HOUR] =
+    array(
+	  '#title' => t('Begin Hour'),
+	  '#type' => 'select',
+	  '#options' => $hours,
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_BEGIN_HOUR],
+	  '#description' => '',
+	  );
 
-   $form['chart_filters']['categories'] =
+  $hours = cma_reservation_cache_hours_array();
+  unset($hours[0]);
+  
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_END_HOUR] =
+    array(
+	  '#title' => t('End Hour'),
+	  '#type' => 'select',
+	  '#options' => $hours,
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_END_HOUR],
+	  '#description' => '',
+	  );
+
+  //ALLOWS USER TO FILTER BY DAY OF WEEK
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_DOW] =
+    array(
+	  '#title' => t("Day of Week"),
+	  '#type' => 'select',
+	  '#options' => array(1=>'Sunday',
+			      2=>'Monday',
+			      3=>'Tuesday',
+			      4=>'Wednesday',
+			      5=>'Thursday',
+			      6=>'Friday',
+			      7=>'Saturday',
+			      ),
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_DOW],
+	  );
+
+  
+  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_BY_DAY] =
+    array(
+	  '#title' => t("One Combined Chart or One Chart Per Day"),
+	  '#type' => 'select',
+	  '#options' => array(0=>t("False"),
+			      1=>t("True"),
+			      ),
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_BY_DAY],
+	  );
+  ////////////////////////////////////////////////////////////////////////
+  //multiselect fields
+  
+  //build an array of the multislect fields to loop over
+  $multiselect_fields =
+    array('inventories' =>
+	  array('filter' => CMA_RESERVATION_CACHE_INVENTORY,
+		'fieldset_title' => t("Select Inventory(ies)"),
+		),
+	  'categories' =>
+	  array('filter' => CMA_RESERVATION_CACHE_BUCKET_CATEGORY,
+		'fieldset_title' => t("Select Categry(ies)"),
+		),
+	  'content_types' =>
+	  array('filter' => CMA_RESERVATION_CACHE_ITEM_TYPE,
+		'fieldset_title' => t("Select Type(s)"),
+		),
+	  'resources' =>
+	  array('filter' => CMA_RESERVATION_CACHE_ITEM_NID,
+		'fieldset_title' => t("Select Resource(s)"))
+	  );
+
+  //these arrays will used for the default values in the multiselct fields
+  //within the loop, but also used to filter themselves, i.e. the
+  //inventories selected in the multiselect will affect which categories
+  //will appear, and the selected categories will affect which content types
+  //appear, and content types will affect which affect which resources to
+  //appear
+  $default_inventories = $default_categories = $default_content_types=array();
+
+  //loop over the multiselect fields and add a fields set and the
+  //multiselect widget
+  foreach($multiselect_fields as $field_name => $field_info) {
+    //add the fieldset
+    $form['chart_filters'][$field_name] =
+      array(
+	    '#type' => 'fieldset',
+	    '#title' => $field_info['fieldset_title'],
+	    '#collapsible' => TRUE,
+	    '#collapsed' => TRUE,
+	    
+	    );
+    
+    //call function to get options for the multiselect
+    $options =  
+      cma_reservation_cache_get_available_options($field_name,
+						  $default_inventories,
+						  $default_categories,
+						  $default_content_types);
+    
+    //add the multiselect form element
+    $form['chart_filters'][$field_name][$field_info['filter']] =
+      array(
+	    '#type' => 'multiselect',
+	    '#multiple' => TRUE,
+	    '#options' => $options,
+	    '#default_value' => $defaults[$field_info['filter']],
+	    );
+    
+    //set the default arrays for subsequent fetching and filtering
+    if ($field_name == 'inventories') {
+      $default_inventories = $defaults[$field_info['filter']];
+    }
+    else if ($field_name == 'categories') {
+      $default_categories = $defaults[$field_info['filter']];
+    }
+    else if ($field_name == 'content_types') {
+      $default_content_types = $defaults[$field_info['filter']];
+    }
+  } //end of the loop for multiselect fields
+
+  ////////////////////////////////////////////////////////////////////////
+  //staff 
+  $form['chart_filters']['staff'] =
     array(
 	  '#type' => 'fieldset',
-	  '#title' => t("Select Category(ies)"),
+	  '#title' => t("Staff Filters"),
+	  '#collapsible' => TRUE,
+	  '#collapsed' => TRUE,	  
 	  );
-   
-   $categories = cma_reservation_cache_bucket_categories_array();
-   $form['chart_filters']['categories'][CMA_RESERVATION_CACHE_BUCKET_CATEGORY]=
-     array(
-	   '#title' => t('Category'),
-	   '#type' => 'multiselect',
-	   '#multiple' => TRUE,
-	   '#options' => $categories,
-	   '#default_value' =>$defaults[CMA_RESERVATION_CACHE_BUCKET_CATEGORY],
-	   '#description' => '',
-	   );
+  $form['chart_filters']['staff'][CMA_RESERVATION_CACHE_MODE] =
+    array(
+	  '#title' => t("Mode"),
+	  '#type' => 'select',
+	  '#options' => array(0=>t("Public"),
+			      1=>t("Staff"),
+			      ),
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_MODE],
+	  );
+
+  $form['chart_filters']['staff'][CMA_RESERVATION_CACHE_COL_SPAN] =
+    array(
+	  '#title' => t("Combine Reservations into One Cell"),
+	  '#type' => 'select',
+	  '#options' => array(0=>t("Falsee"),
+			      1=>t("True"),
+			      ),
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_COL_SPAN],
+	  );
 
 }
 
@@ -151,26 +255,37 @@ function cma_reservation_chart_default_filter_values($values) {
 	$value = 24;
       }
       else if ($key == CMA_RESERVATION_CACHE_INVENTORY) {
-	$inventories = cma_reservation_cache_inventories_array();
+	$inventories = cma_reservation_cache_get_available_inventories();
 	foreach ($inventories as $k=>$v) {
-	  $value = $k;
+	  $value = array($k);
 	  break;
 	}
       }
       else if ($key == CMA_RESERVATION_CACHE_BUCKET_CATEGORY) {
-	$categories = cma_reservation_cache_bucket_categories_array();
-	dsm($categories, 'cat');
+	/**
+	$default_inventories = $defaults[CMA_RESERVATION_CACHE_INVENTORY];
+	$categories =
+	  cma_reservation_cache_get_available_categories($default_inventories);
+							 
 	foreach ($categories as $k=>$v) {
-	  $value = $k;
+	  $value = array($k);
 	  break;
 	}
+	*/
+	$value = array();
+      }
+      else if ($key == CMA_RESERVATION_CACHE_ITEM_TYPE) {
+	$value = array();
+      }
+      else if ($key == CMA_RESERVATION_CACHE_ITEM_NID) {
+	$value = array();
       }
       
     }
     $defaults[$key] = $value;
   }
 
-    dsm($defaults, 'def');
+  dsm($defaults, 'defaults for form elements');
   //FIXME ADD HOOK TO ALLOW DEFAULTS TO BE OVERRIDDEN
   return $defaults;
 }
@@ -180,8 +295,23 @@ function cma_reservation_chart_default_filter_values($values) {
 function cma_reservation_cache_chart_filter_values() {
   $values = array();
   $filters = cma_reservation_cache_filters();
+  $multiple_value_filters =
+    array(
+	  CMA_RESERVATION_CACHE_INVENTORY,
+	  CMA_RESERVATION_CACHE_BUCKET_CATEGORY,
+	  CMA_RESERVATION_CACHE_ITEM_TYPE,
+	  CMA_RESERVATION_CACHE_ITEM_NID,
+	  CMA_RESERVATION_CACHE_DOW,
+	  );
+
   foreach ($filters as $filter) {
-    $values[$filter] = filter_input(INPUT_GET, $filter);
+    $value = filter_input(INPUT_GET, $filter);
+    if (!empty($value) && in_array($filter, $multiple_value_filters)) {
+	$values[$filter] = explode(',', filter_input(INPUT_GET, $filter));
+    }
+    else {
+      $values[$filter] = $value;
+    }
   }
   dsm($values, 'submitted query string form values');
   return $values;
