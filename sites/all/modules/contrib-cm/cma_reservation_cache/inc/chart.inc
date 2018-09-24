@@ -34,6 +34,54 @@ function cma_reservation_cache_chart_form() {
 
 
 /**
+ * FUNCTION WILL VALIDATE THE CHART FORM FOR THINGS LIKE INCORRECT DAY/TIME
+ */
+function cma_reservation_cache_chart_form_validate($form, &$form_state) {
+  $filters = cma_reservation_cache_filters();
+  cma_reservation_cache_log_microsec('in form_validate()');
+  foreach ($filters as $filter) {
+    //TODO FIXME ADD VALIDATION!
+    //1. start day after last day
+    //2. start time after last time
+    //dsm($form_state['values'][$filter], 'my value for ' . $filter);
+    //form_set_error($filter, t('error!'));
+  }
+
+}
+/**
+ */
+function cma_reservation_cache_chart_form_submit($form, &$form_state) {
+  cma_reservation_cache_log_microsec('in form_submit()');
+
+  $url = current_path();
+  $args = array();
+
+  //GET ARRAY OF AVAILABLE FILTERS AND ITERATE OVER THEM TO BUILD QUERY STRING
+  $filters = cma_reservation_cache_filters();
+  foreach ($filters as $filter) {
+    if ($form_state['values']['op'] == 'Apply Filters') {
+      $value = $form_state['values'][$filter];
+      //IF THE VALUE IS AN ARRAY, TURN IT INTO A COMMA DELIMINATED STRING
+      if (is_array($value)) {
+	$value = implode(',', $value);
+      }
+      //IF WE HAVE A NON EMPTY VALUE, ADD IT TO THE ARRAY FOR QUERY STRING
+      //KEY VALUE PAIRS
+      if (!empty($value)) {
+	$args[$filter] = $value;
+      }
+    }
+    else if ($form_state['values']['op'] == 'Clear Filters') {
+      //don't add anything to $args, since we are clearing filters
+    }
+  
+  }
+  cma_reservation_cache_log_microsec('done with form_submit()');
+
+  //forward to the original url with a new set of query args
+  drupal_goto($url,  array("query" => $args));
+}
+/**
  * Function is passed in a form array by reference and then adds all the 
  * form elements and sets default values based on the passed in values
  */
@@ -110,7 +158,8 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
     array(
 	  '#title' => t("Day of Week"),
 	  '#type' => 'select',
-	  '#options' => array(1=>'Sunday',
+	  '#options' => array(0=>t('<-Select Day of Week->'),
+			      1=>'Sunday',
 			      2=>'Monday',
 			      3=>'Tuesday',
 			      4=>'Wednesday',
@@ -122,15 +171,6 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 	  );
 
   
-  $form['chart_filters']['day_and_time'][CMA_RESERVATION_CACHE_BY_DAY] =
-    array(
-	  '#title' => t("One Combined Chart or One Chart Per Day"),
-	  '#type' => 'select',
-	  '#options' => array(0=>t("False"),
-			      1=>t("True"),
-			      ),
-	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_BY_DAY],
-	  );
   ////////////////////////////////////////////////////////////////////////
   //multiselect fields
   
@@ -138,19 +178,19 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
   $multiselect_fields =
     array('inventories' =>
 	  array('filter' => CMA_RESERVATION_CACHE_INVENTORY,
-		'fieldset_title' => t("Select Inventory(ies)"),
+		'fieldset_title' => t("Inventory Filter"),
 		),
 	  'categories' =>
 	  array('filter' => CMA_RESERVATION_CACHE_BUCKET_CATEGORY,
-		'fieldset_title' => t("Select Categry(ies)"),
+		'fieldset_title' => t("Category Filter"),
 		),
 	  'content_types' =>
 	  array('filter' => CMA_RESERVATION_CACHE_ITEM_TYPE,
-		'fieldset_title' => t("Select Type(s)"),
+		'fieldset_title' => t("Type Filter"),
 		),
 	  'resources' =>
 	  array('filter' => CMA_RESERVATION_CACHE_ITEM_NID,
-		'fieldset_title' => t("Select Resource(s)"))
+		'fieldset_title' => t("Resource Filter"))
 	  );
 
   //these arrays will used for the default values in the multiselct fields
@@ -221,16 +261,35 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_MODE],
 	  );
 
+  $form['chart_filters']['staff'][CMA_RESERVATION_CACHE_BY_DAY] =
+    array(
+	  '#title' => t("One Combined Chart or One Chart Per Day"),
+	  '#type' => 'select',
+	  '#options' => array(0=>t("False"),
+			      1=>t("True"),
+			      ),
+	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_BY_DAY],
+	  );
+
   $form['chart_filters']['staff'][CMA_RESERVATION_CACHE_COL_SPAN] =
     array(
 	  '#title' => t("Combine Reservations into One Cell"),
 	  '#type' => 'select',
-	  '#options' => array(0=>t("Falsee"),
+	  '#options' => array(0=>t("False"),
 			      1=>t("True"),
 			      ),
 	  '#default_value' => $defaults[CMA_RESERVATION_CACHE_COL_SPAN],
 	  );
 
+  $form['chart_filters']['submit'] = array(
+					   '#type' => 'submit',
+					   '#value' => t('Apply Filters'),
+					   );
+  $form['chart_filters']['clear'] = array(
+					  '#type' => 'submit',
+					  '#value' => t('Clear Filters'),
+					  );
+  
 }
 
 /**
@@ -301,10 +360,11 @@ function cma_reservation_cache_chart_filter_values() {
 	  CMA_RESERVATION_CACHE_BUCKET_CATEGORY,
 	  CMA_RESERVATION_CACHE_ITEM_TYPE,
 	  CMA_RESERVATION_CACHE_ITEM_NID,
-	  CMA_RESERVATION_CACHE_DOW,
 	  );
 
   foreach ($filters as $filter) {
+    //FIXME - CHECK CONFIG SETTINGS AND PERMISSIONS TO PREVENT USERS FROM
+    //SETTINGS FILTERS THEY DON'T HAVE PERMISSION TO MESS WITH
     $value = filter_input(INPUT_GET, $filter);
     if (!empty($value) && in_array($filter, $multiple_value_filters)) {
 	$values[$filter] = explode(',', filter_input(INPUT_GET, $filter));
