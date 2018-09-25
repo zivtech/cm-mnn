@@ -35,10 +35,11 @@ function cma_reservation_cache_chart_form($form, $form_state) {
       cma_reservation_cache_get_item_time_slots($default_values);
 
     //GET THE ACTUAL HTML FOR THE CHART
-    $chart_html = cma_reservation_cache_get_chart_html($item_time_slots);  
+    $chart_display = cma_reservation_cache_get_chart_display($item_time_slots,
+							     $default_values);
 
     //ADD THE HTML TO THE FORM AS MARKUP
-    $form['chart'] = array('#markup'=> $chart_html);
+    $form['chart'] = array('#markup'=> $chart_display);
   }
   cma_reservation_cache_log_microsec('end of ' .
 				     'cma_reservation_cache_chart_form');
@@ -393,80 +394,206 @@ function cma_reservation_cache_chart_filter_values() {
  * display the actual chart (just the actual chart, not filter form elements
  * or any other markup 
  */
-function cma_reservation_cache_get_chart_html($item_time_slots) {
-  //identifer will be the unique item identifier, whether its a bucket or 
-  //resource
-  $identifier = $prev_identifier = '';
-  $is_first_row = FALSE;
+function cma_reservation_cache_get_chart_display($item_time_slots,
+						 $filter_values) {
+  $offset = cma_reservation_cache_get_offset();
+  $by_day = !empty($filter_values[CMA_RESERVATION_CACHE_BY_DAY]);
+
+  //initialize the header row, the subsequent header cells are added during
+  //the first loop of item time slots
   
-  $header_row = '<div class="cma_reservation_cache_chart_header_row">';
-  $header_row .=
-    '<div class="cma_reservation_cache_chart_first_header_cell">Item</div>';
+  //iterate over all the item time slots, adding a new row when we change the
+  //item (which will have its own unique $identifier).
+  //it will also
+  $counter =  $res_nid = $prev_res_nid = 0;
+  $reservation_slots = array();
+  $charts_display = $charts_html = $chart_html = $row_html = $rows_html =
+      $header_row_html = $identifier = $prev_identifier = '';
 
-  //add all the data rows
-  $counter = 0;
   foreach ($item_time_slots as $slot) {
+    $slot_needs_display = FALSE;
     $counter ++;
-    $identifier = cma_reservation_cache_slot_identifier($slot);
-    
-    //if true, this is either first time through or we are starting a new row
-    if ($prev_identifier != $identifier) {
-      //first time through, add header row before we actually add the first row
-      if (empty($prev_identifier)) {
-	$is_first_row = TRUE;
-      }
-      //not the first time through so we close the div on the previous row
-      else {
-	//if its just after the first row, close the header div
-	if ($is_first_row) {
-	  $is_first_row = FALSE;
-	  $header_row .= "</div>";
-	}
-	$rows .= "</div>";
-      }
-      //start a new div row div
-      $rows .= '<div class="cma_reservation_cache_chart_row">';
+    $day = date('Y-m-d',$slot->cache_slot_start_time - $offset);
+    $identifier = cma_reservation_cache_slot_identifier($slot);    
+    $res_nid = $slot->reservation_nid;
 
-      //add a title to the first cell in the row using a function that
-      //contains an overridable hook
-      $rows .= '<div class="cma_reservation_cache_chart_first_cell">' .
+    //if we have no html at all yet, we are starting first row of first chart
+    if (empty($charts_html) && empty($chart_html)) {
+      //dsm($slot, 'slot 1');
+      //begin teh chart and row
+      $chart_html = '<div class="cma_reservation_cache_chart_table">';
+      $row_html = '<div class="cma_reservation_cache_chart_row">';
+      $row_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
+	cma_reservation_cache_slot_item_title($slot) . "</div>";
+      $header_row_html =
+	'<div class="cma_reservation_cache_chart_header_row">';
+      $header_row_html .=
+       '<div class="cma_reservation_cache_chart_first_header_cell">Item</div>';
+    }
+    //we are doing a different chart per day, so because its a new day,
+    //end previous row and chart and open new row and chart
+    else if ($by_day && !empty($prev_day) && $day != $prev_day) {
+      //dsm($slot, 'slot 2');
+      if (!empty($reservation_slots)) {
+	$row_html .=
+	  cma_reservation_cache_reservation_slots_html($reservation_slots);
+      }
+      //add the last row to the html for all the row divs
+      $rows_html .= $row_html . "</div>";
+      //add the all the rows and closing div to the last chart
+      $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
+      //add the last chart to the html for all the charts
+      $charts_html .= $chart_html . "</div>";
+
+      //reset for new chart and row	
+      $chart_html = '<div class="cma_reservation_cache_chart_table">';
+      $rows_html = '';	    
+      $row_html = '<div class="cma_reservation_cache_chart_row">';
+      $row_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
 	cma_reservation_cache_slot_item_title($slot) . "</div>";
     }
-    if ($is_first_row) {
-      //add the header cell
-      $header_row .= '<div class="cma_reservation_cache_chart_header_cell">'.
+    //our identifier has changed so end this row and begin a new one 
+    else if ($prev_identifier != $identifier) {
+      //dsm($slot, 'slot 3');
+      //since row is ending, close the reservation slot block
+      if (!empty($reservation_slots)) {
+	$row_html .=
+	  cma_reservation_cache_reservation_slots_html($reservation_slots);
+      }
+      //add the last row to the html for all the row divs
+      $rows_html .= $row_html . "</div>";
+
+      //reset for new row
+      $row_html = '<div class="cma_reservation_cache_chart_row">';
+      
+      //if rows is empty this is the first row of this chart so add header
+      if (empty($rows_html)) {
+	$header_row_html =
+	  '<div class="cma_reservation_cache_chart_header_row">';
+	$header_row_html .=
+	  '<div class="cma_reservation_cache_chart_first_header_cell">'.
+	  'Item</div>';
+      }
+
+    }
+    //done with checking for row end
+
+    //look to see if a reservation block started and if it needs to be
+    //added to or ended and renewed
+    if (!empty($prev_res_nid) && empty($res_nid)) {
+      $row_html .=
+	cma_reservation_cache_reservation_slots_html($reservation_slots);
+      $reservation_slots = array();
+    }
+    else if (!empty($prev_res_nid) && !empty($res_nid) &&
+	     $prev_res_nid != $res_nid) {
+      $row_html .=
+	cma_reservation_cache_reservation_slots_html($reservation_slots);
+      $reservation_slots = array($slot);
+    }
+    else if (!empty($prev_res_nid) && !empty($res_nid)) {
+      $reservation_slots[] = $slot;
+    }
+    else if (empty($prev_res_nid) && !empty($res_nid)) {
+      $reservation_slots = array($slot);
+    }
+    else {// if (empty($prev_res_nid && empty($res_nid))) {
+      $reservation_slots = array();
+    }
+  
+    //if $rows is empty, this will be first row of a chart, therefore add
+    //header
+    if (empty($rows_html)) {
+      $header_row_html .=
+	'<div class="cma_reservation_cache_chart_header_cell">'.
 	cma_reservation_cache_slot_header_display($slot)."</div>";
+    }
+
+    //if this is empty it means we need to display it as a regular cell
+    //rather than part of a reservation slot block
+    if (empty($reservation_slots)) {
+      //add regular chart slot, first calling functions with overridable hooks
+      //to get the hover text and the display html for the actual cell in chart
+      $hover = cma_reservation_cache_chart_slot_hover($slot);
+      $slot_display = cma_reservation_cache_chart_slot_display($slot);
+      $row_html .= '<div title="' . $hover .
+	'" class="cma_reservation_cache_chart_cell">'.$slot_display . "</div>";
     }
 
     //set prev so subsequent loops can see if item/day changes and therefore
     //know to start a new row div
     $prev_identifier = $identifier;
+    $prev_res_nid = $res_nid;  
 
-    //add regular chart slot, first calling functions with overridable hooks
-    //to get the hover text and the display html for the actual cell in chart
-    $hover = cma_reservation_cache_chart_slot_hover($slot);
-    $slot_display = cma_reservation_cache_chart_slot_display($slot);
-    $rows .= '<div title="' . $hover .
-      '" class="cma_reservation_cache_chart_cell">' . $slot_display . "</div>";
+  }//done looping over item time slots
+
+  //if we have slots after the loop, add the block to the row html
+  if (!empty($reservation_slots)) {
+    $row_html .=
+      cma_reservation_cache_reservation_slots_html($reservation_slots);
   }
-  //done with loop
-  
-  //adding the start of the table div
-  $chart_html = '<div class="cma_reservation_cache_chart_table">';
-  $chart_html .= $header_row;
-  $chart_html .= $rows;
-  
+  //add the last row to the html for all the row divs
+  $rows_html .= $row_html . "</div>";
+  //add the all the rows and closing div to the last chart
+  $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
+  //add the last chart to the html for all the charts
+  $charts_html .= $chart_html . "</div>";
+
   //close the div on the last row div and the table div
-  $chart_html .= "</div></div>";
+  $chart_display .= '<div class"cma_reservation_cache_chart_display"'.
+    $charts_html . "</div>";
+  $chart_display .= "<br/><br/><br/>";
 
   cma_reservation_cache_log_microsec("finished building chart html " .
 				     "with $counter item time slots");
-  return $chart_html;
+  return $chart_display;
 }
 
 /**
- * Function will return a header row by iterating over item_time_slots and
- * finding the first row
+ * 
+ */
+function cma_reservation_cache_reservation_slots_html($slots) {
+  $html = "";
+
+  $count = count($slots);
+
+  if ($count > 0) {
+    $center = floor($count/2);
+  }
+  $index = 0;
+  foreach ($slots as $slot) {
+    $classes = "cma_reservation_cache_chart_cell";
+    $hover = cma_reservation_cache_chart_slot_hover($slot);
+
+    $index ++;
+    if ($index == 1) {
+      //add block start div
+      $classes .= " cma_reservation_cache_chart_res_block_start_cell";
+      $slot_display = '';
+    }
+    else if ($index == $center) {
+      //add block center div
+      $classes .= " cma_reservation_cache_chart_res_block_middle_cell";
+      $slot_display = cma_reservation_cache_chart_slot_display($slot);
+    }
+    else if ($index != $count){
+      //add block middle div
+      $classes .= " cma_reservation_cache_chart_res_block_middle_cell";
+      $slot_display = '';
+    }
+    else { //$index == $count
+      //add block end div
+      $classes .= " cma_reservation_cache_chart_res_block_end_cell";
+      $slot_display = '';
+    }
+    $html .= '<div title="' . $hover .
+      '" class="' . $classes . '">'.$slot_display . "</div>";
+  }
+
+  return $html;
+}
+/**
+ * Function will return the display to go into the div hover for a chart cell
  */
 function cma_reservation_cache_chart_slot_hover($slot) {
   $fields = cma_reservation_cache_db_table_columns();
@@ -506,32 +633,4 @@ function cma_reservation_cache_chart_slot_display($slot) {
 
   //FIXME: ADD A HOOK HERE SO CAN OVERRIDE SLOT DISPLAY TEXT
   return $ret;
-}
-/**
- * Function will return a header row by iterating over item_time_slots and
- * finding the first row
- */
-function cma_reservation_cache_chart_header_row($item_time_slots) {
-
-  $identifer = $prev_identifier = '';
-  
-  //BUILD THE HEADER ROW
-  foreach ($item_time_slots as $slot) {
-    //get unique identifer for row
-    $identifier = cma_reservation_cache_slot_identifier($slot);
-
-    //check to see if we are still on first row of results
-    if (!empty($prev_identifier) && ($prev_identifier != $identifier)) {
-      break;
-    }
-    //add the header cell
-    $header .= '<div class="cma_reservation_cache_chart_header_cell">' .
-      date('m-d', $slot->cache_slot_start_time) . "<br/>" .
-      date('H:i', $slot->cache_slot_start_time) . "</div>";
-    
-    $prev_identifier = $identifier;
-  }
-  //close the header row
-  $header .= "</div>";
-  return $header;
 }

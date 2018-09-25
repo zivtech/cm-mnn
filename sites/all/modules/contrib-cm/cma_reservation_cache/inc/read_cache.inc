@@ -252,13 +252,9 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
     return array();
   }
   
-  $item_time_slots = array();
   $fields = cma_reservation_cache_db_table_columns();
 
-  //find our offset from UTC time which is what is in db
-  //FIXME CALL FROM A FUNCTION THAT DEFINES A HOOK TO SET DIFFERENTLY IF
-  //NECESSARY, OR MAYBE SET OFF THE RESERVATION FIELD ITSELF
-  $offset = date_offset_get(new DateTime);
+  $offset = cma_reservation_cache_get_offset();
   
   //////////////////////////////////////////////////////////////////////////
   //START BUILDING THE SQL QUERY, START WITH THE FIELDS FOR THE SELECT
@@ -440,12 +436,5 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
 
   cma_reservation_cache_log_microsec('after cache table query');
 
-  //FIXME, WHEN CMA_RESERVATION_CACHE_COL_SPAN FILTER IS SET, COMBINE
-  //CELLS FOR RESERVATIONS THAT ARE LONGER THAN ONE CELL
-  //foreach ($results as $result) {
-  //  $item_time_slots[] = $result;
-  //}
-  $item_time_slots = $results;
-  
-  return $item_time_slots;
+  return $results;
 }

@@ -16,6 +16,18 @@ function cma_reservation_cache_slot_identifier($slot) {
 }
 
 /**
+ * Function will return the offset between the site timezone and the timezone
+ * of the timestamp in the cache table which is UTC
+ */
+function cma_reservation_cache_get_offset(){
+  //find our offset from UTC time which is what is in db
+  //FIXME CALL FROM A FUNCTION THAT DEFINES A HOOK TO SET DIFFERENTLY IF
+  //NECESSARY, OR MAYBE SET OFF THE RESERVATION FIELD ITSELF
+  $offset = date_offset_get(new DateTime);
+  return $offset;
+}
+
+/**
  * Function finds the item title, whether its a bucket or resource item
  */
 function cma_reservation_cache_slot_item_title($slot) {
@@ -97,7 +109,7 @@ function cma_reservation_cache_hours_array() {
 	        9 => '9am',
 	        10 => '10am',
 	        11 => '11am',
-	        12 => '12am',
+	        12 => '12pm',
 	        13 => '1pm',
 	        14 => '2pm',
 	        15 => '3pm',
