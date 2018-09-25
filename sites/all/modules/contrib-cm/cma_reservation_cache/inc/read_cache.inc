@@ -257,6 +257,11 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   
   $item_time_slots = array();
   $fields = cma_reservation_cache_db_table_columns();
+
+  //find our offset from UTC time which is what is in db
+  //FIXME CALL FROM A FUNCTION THAT DEFINES A HOOK TO SET DIFFERENTLY IF
+  //NECESSARY, OR MAYBE SET OFF THE RESERVATION FIELD ITSELF
+  $offset = date_offset_get(new DateTime);
   
   //////////////////////////////////////////////////////////////////////////
   //START BUILDING THE SQL QUERY, START WITH THE FIELDS FOR THE SELECT
@@ -288,6 +293,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
       }
       $cache_start_object->setTimeZone(new DateTimeZone('UTC'));
       $sql .= $where_and . " cache_slot_start_time >= :start";
+      $where_and = " AND ";
       $args[':start'] = $cache_start_object->getTimestamp();
     }
     else if ($filter == CMA_RESERVATION_CACHE_LAST_DAY) {
@@ -311,11 +317,35 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
       $cache_end_object->modify('+'.'1 day');
       
       $sql .= $where_and . " cache_slot_start_time < :end ";
+      $where_and = " AND ";
       $args[':end'] = $cache_end_object->getTimestamp();
     }
-    $where_and = " AND ";
+    else if ($filter == CMA_RESERVATION_CACHE_BEGIN_HOUR) {
+      if (!empty($value)) {
+	$sql .= $where_and .
+	  " hour(from_unixtime(cache_slot_start_time + $offset)) >= :hs ";
+	$where_and = " AND ";
+	$args[':hs'] = $value;
+      }
+    }
+    else if ($filter == CMA_RESERVATION_CACHE_END_HOUR) {
+      if (!empty($value)) {
+	$sql .= $where_and .
+	  " hour(from_unixtime(cache_slot_start_time + $offset)) < :he";
+	$where_and = " AND ";
+	$args[':he'] = $value;
+      }
+    }
+    else if ($filter == CMA_RESERVATION_CACHE_DOW) {
+      if (!empty($value)) {
+	$sql .= $where_and .
+	  " dayofweek(from_unixtime(cache_slot_start_time + $offset)) = :dow";
+	$where_and = " AND ";
+	$args[':dow'] = $value;
+      }
+    }
+
   }
-  
   //////////////////////////////////////////////////////////////////////////
   //BUILD THE ORDER BY CLAUSE FOR THE FILTER QUERY
   $order_by = ' ORDER BY ';
@@ -332,7 +362,14 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //////////////////////////////////////////////////////////////////////////
   //EXECUTE THE SQL QUERY
   cma_reservation_cache_log_microsec('before cache table query');
+
+  //FIXME ADD TO CONFIG SETTINGS FORM
+  $max = variable_get('cma_reservation_cache_chart_max_cell_count', 96);
+  $sql .= " LIMIT $max ";
+  
+  mnn_data_massage_log_query($sql, $args);
   $results = db_query($sql, $args);
+
   cma_reservation_cache_log_microsec('after cache table query');
 
   //FIXME, WHEN CMA_RESERVATION_CACHE_COL_SPAN FILTER IS SET, COMBINE
@@ -341,7 +378,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //  $item_time_slots[] = $result;
   //}
   $item_time_slots = $results;
-
+  
   dsm("Found " . count($item_time_slots) . " item time slots.");
   cma_reservation_cache_log_microsec('end of get_item_time_slots()');
   
