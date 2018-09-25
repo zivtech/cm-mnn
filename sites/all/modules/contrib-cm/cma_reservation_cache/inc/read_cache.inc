@@ -62,9 +62,7 @@ function cma_reservation_cache_get_available_categories($inventories =
   $first = TRUE;
   $args = array();
   //ADD WHERE CLAUSE OF INVENTORIES
-  $index = 0;
-  foreach($inventories as $tid) {
-    $index ++;
+  foreach($inventories as $key => $tid) {
     if ($first) {
       $first = FALSE;
       $sql .= " WHERE ";
@@ -72,8 +70,8 @@ function cma_reservation_cache_get_available_categories($inventories =
     else {
       $sql .= " OR ";
     }
-    $sql .= " inventory = " . ":inventory_tid_$index";
-    $args[":inventory_tid_$index"] = $tid;
+    $sql .= " inventory = " . ":inventory_tid_" .$key;
+    $args[":inventory_tid_".$key] = $tid;
   }
 
   //run query and categories into an array with the tid as the key
@@ -108,15 +106,15 @@ function cma_reservation_cache_get_available_content_types($inventories =
   if (!empty($inventories)) {
     $sql .= " WHERE (";
     $first = TRUE;  
-    foreach($inventories as $tid) {
+    foreach($inventories as $key =>$tid) {
       if ($first) {
 	$first = FALSE;
       }
       else {
 	$sql .= " OR ";
       }
-      $sql .= " inventory = " . ":inventory_tid";
-      $args[":inventory_tid"] = $tid;
+      $sql .= " inventory = " . ":inventory_tid_".$key;
+      $args[":inventory_tid_".$key] = $tid;
     }
 
     $sql .= ") ";
@@ -132,19 +130,19 @@ function cma_reservation_cache_get_available_content_types($inventories =
 
     $first = TRUE;
     //ADD WHERE CLAUSE OF CATEGORIES
-    foreach($categories as $tid) {
+    foreach($categories as $key => $tid) {
       if ($first) {
 	$first = FALSE;
       }
       else {
 	$sql .= " OR ";
       }
-      $sql .= " bucket_category = " . ":bucket_category";
-      $args[":bucket_category"] = $tid;
+      $sql .= " bucket_category = " . ":bucket_category_" . $key;
+      $args[":bucket_category_".$key] = $tid;
     }
     $sql .= ") ";
   }
-
+  
   //run query and put the content types into an array with the machinename
   //as the key
   $results = db_query($sql, $args);
@@ -172,15 +170,15 @@ function cma_reservation_cache_get_available_resources($inventories = array(),
   if (!empty($inventories)) {
     $sql .= " WHERE (";
     $first = TRUE;  
-    foreach($inventories as $tid) {
+    foreach($inventories as $key => $tid) {
       if ($first) {
 	$first = FALSE;
       }
       else {
 	$sql .= " OR ";
       }
-      $sql .= " inventory = " . ":inventory_tid";
-      $args[":inventory_tid"] = $tid;
+      $sql .= " inventory = " . ":inventory_" . $key;
+      $args[":inventory_" . $key] = $tid;
     }
 
     $sql .= ") ";
@@ -196,15 +194,15 @@ function cma_reservation_cache_get_available_resources($inventories = array(),
 
     $first = TRUE;
     //ADD WHERE CLAUSE OF CATEGORIES
-    foreach($categories as $tid) {
+    foreach($categories as $key => $tid) {
       if ($first) {
 	$first = FALSE;
       }
       else {
 	$sql .= " OR ";
       }
-      $sql .= " bucket_category = " . ":bucket_category";
-      $args[":bucket_category"] = $tid;
+      $sql .= " bucket_category = " . ":bucket_category_".$key;
+      $args[":bucket_category_".$key] = $tid;
     }
     $sql .= ") ";
   }
@@ -219,15 +217,15 @@ function cma_reservation_cache_get_available_resources($inventories = array(),
 
     $first = TRUE;
     //ADD WHERE CLAUSE OF CONTENT_TYPES
-    foreach($content_types as $tid) {
+    foreach($content_types as $key => $name) {
       if ($first) {
 	$first = FALSE;
       }
       else {
 	$sql .= " OR ";
       }
-      $sql .= " bucket_category = " . ":bucket_category";
-      $args[":bucket_category"] = $tid;
+      $sql .= " content_type_machine_name = " . ":type_".$key;
+      $args[":type_".$key] = $name;
     }
     $sql .= ") ";
   }
@@ -249,7 +247,6 @@ function cma_reservation_cache_get_available_resources($inventories = array(),
  *
  */
 function cma_reservation_cache_get_item_time_slots($filter_values) {
-  cma_reservation_cache_log_microsec('get_item_time_slots()');
   if (empty($filter_values)) {
     drupal_set_message('Error Code #329897 Filters are required', 'error');
     return array();
@@ -344,7 +341,78 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
 	$args[':dow'] = $value;
       }
     }
-
+    else if ($filter == CMA_RESERVATION_CACHE_INVENTORY) {
+      if (!empty($value)) {
+	$sql .= $where_and . " (";
+	$where_and = " AND ";
+	$first = TRUE;
+	foreach ($value as $key => $tid) {
+	  if ($first) {
+	    $first = FALSE;
+	  }
+	  else {
+	    $sql .= " OR "; 
+	  }
+	  $sql .=  " inventory = " . ':inventory_tid_' . $key ." ";
+	  $args[':inventory_tid_' . $key] = $tid;
+	}
+	$sql .= " ) ";
+      }
+    }
+    else if ($filter == CMA_RESERVATION_CACHE_BUCKET_CATEGORY) {
+      if (!empty($value)) {
+	$sql .= $where_and . " (";
+	$where_and = " AND ";
+	$first = TRUE;
+	foreach ($value as $key => $tid) {
+	  if ($first) {
+	    $first = FALSE;
+	  }
+	  else {
+	    $sql .= " OR "; 
+	  }
+	  $sql .=  " bucket_category = " . ':cat_' . $key ." ";
+	  $args[':cat_' . $key] = $tid;
+	}
+	$sql .= " ) ";
+      }
+    }
+    else if ($filter == CMA_RESERVATION_CACHE_ITEM_TYPE) {
+      if (!empty($value)) {
+	$sql .= $where_and . " (";
+	$where_and = " AND ";
+	$first = TRUE;
+	foreach ($value as $key => $name) {
+	  if ($first) {
+	    $first = FALSE;
+	  }
+	  else {
+	    $sql .= " OR "; 
+	  }
+	  $sql .=  " content_type_machine_name = " . ':type_' . $key ." ";
+	  $args[':type_' . $key] = $name;
+	}
+	$sql .= " ) ";
+      }
+    }
+    else if ($filter == CMA_RESERVATION_CACHE_ITEM_NID) {
+      if (!empty($value)) {
+	$sql .= $where_and . " (";
+	$where_and = " AND ";
+	$first = TRUE;
+	foreach ($value as $key => $name) {
+	  if ($first) {
+	    $first = FALSE;
+	  }
+	  else {
+	    $sql .= " OR "; 
+	  }
+	  $sql .=  " item_nid = " . ':nid_' . $key ." ";
+	  $args[':nid_' . $key] = $name;
+	}
+	$sql .= " ) ";
+      }
+    }
   }
   //////////////////////////////////////////////////////////////////////////
   //BUILD THE ORDER BY CLAUSE FOR THE FILTER QUERY
@@ -364,10 +432,10 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   cma_reservation_cache_log_microsec('before cache table query');
 
   //FIXME ADD TO CONFIG SETTINGS FORM
-  $max = variable_get('cma_reservation_cache_chart_max_cell_count', 96);
+  $max = variable_get('cma_reservation_cache_chart_max_cell_count', 100000);
   $sql .= " LIMIT $max ";
   
-  mnn_data_massage_log_query($sql, $args);
+  //mnn_data_massage_log_query($sql, $args);
   $results = db_query($sql, $args);
 
   cma_reservation_cache_log_microsec('after cache table query');
@@ -378,9 +446,6 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //  $item_time_slots[] = $result;
   //}
   $item_time_slots = $results;
-  
-  dsm("Found " . count($item_time_slots) . " item time slots.");
-  cma_reservation_cache_log_microsec('end of get_item_time_slots()');
   
   return $item_time_slots;
 }

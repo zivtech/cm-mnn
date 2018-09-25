@@ -4,27 +4,44 @@
  * Function will build the form and the chart of reservable items and their
  * resesrvations. This function is called from menu item "reservations/chart"
  */
-function cma_reservation_cache_chart_form() {
-  dsm(date('h:i:s'), 'form start');
-  cma_reservation_cache_log_microsec('form start'); 
+function cma_reservation_cache_chart_form($form, $form_state) {
+  cma_reservation_cache_log_microsec('-----------------------beginning of ' .
+				     'cma_reservation_cache_chart_form');
 
   $form = array();
   $values = cma_reservation_cache_chart_filter_values();
-
+  $default_values = cma_reservation_chart_default_filter_values($values);
+  
   //ADD ALL THE FORM ELEMENTS FOR THE FILTERS, $form IS PASSED BY REFERENCE
   cma_reservation_cache_chart_add_filters_to_form($form, $values);
-  
-  //GET ALL THE ITEM TIME SLOTS FROM CACHE TABLE BASED ON FILTER VALUES
-  $item_time_slots = cma_reservation_cache_get_item_time_slots($values);
 
-  //GET THE ACTUAL HTML FOR THE CHART
-  $chart_html = cma_reservation_cache_get_chart_html($item_time_slots);  
+  //FORMS ARE OFTEN BUILT JUST FOR VALIDATION AND SUBMIT AND NOT FOR DISPLAY
+  //SO WE WILL USE THIS BOOLEAN TO DECIDE WHETHER TO EXECUTE THE LOGIC FOR THE
+  //PURE MARKUP ON THE PAGE, WHICH IS MOSTLY THE CHART ITSELF
+  //WE SAVE A LOT OF PROCESSING TIME IN NOT DOING THE MARKUP
+  $is_form_being_build_for_display = TRUE;
 
-  //ADD THE HTML TO THE FORM AS MARKUP
-  $form['chart'] = array('#markup'=> $chart_html);
-  
-  cma_reservation_cache_log_microsec('end of cma_reservation_cache_chart');
-  dsm(date('h:i:s'), 'form end');
+  //FIXME IS THERE A BETTER WAY TO DECIDE IF THIS IS THE FORM BID WE DON'T
+  //WANT TO DO MARKUP FOR?
+  if(!empty($form_state['input'])) {
+    $is_form_being_build_for_display = FALSE;
+  }
+
+  //ONLY BUILD THE CHART IF THE FORM IS GOING TO BE DISPLAYED NOW RATHER
+  //THAN REBUILT AFTER THE SUBMIT FUNCTIONALITY IS EXECUTED
+  if ($is_form_being_build_for_display) {
+    //GET ALL THE ITEM TIME SLOTS FROM CACHE TABLE BASED ON FILTER VALUES
+    $item_time_slots =
+      cma_reservation_cache_get_item_time_slots($default_values);
+
+    //GET THE ACTUAL HTML FOR THE CHART
+    $chart_html = cma_reservation_cache_get_chart_html($item_time_slots);  
+
+    //ADD THE HTML TO THE FORM AS MARKUP
+    $form['chart'] = array('#markup'=> $chart_html);
+  }
+  cma_reservation_cache_log_microsec('end of ' .
+				     'cma_reservation_cache_chart_form');
   
   return $form;
 }
@@ -35,7 +52,6 @@ function cma_reservation_cache_chart_form() {
  */
 function cma_reservation_cache_chart_form_validate($form, &$form_state) {
   $filters = cma_reservation_cache_filters();
-  cma_reservation_cache_log_microsec('in form_validate()');
   foreach ($filters as $filter) {
     //TODO FIXME ADD VALIDATION!
     //1. start day after last day
@@ -43,13 +59,11 @@ function cma_reservation_cache_chart_form_validate($form, &$form_state) {
     //dsm($form_state['values'][$filter], 'my value for ' . $filter);
     //form_set_error($filter, t('error!'));
   }
-
+  cma_reservation_cache_log_microsec('done with form_validate()');
 }
 /**
  */
 function cma_reservation_cache_chart_form_submit($form, &$form_state) {
-  cma_reservation_cache_log_microsec('in form_submit()');
-
   $url = current_path();
   $args = array();
 
@@ -341,7 +355,7 @@ function cma_reservation_chart_default_filter_values($values) {
     $defaults[$key] = $value;
   }
 
-  dsm($defaults, 'defaults for form elements');
+  //dsm($defaults, 'defaults for form elements');
   //FIXME ADD HOOK TO ALLOW DEFAULTS TO BE OVERRIDDEN
   return $defaults;
 }
@@ -370,7 +384,7 @@ function cma_reservation_cache_chart_filter_values() {
       $values[$filter] = $value;
     }
   }
-  dsm($values, 'submitted query string form values');
+  //dsm($values, 'submitted query string form values');
   return $values;
 }
 
@@ -380,8 +394,6 @@ function cma_reservation_cache_chart_filter_values() {
  * or any other markup 
  */
 function cma_reservation_cache_get_chart_html($item_time_slots) {
-  cma_reservation_cache_log_microsec('starting to build chart html');
-  
   //identifer will be the unique item identifier, whether its a bucket or 
   //resource
   $identifier = $prev_identifier = '';
@@ -392,7 +404,9 @@ function cma_reservation_cache_get_chart_html($item_time_slots) {
     '<div class="cma_reservation_cache_chart_first_header_cell">Item</div>';
 
   //add all the data rows
+  $counter = 0;
   foreach ($item_time_slots as $slot) {
+    $counter ++;
     $identifier = cma_reservation_cache_slot_identifier($slot);
     
     //if true, this is either first time through or we are starting a new row
@@ -436,7 +450,7 @@ function cma_reservation_cache_get_chart_html($item_time_slots) {
       '" class="cma_reservation_cache_chart_cell">' . $slot_display . "</div>";
   }
   //done with loop
-
+  
   //adding the start of the table div
   $chart_html = '<div class="cma_reservation_cache_chart_table">';
   $chart_html .= $header_row;
@@ -445,7 +459,8 @@ function cma_reservation_cache_get_chart_html($item_time_slots) {
   //close the div on the last row div and the table div
   $chart_html .= "</div></div>";
 
-  cma_reservation_cache_log_microsec('finished building chart html');
+  cma_reservation_cache_log_microsec("finished building chart html " .
+				     "with $counter item time slots");
   return $chart_html;
 }
 
