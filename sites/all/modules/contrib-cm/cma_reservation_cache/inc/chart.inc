@@ -437,6 +437,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
       if (!empty($reservation_slots)) {
 	$row_html .=
 	  cma_reservation_cache_reservation_slots_html($reservation_slots);
+	$reservation_slots = array();
       }
       //add the last row to the html for all the row divs
       $rows_html .= $row_html . "</div>";
@@ -459,12 +460,15 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
       if (!empty($reservation_slots)) {
 	$row_html .=
 	  cma_reservation_cache_reservation_slots_html($reservation_slots);
+	$reservation_slots = array();
       }
       //add the last row to the html for all the row divs
       $rows_html .= $row_html . "</div>";
 
       //reset for new row
       $row_html = '<div class="cma_reservation_cache_chart_row">';
+      $row_html .= '<div class="cma_reservation_cache_chart_first_cell">' .
+	cma_reservation_cache_slot_item_title($slot) . "</div>";
       
       //if rows is empty this is the first row of this chart so add header
       if (empty($rows_html)) {
@@ -558,34 +562,48 @@ function cma_reservation_cache_reservation_slots_html($slots) {
   $count = count($slots);
 
   if ($count > 0) {
-    $center = floor($count/2);
+    $center = ceil($count/2);
   }
+
   $index = 0;
   foreach ($slots as $slot) {
     $classes = "cma_reservation_cache_chart_cell";
     $hover = cma_reservation_cache_chart_slot_hover($slot);
 
+    //fixme remove only here for testing
+    $hover = '';
+    
     $index ++;
-    if ($index == 1) {
-      //add block start div
-      $classes .= " cma_reservation_cache_chart_res_block_start_cell";
-      $slot_display = '';
+    if ($index == 1 && $index == $center && $index = $count) {
+      //reservation block is a total of one cell long, treat it like normal
+      $slot_display = cma_reservation_cache_chart_slot_display($slot);
     }
+    else if ($index == 1 && $index == $center) {
+      $classes .= " cma_reservation_cache_chart_res_block_start_cell";
+      $classes .= " cma_reservation_cache_chart_res_block_title_cell";
+      $slot_display = cma_reservation_cache_chart_slot_display($slot);
+    }
+    else if ($index == 1) {
+      $classes .= " cma_reservation_cache_chart_res_block_start_cell";
+      $slot_display = cma_reservation_cache_chart_slot_display($slot, TRUE);
+    }    
     else if ($index == $center) {
       //add block center div
       $classes .= " cma_reservation_cache_chart_res_block_middle_cell";
+      $classes .= " cma_reservation_cache_chart_res_block_title_cell";
       $slot_display = cma_reservation_cache_chart_slot_display($slot);
     }
-    else if ($index != $count){
+    else if ($index < $count){
       //add block middle div
       $classes .= " cma_reservation_cache_chart_res_block_middle_cell";
-      $slot_display = '';
+      $slot_display = cma_reservation_cache_chart_slot_display($slot, TRUE);
     }
     else { //$index == $count
       //add block end div
       $classes .= " cma_reservation_cache_chart_res_block_end_cell";
-      $slot_display = '';
+      $slot_display = cma_reservation_cache_chart_slot_display($slot, TRUE);
     }
+
     $html .= '<div title="' . $hover .
       '" class="' . $classes . '">'.$slot_display . "</div>";
   }
@@ -622,15 +640,26 @@ function cma_reservation_cache_slot_header_display($slot) {
 /**
  * Function will return the correct link for a chart slot
  */
-function cma_reservation_cache_chart_slot_display($slot) {
-  $ret = date('h:ia', $slot->cache_slot_start_time) . "<br/>";
-  if (!empty($slot->reservation_nid)) {
-    $ret .= l($slot->reservation_nid, "node/" . $slot->reservation_nid); 
+function cma_reservation_cache_chart_slot_display($slot, $blank = FALSE) {
+  if ($blank && $slot->reservation_nid) {
+    $text = "&nbsp;<br/>&nbsp";
+    $ret = l($text, "node/".$slot->reservation_nid,
+	     array('html' => TRUE)); 
   }
   else {
-    $ret .= l('+', "node/add/reservations_reservation");
-  }
+    if (!empty($slot->reservation_nid)) {
+      $text .= $slot->reservation_nid. "<br/>&nbsp;";;
+      $ret .= l($text, "node/" . $slot->reservation_nid,
+		array('html' => TRUE)); 
+    }
+    else {
+      $text = date('h:ia', $slot->cache_slot_start_time) . "<br/>";
 
+      $text .= '+' . "<br/>";
+      $ret .= l($text, "node/add/reservations-reservation",
+		array('html' => TRUE)); 
+    }
+  }
   //FIXME: ADD A HOOK HERE SO CAN OVERRIDE SLOT DISPLAY TEXT
   return $ret;
 }
