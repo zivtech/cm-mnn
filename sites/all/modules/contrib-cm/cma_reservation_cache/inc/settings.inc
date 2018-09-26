@@ -40,6 +40,41 @@ function cma_reservation_cache_settings_form($form) {
 	    '#default_value' => $default_value,
 	    );
 
+  /////////////////////////////////////////////////////////////////////////
+  $form['chart_colors'] =
+    array(
+	  '#type' => 'fieldset',
+	  '#title' => t("Chart Colors"),
+	  );
+  
+  $var_name = "cma_reservation_cache_chart_cell_bg_color_default";
+  $default_value = variable_get($var_name, 'transparent');
+  $form['chart_colors'][$var_name] =
+    array(
+	  '#type' => 'textfield',
+	  '#title' => t('Color for empty cell'),
+	  '#default_value' => $default_value,
+	  '#description' =>
+	  t("Background color for empty cells on chart."),
+	  '#required' => TRUE,
+	  );
+
+  $statuses = reservations_record_status();
+  foreach ($statuses as $code=>$status) {
+    $var_name = "cma_reservation_cache_chart_cell_bg_color_" . $code;
+    $default_value = variable_get($var_name, 'transparent');
+    
+    $form['chart_colors'][$var_name] =
+      array(
+	    '#type' => 'textfield',
+	    '#title' => t('Color for @status', array('@status'=>$status)),
+	    '#default_value' => $default_value,
+	    '#description' =>
+	    t("Background color for this status on chart."),
+	    '#required' => TRUE,
+	    );
+  }
+    
 
   //////////////////////////////////////////////////////////////////////////
   $rows = array();

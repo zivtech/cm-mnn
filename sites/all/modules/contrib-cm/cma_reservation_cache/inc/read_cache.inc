@@ -32,18 +32,28 @@ function cma_reservation_cache_get_available_options($field_name,
  * inventory filters that are set
  */
 function cma_reservation_cache_get_available_inventories() {
-  //the array that we will return 
-  $ret = array();
-  $sql = "SELECT distinct inventory as id, inventory_name as value ";
-  $sql .= " FROM cma_reservation_cache ";
-  $sql .= " WHERE inventory > 0 " ;
-
-  //run query and inventories into an array with the tid as the key
-  $results = db_query($sql);
-  while ($result = $results->fetchObject()) {
-    $ret[$result->id] = $result->value;
+  $ret = &drupal_static(__FUNCTION__);
+  if (!isset($ret)) {
+    if ($cache = cache_get('cma_reservation_cache_get_available_inventories')){
+      $ret = $cache->data;
+    }
+    else {
+      //the array that we will return 
+      $ret = array();
+      $sql = "SELECT distinct inventory as id, inventory_name as value ";
+      $sql .= " FROM cma_reservation_cache ";
+      $sql .= " WHERE inventory > 0 " ;
+      
+      //run query and inventories into an array with the tid as the key
+      $results = db_query($sql);
+      while ($result = $results->fetchObject()) {
+	$ret[$result->id] = $result->value;
+      }
+      asort($ret);
+      cache_set('cma_reservation_cache_get_available_inventories',
+		$ret, 'cache');
+    }
   }
-  asort($ret);
   return $ret;
 }
 /**
@@ -260,7 +270,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //START BUILDING THE SQL QUERY, START WITH THE FIELDS FOR THE SELECT
   $field_list = implode(', ', array_keys($fields));
   $sql = "SELECT " . $field_list . " ";
-  if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
+  if (!empty($filter_values[CMA_RESERVATION_CACHE_SEPARATE_CHARTS])) {
     $sql .= ", date(from_unixtime(cache_slot_start_time)) as day ";
   }
 
@@ -414,13 +424,13 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //BUILD THE ORDER BY CLAUSE FOR THE FILTER QUERY
   $order_by = ' ORDER BY ';
 
-  if ($filter_values[CMA_RESERVATION_CACHE_BY_DAY]) {
-    $order_by .= " date(from_unixtime(cache_slot_start_time)), ";
+  if ($filter_values[CMA_RESERVATION_CACHE_SEPARATE_CHARTS]) {
+    $order_by .= " date(from_unixtime(cache_slot_start_time + $offset)), ";
   }
   
   $order_by .= " bucket_weight, bucket_category_name, content_type, " .
     "bucket_slot_id, item_nid, cache_slot_start_time ";
-  
+
   $sql .= $order_by;
 
   //////////////////////////////////////////////////////////////////////////

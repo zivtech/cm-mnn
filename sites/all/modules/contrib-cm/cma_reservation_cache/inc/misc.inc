@@ -40,6 +40,24 @@ function cma_reservation_cache_slot_item_title($slot) {
   }
   return $ret;
 }
+/**
+ * Function finds the background color for the slot
+ */
+function cma_reservation_cache_slot_background_color($slot) {
+  $status_code = $slot->reservation_status;
+
+  if (empty($status_code)) {
+    $var_name = "cma_reservation_cache_chart_cell_bg_color_default";
+  }
+  else {
+    $var_name = "cma_reservation_cache_chart_cell_bg_color_" . $status_code;
+  }
+
+  $color = variable_get($var_name, 'transparent');
+
+  //FIXME ADD HOOK TO ALLOW FOR CUSTOM BACKGROUND COLORS
+  return $color;
+}
 
 /**
  * Function will return array of bucket categories sorted with their weight 
@@ -171,8 +189,7 @@ function cma_reservation_cache_filters() {
 	       CMA_RESERVATION_CACHE_ITEM_TYPE,
 	       CMA_RESERVATION_CACHE_ITEM_NID,
 	       CMA_RESERVATION_CACHE_DOW,
-	       CMA_RESERVATION_CACHE_COL_SPAN,
-	       CMA_RESERVATION_CACHE_BY_DAY,
+	       CMA_RESERVATION_CACHE_SEPARATE_CHARTS,
 	       CMA_RESERVATION_CACHE_MODE,
 	       );
 }

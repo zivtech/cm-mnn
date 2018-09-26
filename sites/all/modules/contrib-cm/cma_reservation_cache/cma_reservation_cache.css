@@ -1,3 +1,11 @@
+.cma_reservation_cache_chart {
+    padding: 10px 10px 40px 40px;
+    border-width: thin;
+    border-style: solid;
+    border-color: black;
+    display: inline-block;
+    /*overflow: auto;*/
+}
 .cma_reservation_cache_chart_table {
     display:table;
 }
@@ -43,6 +51,7 @@
     border-style: solid;
     border-color: black;
     text-align: center;
+    white-space: nowrap;
     display:table-cell;
 }
 .cma_reservation_cache_chart_res_block_start_cell {

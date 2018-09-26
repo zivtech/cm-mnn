@@ -540,7 +540,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 
     //add all timeblocks within time range for this item/bucket slot
     db_query($sql, $args);
-    dsm(date('H:i:s'), 'after insert');
+    //dsm(date('H:i:s'), 'after insert');
   }
   dsm(date('H:i:s'), 'end of item loop');
   dsm($row_counter, 'number of rows');
