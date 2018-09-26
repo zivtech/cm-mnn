@@ -397,11 +397,11 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
   //iterate over all the item time slots, adding a new row when we change the
   //item (which will have its own unique $identifier).
   //it will also
-  $counter =  $res_nid = $prev_res_nid = 0;
+  $counter =  $res_nid = $prev_res_nid = $prev_slot = 0;
   $reservation_slots = array();
   $charts_display = $charts_html = $chart_html = $row_html = $rows_html =
       $header_row_html = $identifier = $prev_identifier = '';
-
+  
   foreach ($item_time_slots as $slot) {
     $slot_needs_display = FALSE;
     $counter ++;
@@ -443,7 +443,6 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
       $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
       //add the last chart to the html for all the charts
       $charts_html .= $chart_html . "</div>";
-      $charts_html .= "<br/><br/>";
 
       //reset for new chart and row
       $chart_html = "<div class='cma_reservation_cache_chart'>" .
@@ -462,7 +461,14 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     }
     //our identifier has changed so end this row and begin a new one 
     else if ($prev_identifier != $identifier) {
-      //dsm($slot, 'slot 3');
+      /*
+      dsm($prev_slot, 'prev slot'.
+	  date('Y-m-d H:i', $prev_slot->cache_slot_start_time) .
+	  " " . $prev_slot->item_title);
+      
+      dsm($slot, 'slot 3'.date('Y-m-d H:i', $slot->cache_slot_start_time) .
+	  " " . $slot->item_title);
+      */
       //since row is ending, close the reservation slot block
       if (!empty($reservation_slots)) {
 	$row_html .=
@@ -537,6 +543,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     $prev_identifier = $identifier;
     $prev_res_nid = $res_nid;
     $prev_day = $day;
+    $prev_slot = $slot;
 
   }//done looping over item time slots
 
@@ -551,7 +558,6 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
   $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
   //add the last chart to the html for all the charts
   $charts_html .= $chart_html . "</div>";
-  $charts_html .= "<br/><br/><br/>";
 
   //close the div on the last row div and the table div
   $chart_display .= '<div class"cma_reservation_cache_chart_display"'.
@@ -567,12 +573,24 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
  */
 function cma_reservation_cache_chart_title_html($slot,
 						$filter_values) {
-  $adjusted_time =
-    $slot->cache_slot_start_time - cma_reservation_cache_get_offset();
-  
-  $ret = "<div class='cma_reservation_cache_chart_title'>" .
-    "<h2>Reservable Item Chart for " . date('F j, Y', $adjusted_time) ."</h2>";
 
+  $ret = "<div class='cma_reservation_cache_chart_title'>" .
+    "<h2>Reservable Item Chart for ";
+
+  $start = $filter_values[CMA_RESERVATION_CACHE_FIRST_DAY];
+  $end = $filter_values[CMA_RESERVATION_CACHE_LAST_DAY];
+  
+  if ($start != $end &&
+      empty($filter_values[CMA_RESERVATION_CACHE_SEPARATE_CHARTS])) {
+    $start_ts = strtotime($start);
+    $end_ts = strtotime($end);
+    $ret .= date('F j, Y', $start_ts) . " through " . date('F j, Y', $end_ts);
+  }
+  else {
+    $ret .= date('F j, Y', $slot->cache_slot_start_time);
+  }
+  $ret .= "</h2>";
+  
   $filter_string = '';
   $first_time = TRUE;
   foreach($filter_values as $key=>$value) {

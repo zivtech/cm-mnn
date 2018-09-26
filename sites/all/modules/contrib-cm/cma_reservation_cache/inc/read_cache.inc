@@ -442,6 +442,8 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   $sql .= " LIMIT $max ";
   
   //mnn_data_massage_log_query($sql, $args);
+  
+  //mnn_data_massage_log_query($sql, $args);
   $results = db_query($sql, $args);
 
   cma_reservation_cache_log_microsec('after cache table query');
