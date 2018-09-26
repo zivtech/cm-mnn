@@ -61,6 +61,8 @@ function cma_reservation_cache_schema() {
 	  'primary key' => array('id'),
 	  );
 
+  
+  module_load_include('inc', 'cma_reservation_cache', 'inc/misc');
   //these are the main cache fields for the cma_reservation_cache
   $main_cache_fields = cma_reservation_cache_main_cache_fields();
     

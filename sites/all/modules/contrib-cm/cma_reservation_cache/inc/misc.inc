@@ -350,6 +350,15 @@ function cma_reservation_cache_main_cache_fields() {
 				     'type' => 'int',
 				     'unsigned' => TRUE,
 				     );
+  
+  $ret['reservation_status_name'] = array(
+					  'type' => 'varchar',
+					  'length' => 255,
+					  'default' => '',
+					  'description' =>
+					  'Name of the status of the '.
+					  'reservation',
+					  );
   $ret['project_nid'] = array(
 			      'type' => 'int',
 			      'unsigned' => TRUE,

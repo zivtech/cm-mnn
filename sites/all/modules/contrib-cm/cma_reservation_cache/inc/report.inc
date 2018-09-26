@@ -366,11 +366,16 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 	$db_row['reservation_nid'] = $reservation_node->nid;
 	$db_row['reservation_uid'] = $reservation_node->uid;
 	$db_row['reservation_user_name'] = $reservation_node->name;
+
 	
 	//FIXME SET RESERVATION GROUP ID FOR REAL
 	$db_row['reservation_group_id'] = 0;
-	$db_row['reservation_status'] =
-	  $reservation_node->reservations_reservation_status;
+
+	//set status code and name
+	$status_code = $reservation_node->reservations_reservation_status;
+	$db_row['reservation_status'] = $status_code;
+	$db_row['reservation_status_name'] =
+	  reservations_record_status($status_code);
 	
 	$skip_types = array('viewfield',);
 	
