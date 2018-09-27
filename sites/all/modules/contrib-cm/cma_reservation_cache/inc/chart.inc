@@ -733,18 +733,36 @@ function cma_reservation_cache_reservation_slots_html($slots) {
  */
 function cma_reservation_cache_chart_slot_hover($slot) {
   $fields = cma_reservation_cache_db_table_columns();
-  $ret = 'Start = ' . date('Y-m-d h:ip', $slot->cache_slot_start_time);
-  $ret .= "\n";
-  $ret .= 'End = ' . date('Y-m-d h:ip', $slot->cache_slot_end_time);
-  $ret .= "\n";
-
-  ///FIXME ONLY REMOVING FOR TESTING
-  return $ret;
+  $offset = cma_reservation_cache_get_offset();
+  $start = date('Y-m-d h:ip',
+		strtotime($slot->field_reservations_date_start) + $offset);
+  $end = date('Y-m-d h:ip',
+		strtotime($slot->field_reservations_date_end) + $offset);
   
+  if ($slot->reservation_nid) {
+    $ret = $slot->project_title;
+    $ret .= "\n";
+    $ret .= $slot->reservation_user_name;
+    $ret .= "\n";
+    $ret .= $start;
+    $ret .= "\n";
+    $ret .= $end;
+  }
+  else {
+    $ret .= cma_reservation_cache_slot_item_title($slot);
+    $ret .= "\n";
+    $ret .= 'Start = ' . date('Y-m-d h:ip', $slot->cache_slot_start_time);
+    $ret .= "\n";
+    $ret .= 'End = ' . date('Y-m-d h:ip', $slot->cache_slot_end_time);
+    $ret .= "\n";
+  }
+
+  /**
   foreach($fields as $name => $field) {
     $ret .= $name . ' = ' . strip_tags($slot->{$name}) . "\n";
   }
-
+  */
+  
   //FIXME ADD A HOOK SO THE HOVER CAN BE OVERRIDEN
   return $ret;
 }
