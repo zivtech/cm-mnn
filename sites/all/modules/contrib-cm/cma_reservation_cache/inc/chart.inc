@@ -400,12 +400,15 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
   $counter =  $res_nid = $prev_res_nid = $prev_slot = 0;
   $reservation_slots = array();
   $charts_display = $charts_html = $chart_html = $row_html = $rows_html =
-      $header_row_html = $identifier = $prev_identifier = '';
+      $header_row_html = $identifier = $prev_identifier = $first_day = '';
   
   foreach ($item_time_slots as $slot) {
     $slot_needs_display = FALSE;
     $counter ++;
     $day = date('Y-m-d',$slot->cache_slot_start_time);
+    if (empty($first_day)) {
+      $first_day = $day;
+    }
     
     $identifier = cma_reservation_cache_slot_identifier($slot);    
     $res_nid = $slot->reservation_nid;
@@ -491,7 +494,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
 	  '<div class="cma_reservation_cache_chart_first_header_cell">'.
 	  'Item</div>';
       }
-
+    
     }
     //done with checking for row end
 
@@ -517,15 +520,26 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     else {// if (empty($prev_res_nid && empty($res_nid))) {
       $reservation_slots = array();
     }
-  
+
+    if (empty($separate_charts) && $first_day != $day && !empty($prev_day) &&
+	$day != $prev_day) {
+      if (empty($rows_html)) {
+	$header_row_html .=
+	 '<div class="cma_reservation_cache_chart_header_cell" '.
+	'style="background-color:black;"></div>';
+      }
+      $row_html .=
+      '<div class="cma_reservation_cache_chart_cell" '.
+      	'style="background-color:black;"></div>';	
+    }
     //if $rows is empty, this will be first row of a chart, therefore add
     //header
     if (empty($rows_html)) {
+      
       $header_row_html .=
 	'<div class="cma_reservation_cache_chart_header_cell">'.
 	cma_reservation_cache_slot_header_display($slot)."</div>";
     }
-
     //if this is empty it means we need to display it as a regular cell
     //rather than part of a reservation slot block
     if (empty($reservation_slots)) {
@@ -584,10 +598,10 @@ function cma_reservation_cache_chart_title_html($slot,
       empty($filter_values[CMA_RESERVATION_CACHE_SEPARATE_CHARTS])) {
     $start_ts = strtotime($start);
     $end_ts = strtotime($end);
-    $ret .= date('F j, Y', $start_ts) . " through " . date('F j, Y', $end_ts);
+    $ret .= date('l, F j, Y', $start_ts)." through".date('l, F j, Y', $end_ts);
   }
   else {
-    $ret .= date('F j, Y', $slot->cache_slot_start_time);
+    $ret .= date('l, F j, Y', $slot->cache_slot_start_time);
   }
   $ret .= "</h2>";
   
@@ -669,14 +683,15 @@ function cma_reservation_cache_reservation_slots_html($slots) {
   if ($count > 0) {
     $center = ceil($count/2);
   }
-
+  
   $index = 0;
   foreach ($slots as $slot) {
     $classes = "cma_reservation_cache_chart_cell";
     $hover = cma_reservation_cache_chart_slot_hover($slot);
 
     $index ++;
-    if ($index == 1 && $index == $center && $index = $count) {
+
+    if ($index == 1 && $index == $center && $index == $count) {
       //reservation block is a total of one cell long, treat it like normal
       $slot_display = cma_reservation_cache_chart_slot_display($slot);
     }

@@ -38,13 +38,11 @@
     border-style: solid;
     border-color: black;
     text-align: center;
-    
-    
+    margin: 0px 0px 0px 0px;
+    width: 10em;
     line-height: 1.5em;
     height: 3em;   /* height is 2x line-height, so two lines will display */
     overflow: hidden;  /* prevents extra lines from being visible */
-    
-    
 }
 .cma_reservation_cache_chart_cell {
     padding: 4px 4px 4px 4px;

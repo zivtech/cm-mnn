@@ -332,7 +332,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
       }
     }
     else if ($filter == CMA_RESERVATION_CACHE_END_HOUR) {
-      if (!empty($value)) {
+      if (!empty($value) && $value != 24) {
 	$sql .= $where_and .
 	  " hour(from_unixtime(cache_slot_start_time + $offset)) < :he";
 	$where_and = " AND ";
@@ -429,7 +429,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   }
   
   $order_by .= " bucket_weight, bucket_category_name, content_type, " .
-    "bucket_slot_id, item_nid, cache_slot_start_time ";
+    "if(bucket_slot_id>0, bucket_slot_id, item_nid), cache_slot_start_time ";
 
   $sql .= $order_by;
 
@@ -440,8 +440,6 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   //FIXME ADD TO CONFIG SETTINGS FORM
   $max = variable_get('cma_reservation_cache_chart_max_cell_count', 100000);
   $sql .= " LIMIT $max ";
-  
-  //mnn_data_massage_log_query($sql, $args);
   
   //mnn_data_massage_log_query($sql, $args);
   $results = db_query($sql, $args);
