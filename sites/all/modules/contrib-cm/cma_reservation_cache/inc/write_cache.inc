@@ -133,3 +133,10 @@ function cma_reservation_cache_update_options_cache($type,
   return $options;
   
 }
+
+/**
+ * Function will clear out hte options array in teh variable table
+ */
+function cma_reservation_cache_reset_chart_options() {
+  variable_set(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
+}
