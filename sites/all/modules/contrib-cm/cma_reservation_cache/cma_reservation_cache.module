@@ -18,6 +18,21 @@ define('CMA_RESERVATION_CACHE_ITEM_TYPE', 'it');
 define('CMA_RESERVATION_CACHE_ITEM_NID', 'in');
 define('CMA_RESERVATION_CACHE_MODE', 'm');
 
+//NAMES OF CACHES IN OPTIONS ARRAY IN THE VARIABLE TABLE, THE FIRST IS THE
+//ARRAY THAT HOLDS ALL THE OPTIONS
+define('CMA_RESERVATION_CACHE_CHART_OPTIONS',
+       'cma_reservation_cache_chart_options');
+define('CMA_RESERVATION_CACHE_INVENTORY_OPTIONS',
+       'cma_reservation_cache_inventory_options');
+define('CMA_RESERVATION_CACHE_CATEGORY_OPTIONS',
+       'cma_reservation_cache_category_options');
+define('CMA_RESERVATION_CACHE_CONTENT_TYPE_OPTIONS',
+       'cma_reservation_cache_content_type_options');
+define('CMA_RESERVATION_CACHE_RESOURCE_OPTIONS',
+       'cma_reservation_cache_resource_options');
+
+
+
 /**
  * Implements hook_init().
  */

@@ -216,15 +216,6 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
   //loop over the multiselect fields and add a fields set and the
   //multiselect widget
   foreach($multiselect_fields as $field_name => $field_info) {
-    //add the fieldset
-    $form['chart_filters'][$field_name] =
-      array(
-	    '#type' => 'fieldset',
-	    '#title' => $field_info['fieldset_title'],
-	    '#collapsible' => TRUE,
-	    '#collapsed' => TRUE,
-	    
-	    );
     //call function to get options for the multiselect
     $options =  
       cma_reservation_cache_get_available_options($field_name,
@@ -233,6 +224,18 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 						  $default_content_types);
     cma_reservation_cache_log_microsec("After querying for " . $field_name .
 				       " for filter options");
+    if (empty($options)) {
+      continue;
+    }
+    //add the fieldset
+    $form['chart_filters'][$field_name] =
+      array(
+	    '#type' => 'fieldset',
+	    '#title' => $field_info['fieldset_title'],
+	    '#collapsible' => TRUE,
+	    '#collapsed' => TRUE,
+	    );
+ 
     //add the multiselect form element
     $form['chart_filters'][$field_name][$field_info['filter']] =
       array(

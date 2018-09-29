@@ -60,6 +60,24 @@ function cma_reservation_cache_slot_background_color($slot) {
 }
 
 /**
+ * FUNCTION WILL RETURN A SUFFIX FOR AN ARRAY OF IDS, USED FOR INDEXES
+ * IN THE CHART OPTIONS VARIABLE IN THE VARIABLE TABLE
+ */
+function cma_reservation_cache_options_suffix($options) {
+  sort($options);
+  $suffix = '';
+  if (!empty($options)) {
+    $first = TRUE;  
+    foreach($options as $key =>$id) {
+      $suffix .= "_"; 
+      $suffix .= $id;
+    }
+  }
+  return $suffix;
+}
+
+
+/**
  * Function will return array of bucket categories sorted with their weight 
  * as array index
  */

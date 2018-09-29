@@ -7,7 +7,6 @@ function cma_reservation_cache_get_available_options($field_name,
 						     $inventories,
 						     $categories,
 						     $content_types) {
-
   switch($field_name) {
   case 'inventories':
     $options = cma_reservation_cache_get_available_inventories();
@@ -32,27 +31,17 @@ function cma_reservation_cache_get_available_options($field_name,
  * inventory filters that are set
  */
 function cma_reservation_cache_get_available_inventories() {
-  $ret = &drupal_static(__FUNCTION__);
-  if (!isset($ret)) {
-    if ($cache = cache_get('cma_reservation_cache_get_available_inventories')){
-      $ret = $cache->data;
-    }
-    else {
-      //the array that we will return 
-      $ret = array();
-      $sql = "SELECT distinct inventory as id, inventory_name as value ";
-      $sql .= " FROM cma_reservation_cache ";
-      $sql .= " WHERE inventory > 0 " ;
-      
-      //run query and inventories into an array with the tid as the key
-      $results = db_query($sql);
-      while ($result = $results->fetchObject()) {
-	$ret[$result->id] = $result->value;
-      }
-      asort($ret);
-      cache_set('cma_reservation_cache_get_available_inventories',
-		$ret, 'cache');
-    }
+  $variable_name = CMA_RESERVATION_CACHE_INVENTORY_OPTIONS;
+  $options_cache = variable_get(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
+  
+  $ret = empty($options_cache[$variable_name]) ?
+    array() : $options_cache[$variable_name];
+  
+  if (empty($ret)) {
+    dsm('no cache found for ' .$variable_name.", rebuilding");
+    $ret = cma_reservation_cache_update_options_cache('inventory',
+						      $options_cache,
+						      $variable_name); 
   }
   return $ret;
 }
@@ -62,37 +51,23 @@ function cma_reservation_cache_get_available_inventories() {
  */
 function cma_reservation_cache_get_available_categories($inventories =
 							array()) {
-  //the array that we will return 
-  $ret = array();
-  $sql =
-    "SELECT distinct bucket_category as id, bucket_category_name as value ";
+
+
+  $suffix .= cma_reservation_cache_options_suffix($inventories);
+
+  $variable_name = CMA_RESERVATION_CACHE_CATEGORY_OPTIONS . $suffix;
+  $options_cache = variable_get(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
   
-  $sql .= " FROM cma_reservation_cache ";
-
-  $first = TRUE;
-  $args = array();
-  //ADD WHERE CLAUSE OF INVENTORIES
-  foreach($inventories as $key => $tid) {
-    if ($first) {
-      $first = FALSE;
-      $sql .= " WHERE ";
-    }
-    else {
-      $sql .= " OR ";
-    }
-    $sql .= " inventory = " . ":inventory_tid_" .$key;
-    $args[":inventory_tid_".$key] = $tid;
+  $ret = empty($options_cache[$variable_name]) ?
+    array() : $options_cache[$variable_name];
+  
+  if (empty($ret)) {
+    dsm('no cache found for ' .$variable_name);
+    $ret = cma_reservation_cache_update_options_cache('category',
+						      $options_cache,
+						      $variable_name,
+						      $inventories); 
   }
-
-  //run query and categories into an array with the tid as the key
-  $results = db_query($sql, $args);
-  while ($result = $results->fetchObject()) {
-    if ($result->id > 0) {
-      $ret[$result->id] = $result->value;
-    }
-  }
-  asort($ret);
-
   return $ret;
 }
 /**
@@ -103,64 +78,22 @@ function cma_reservation_cache_get_available_content_types($inventories =
 							   array(),
 							   $categories =
 							   array()){
-  //the array that we will return 
-  $ret = array();
-  $sql =
-    "SELECT distinct content_type_machine_name as id, content_type as value ";
+  $suffix .= cma_reservation_cache_options_suffix($inventories);
+  $suffix .= cma_reservation_cache_options_suffix($categories);
   
-  $sql .= " FROM cma_reservation_cache ";
+  $variable_name = CMA_RESERVATION_CACHE_CONTENT_TYPE_OPTIONS . $suffix;
+  $options_cache = variable_get(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
 
-  $args = array();
+  $ret = empty($options_cache[$variable_name]) ?
+    array() : $options_cache[$variable_name];
   
-  //ADD WHERE CLAUSE OF INVENTORIES
-  if (!empty($inventories)) {
-    $sql .= " WHERE (";
-    $first = TRUE;  
-    foreach($inventories as $key =>$tid) {
-      if ($first) {
-	$first = FALSE;
-      }
-      else {
-	$sql .= " OR ";
-      }
-      $sql .= " inventory = " . ":inventory_tid_".$key;
-      $args[":inventory_tid_".$key] = $tid;
-    }
-
-    $sql .= ") ";
+  if (empty($ret)) {
+    dsm('no cache found for ' .$variable_name);
+    $ret = cma_reservation_cache_update_options_cache('content_type',
+						      $options_cache,
+						      $variable_name,
+						      $inventories); 
   }
-
-  if (!empty($categories)) {
-    if (empty($inventories)) {
-      $sql .= " WHERE (";
-    }
-    else {
-      $sql .= " AND (";
-    }
-
-    $first = TRUE;
-    //ADD WHERE CLAUSE OF CATEGORIES
-    foreach($categories as $key => $tid) {
-      if ($first) {
-	$first = FALSE;
-      }
-      else {
-	$sql .= " OR ";
-      }
-      $sql .= " bucket_category = " . ":bucket_category_" . $key;
-      $args[":bucket_category_".$key] = $tid;
-    }
-    $sql .= ") ";
-  }
-  
-  //run query and put the content types into an array with the machinename
-  //as the key
-  $results = db_query($sql, $args);
-  while ($result = $results->fetchObject()) {
-    $ret[$result->id] = $result->value;
-  }
-  asort($ret);
-
   return $ret;
 }
 /**
@@ -170,84 +103,25 @@ function cma_reservation_cache_get_available_content_types($inventories =
 function cma_reservation_cache_get_available_resources($inventories = array(),
 						       $categories = array(),
 						       $content_types=array()){
-  //the array that we will return 
-  $ret = array();
-  $sql = "SELECT distinct item_nid as id, item_title as value ";
-  $sql .= " FROM cma_reservation_cache ";
 
-  $args = array();
-    //ADD WHERE CLAUSE OF INVENTORIES
-  if (!empty($inventories)) {
-    $sql .= " WHERE (";
-    $first = TRUE;  
-    foreach($inventories as $key => $tid) {
-      if ($first) {
-	$first = FALSE;
-      }
-      else {
-	$sql .= " OR ";
-      }
-      $sql .= " inventory = " . ":inventory_" . $key;
-      $args[":inventory_" . $key] = $tid;
-    }
+  $suffix .= cma_reservation_cache_options_suffix($inventories);
+  $suffix .= cma_reservation_cache_options_suffix($categories);
+  $suffix .= cma_reservation_cache_options_suffix($content_types);
 
-    $sql .= ") ";
+  $variable_name = CMA_RESERVATION_CACHE_RESOURCE_OPTIONS . $suffix;
+  $options_cache = variable_get(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
+  $ret = empty($options_cache[$variable_name]) ?
+    array() : $options_cache[$variable_name];
+
+  if (empty($ret)) {
+    dsm('no cache found for ' .$variable_name);
+    $ret = cma_reservation_cache_update_options_cache('resource',
+						      $options_cache,
+						      $variable_name,
+						      $inventories,
+						      $categories,
+						      $content_types); 
   }
-  
-  if (!empty($categories)) {
-    if (empty($inventories)) {
-      $sql .= " WHERE (";
-    }
-    else {
-      $sql .= " AND (";
-    }
-
-    $first = TRUE;
-    //ADD WHERE CLAUSE OF CATEGORIES
-    foreach($categories as $key => $tid) {
-      if ($first) {
-	$first = FALSE;
-      }
-      else {
-	$sql .= " OR ";
-      }
-      $sql .= " bucket_category = " . ":bucket_category_".$key;
-      $args[":bucket_category_".$key] = $tid;
-    }
-    $sql .= ") ";
-  }
-    
-  if (!empty($content_types)) {
-    if (empty($inventories) && empty($categories)) {
-      $sql .= " WHERE (";
-    }
-    else {
-      $sql .= " AND (";
-    }
-
-    $first = TRUE;
-    //ADD WHERE CLAUSE OF CONTENT_TYPES
-    foreach($content_types as $key => $name) {
-      if ($first) {
-	$first = FALSE;
-      }
-      else {
-	$sql .= " OR ";
-      }
-      $sql .= " content_type_machine_name = " . ":type_".$key;
-      $args[":type_".$key] = $name;
-    }
-    $sql .= ") ";
-  }
-
-  //run query and put the resources into an array with the nid as the key
-  $results = db_query($sql, $args);
-  while ($result = $results->fetchObject()) {
-    if ($result->id > 0 ){
-      $ret[$result->id] = $result->value;
-    }
-  }
-  asort($ret);
   return $ret;
 }
 /**
