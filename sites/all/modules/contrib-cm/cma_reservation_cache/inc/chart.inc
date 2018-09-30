@@ -402,10 +402,11 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
   //it will also
   $counter =  $res_nid = $prev_res_nid = $prev_slot = 0;
   $reservation_slots = array();
-  $charts_display = $charts_html = $chart_html = $row_html = $rows_html =
-      $header_row_html = $identifier = $prev_identifier = $first_day = '';
-  
+  $chart_display = $charts_html = $chart_html = $row_html = $rows_html =
+    $header_row_html = $identifier = $prev_identifier = $first_day = '';
+  $has_slots = FALSE;
   foreach ($item_time_slots as $slot) {
+    $has_slots = TRUE;
     $slot_needs_display = FALSE;
     $counter ++;
     $day = date('Y-m-d',$slot->cache_slot_start_time);
@@ -569,17 +570,24 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     $row_html .=
       cma_reservation_cache_reservation_slots_html($reservation_slots);
   }
-  //add the last row to the html for all the row divs
-  $rows_html .= $row_html . "</div>";
-  //add the all the rows and closing div to the last chart
-  $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
-  //add the last chart to the html for all the charts
-  $charts_html .= $chart_html . "</div>";
-
-  //close the div on the last row div and the table div
-  $chart_display .= '<div class"cma_reservation_cache_chart_display"'.
-    $charts_html . "</div>";
-
+  
+  if ($has_slots) {
+    //add the last row to the html for all the row divs
+    $rows_html .= $row_html . "</div>";
+    //add the all the rows and closing div to the last chart
+    $chart_html .= $header_row_html . "</div>" . $rows_html . "</div>";
+    //add the last chart to the html for all the charts
+    $charts_html .= $chart_html . "</div>";
+    
+    //close the div on the last row div and the table div
+    $chart_display .= '<div class"cma_reservation_cache_chart_display"'.
+      $charts_html . "</div>";
+  }
+  else {
+    drupal_set_message(t("No results found with the filters selected. " .
+			 "Either change filters or reset them to display " .
+			 "the chart."), 'error');
+  }
   cma_reservation_cache_log_microsec("finished building chart html " .
 				     "with $counter item time slots");
   return $chart_display;
