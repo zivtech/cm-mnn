@@ -1,5 +1,33 @@
 <?php
+/**
+ * Function will set the two Datetime elements passed in by reference to
+ * the correct start and end of a cache date range
+ */
+function cma_reservation_cache_set_range_date_objects(&$cache_start_object,
+						      &$cache_end_object) {
 
+
+  $time = cma_reservation_cache_get_max_cache_date();
+
+  //get start and end from the submitted form values
+  $cache_start = date('Y-m-d') . " 00:00:00";
+  $cache_end = date('Y-m-d', $time) . " 23:59:59";
+  $cache_start_object = new DateTime($cache_start);
+  $cache_end_object = new DateTime($cache_end);
+}
+/**
+ * Function will return the increcment value from the date field on the
+ * reservation content type
+ */
+function cma_reservation_cache_date_field_increment() {
+  $reservation_fields =
+    field_info_instances('node', 'reservations_reservation');
+
+  $increment = $reservation_fields['field_reservations_date']
+    ['widget']['settings']['increment'];
+
+  return $increment;
+}
 /**
  * Function finds the unique item identifier, whether its a bucket or 
  * resource

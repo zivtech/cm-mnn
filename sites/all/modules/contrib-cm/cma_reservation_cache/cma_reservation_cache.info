@@ -16,8 +16,10 @@ files[] = cma_reservation_cache.css
 
 files[] = inc/chart.inc
 files[] = inc/misc.inc
+files[] = inc/node.inc
 files[] = inc/read_cache.inc
 files[] = inc/report.inc
+files[] = inc/reservation_base.inc
 files[] = inc/settings.inc
 files[] = inc/write_cache.inc
 

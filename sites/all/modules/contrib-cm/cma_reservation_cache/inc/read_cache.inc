@@ -322,3 +322,34 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
 
   return $results;
 }
+
+/**
+ * function returns all the fields from teh cache table
+ */
+function cma_reservation_cache_read_fields_from_db() {
+  $cache_fields = array();
+  //FIND THE FIELDS FOR THE BUCKET AND RESOURCE CACHE TABLES
+  $sql = "show columns from {cma_reservation_cache}";
+  $results = db_query($sql);
+  $cache_fields = array();
+  while ($result = $results->fetchObject()) {
+    $cache_fields[] = $result->Field;
+  }
+  return $cache_fields;
+}
+
+/**
+ * function returns the final start time of the cache
+ */
+function cma_reservation_cache_get_max_cache_date($item_nid = NULL) {
+  
+  //find last cache slot time
+  $sql = "SELECT max(cache_slot_start_time) " .
+    "FROM {cma_reservation_cache} ";
+
+  if (!empty($item_nid)) {
+    $sql .= "WHERE item_nid = :item_nid ";
+  }
+
+  return db_query($sql, array(':item_nid' => $item_nid))->fetchField();
+}

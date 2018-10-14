@@ -42,8 +42,10 @@ function cma_reservation_cache_init() {
 
   module_load_include('inc', 'cma_reservation_cache', 'inc/chart');
   module_load_include('inc', 'cma_reservation_cache', 'inc/misc');
+  module_load_include('inc', 'cma_reservation_cache', 'inc/node');
   module_load_include('inc', 'cma_reservation_cache', 'inc/read_cache');
   module_load_include('inc', 'cma_reservation_cache', 'inc/report');
+  module_load_include('inc', 'cma_reservation_cache', 'inc/reservation_base');
   module_load_include('inc', 'cma_reservation_cache', 'inc/settings');
   module_load_include('inc', 'cma_reservation_cache', 'inc/write_cache');
 }
