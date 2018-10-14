@@ -418,3 +418,53 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 				     ' rows to be inserted.');
   return $db_rows;
 }
+
+/**
+ * Function will return an array of nodes of a set of content types
+ */
+function cma_reservation_cache_get_reservable_items($content_types = array()){
+  $args = array();
+  //start query to find reservable items
+  $query =
+    "SELECT n.nid, n.title, n.type, rin.reservations_default_availability 
+     FROM {node} n
+     INNER JOIN {reservations_reservation_item_node} rin ON n.vid = rin.vid";
+
+  //limit to actual items, not placeholder nodes used for reservations
+  $query .= " WHERE rin.reservations_sub_type = :reservations_sub_type ";
+  $args[':reservations_sub_type'] = RESERVATIONS_SUB_TYPE_ITEM;
+
+  //if we have passed in content types, limit which content types we fetch
+  //items for
+  if (!empty($content_types)) {
+    $index = 0;
+    foreach($content_types as $type=>$data) {
+      $var_name = ":content_type_" . $index;
+      $query .= " AND n.type = " . $var_name . " ";
+      $args[$var_name] = $type;
+      $index++;
+    }
+  }
+
+  $query .= "ORDER BY n.type ASC, n.nid DESC";
+  $results = db_query($query, $args);
+
+  $reservable_content_type_items = array();
+
+  while ($result = $results->fetchObject()) {
+    if (!$content_types[$result->type]) {
+      continue;
+    }
+    $reservable_content_type_items[$result->nid] =
+      array('nid' => $result->nid,
+	    'title' => $result->title,
+	    'type' => $result->type,
+	    'status' => $result->reservations_default_availability,
+	    );
+  }
+  cma_reservation_cache_log_microsec('returning ' .
+				     count($reservable_content_type_items).
+				     ' items for content type.');
+ 
+  return $reservable_content_type_items;
+}

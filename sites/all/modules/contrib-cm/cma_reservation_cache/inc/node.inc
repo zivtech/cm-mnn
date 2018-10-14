@@ -74,6 +74,10 @@ function cma_reservation_cache_update_item_cache($node, $op,
     //fill the $items array with just this single resource node
     $items[$node->nid] = cma_reservation_cache_node_availability_array($node);
   }	      
+  else {
+    //get all items for this content types, so we can redo bucket slots
+    $items = cma_reservation_cache_get_reservable_items($content_types);
+  }
 
   //get the array of data from the reservation base level
   $db_rows = cma_reservation_cache_get_rows_for_insert($cache_start_object,
@@ -81,6 +85,7 @@ function cma_reservation_cache_update_item_cache($node, $op,
 						       $content_types,
 						       $items);
 
+  return;
   //pass the data from the base level to the function that groups
   //inserts and delete statements and then executes them in the db
   cma_reservation_cache_remove_and_replace_db_rows($db_rows);
