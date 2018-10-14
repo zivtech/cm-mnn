@@ -414,5 +414,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
       $prev_object = clone $next_object;
     } //done looping through the item for all time blocks
   }
+  cma_reservation_cache_log_microsec('returning ' . count($db_rows).
+				     ' rows to be inserted.');
   return $db_rows;
 }

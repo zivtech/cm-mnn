@@ -1,212 +1,14 @@
 <?php
 
 /**
- * Function will update the cache after a reservable item has been created,
- * modified, or deleted
+ * Function will delete all rows in the cache table for the item
  */
-function cma_reservation_cache_update_item_cache($node, $content_type, $op){
-  cma_reservation_cache_log_microsec('starting update_item_cache');
-  if ($content_type['reservations_type_setting'] == 'resource') {
-    if ($op == 'delete') {
-      $sql = "DELETE FROM {cma_reservation_cache} WHERE item_nid = :item_nid";
-      db_query($sql, array(':item_nid' => $node->nid));
-      cma_reservation_cache_log_microsec('deleted all rows for '.$node->title);
-    }
-    else if ($op == 'update') {
-            $cache_start_object = $cache_end_object = NULL;
-      cma_reservation_cache_set_range_date_objects($cache_start_object,
-						   $cache_end_object);
-
-      //fill the $content_types array with just this node's type
-      $content_types = array($node->type=>$content_type);
-      
-      //fill the $items array with just this single node
-      $items = array($result->nid =>
-		     array('nid' => $node->nid,
-			   'title' => $node->title,
-			   'type' => $node->type,
-			   'status' =>$node->reservations_default_availability,
-			   ));	      
-
-      cma_reservation_cache_log_microsec('about to get db rows');
-      //get the array of data from the reservation base level
-      $db_rows =
-        cma_reservation_cache_get_rows_for_insert($cache_start_object,
-						  $cache_end_object,
-						  $content_types,
-						  $items);
-
-      cma_reservation_cache_log_microsec('got db rows');
-      
-      //pass the data from the base level to the function that groups
-      //inserts and deletes and executes them in the db
-      cma_reservation_cache_remove_and_replace_db_rows($db_rows);
-      cma_reservation_cache_log_microsec('wrote db rows');
-    }
-    else if ($op == 'insert') {
-      
-    }
-    //cache_time
-    //content_type
-    //content_type_machine_name
-    //bucket_slot_id
-    //cache_slot_status
-    //item_status
-    //item_title
-    
-  }
-  else if ($content_type['reservations_type_setting'] == 'bucket') {
-
-  }
-      //get 
-
-
-      /**
-      $available = ($node->reservations_default_availability == 1) ? 1 : 0;
-
-      $sql =
-	"UPDATE cma_reservation_cache " .
-	"SET cache_time = '" . date("Y-m-d H:i:s") . "', " .
-	"bucket_slot_id = 0, " .
-	"content_type_machine_name = :content_type_machine_name, " .
-	"content_type = :content_type, " .
-	"inventory = :inventory, " .
-	"inventory_name = :inventory_name, " .
-	"bucket_category = :bucket_category, " .
-	"bucket_category_name = :bucket_category_name, " .
-	"bucket_weight = :bucket_weight, " .
-      	"item_nid = :item_nid, " .
-	"item_title = :item_title, " .
-	"item_status = :item_status, " .
-	"cache_slot_status = CASE" .
-	"  WHEN $available != " . RESERVATIONS_AVA_F .  "  THEN 0 " .
-	"  WHEN reservation_nid is NULL THEN 1 " .
-	"  WHEN (reservation_status = ";;
-
-      */
-      /**
-      //IF BAD ITEM STATUS ITEM IS UNAVAIALABLE
-      if ($item['status'] != RESERVATIONS_AVA_F) {
-	$db_row['cache_slot_status'] = 0;
-      }
-      //WE HAVE A RESERVATION IN THIS TIME SLOT
-      else if ($reservation_result) {
-	if ($reservation_result->reservations_reservation_status ==
-	    RESERVATIONS_STATUS_UNCONFIRMED) {
-	  if (variable_get('reservations_ignore_unconfirmed_reservations')) {
-	    $db_row['cache_slot_status'] = 1;
-	  }
-	  else {
-	    $db_row['cache_slot_status'] = 0;
-	  }
-	}
-	else if ($reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_PENDING ||
-		 $reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_CHECKED_OUT) {
-	  $db_row['cache_slot_status'] = 0;
-	}
-	else if ($reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_CHECKED_IN ||
-		 $reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_CANCELLED ||
-		 $reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_DENIED ||
-		 $reservation_result->reservations_reservation_status ==
-		 RESERVATIONS_STATUS_NO_SHOW) {
-	  $db_row['cache_slot_status'] = 1;
-	}
-	//UNKNOWN RESERVATION STATUS
-	else {
-	  $db_row['cache_slot_status'] = 1;
-	}
-      }
-      //WE HAVE A GOOD ITEM STATUS AND NO RESERVATION SO ITS AVAILABLE
-      else {
-	$db_row['cache_slot_status'] = 1;
-      }
-      */
-
-
-
-
-
-      
-
-      /**
-      //DONE FETCHING ALL DATA INTO ARRAYS, NOW TIME TO BUILD A DB ROW
-      $db_row = array();
-      $db_row['content_type_machine_name'] = $item['type'];
-      
-      $db_row['content_type'] = $content_type['type_name'];
-      $db_row['cache_time'] = date("Y-m-d H:i:s");
-      $db_row['cache_slot_start_time'] = $prev_ts;
-      $db_row['cache_slot_end_time'] = $next_ts;
-      $db_row['cache_slot_start_time_formatted'] =
-	date('Y-m-d H:i:s',$prev_ts);
-      $db_row['cache_slot_end_time_formatted'] =
-	date('Y-m-d H:i:s',$next_ts);
-
-
-      $tid = !empty($content_type['inventory_tids']) &&
-	!empty($content_type['inventory_tids'][0]) ?
-	$content_type['inventory_tids'][0] : NULL;
-
-      $name = '';
-      if ($tid) {
-	$term = taxonomy_term_load($tid);
-	if ($term) {
-	  $name = $term->name;
-	}
-      }
-      $db_row['inventory'] = $tid;
-      $db_row['inventory_name'] = $name;
-
-      $term = taxonomy_term_load($content_type['reservations_grouping']);
-      if ($term) {
-	$db_row['bucket_category'] = $content_type['reservations_grouping'];
-	$db_row['bucket_category_name'] = $term->name;
-	$db_row['bucket_weight'] =
-	  $bucket_category_weights[$db_row['bucket_category']];
-      }
-      else {
-	$db_row['bucket_category'] = 0;
-	$db_row['bucket_category_name'] = '';
-	//since no category, set to large number so its sorted last
-	$db_row['bucket_weight'] = 1000;
-      }
-      
-      if ($content_type['reservations_type_setting'] == 'bucket') {
-	$db_row['bucket_slot_id'] = $bucket_slot_id;
-		
-	if ($reservation_result && $reservation_result->item_nid) {
-	  $db_row['item_nid'] = $reservation_result->item_nid;
-	}
-	else {
-	  $db_row['item_nid'] = NULL;
-	}	
-      }
-      else if($content_type['reservations_type_setting'] == 'resource') {
-	$db_row['bucket_slot_id'] = 0;
-	$db_row['item_nid'] = $item['nid'];
-	$db_row['item_title'] = $item['title'];
-	$db_row['item_status'] = $item['status'];
-      }
-      //dsm($reservation_node, 'reservation node');
-      //  dsm($reservation_result, 'reservation db result');
-
-      */
-
-
-
-
-
-
-
-
-      
-
+function cma_reservation_cache_delete_item_time_slots($node) {
+  $sql = "DELETE FROM {cma_reservation_cache} WHERE item_nid = :item_nid";
+  db_query($sql, array(':item_nid' => $node->nid));
+  cma_reservation_cache_log_microsec('deleted all rows for '.$node->title);
 }
+
 /**
  * Function will read bucket weights and update the cache table
  */
@@ -371,7 +173,7 @@ function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
   $insert_counter = 0;
   //FIXME, ADD TO CONFIG PAGE
   $transaction_limit =
-    variable_get('cma_reservation_cache_query_bundle_size', 1000);
+    variable_get('cma_reservation_cache_query_bundle_size', 10000);
 
   //loop over the rows we will be deleting and inserting 
   foreach($db_rows as $row) {

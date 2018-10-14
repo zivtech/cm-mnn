@@ -157,6 +157,16 @@ function cma_reservation_cache_log_microsec($label = 'Microseconds expired:') {
   $prev_microsec_time_log = $current;
 }
 /**
+ * Function will build a simple node array for use in caching actions
+ */
+function cma_reservation_cache_node_availability_array($node) {
+  return array('nid' => $node->nid,
+	       'title' => $node->title,
+	       'type' => $node->type,
+	       'status' =>$node->reservations_default_availability,
+	       );
+}
+/**
  * Function will return an array of hours in day
  */
 function cma_reservation_cache_hours_array() {
