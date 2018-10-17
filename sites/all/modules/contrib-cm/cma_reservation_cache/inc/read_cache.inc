@@ -396,8 +396,6 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
   //EXECUTE THE SQL QUERY
   $results = db_query($sql, $args);
 
-  cma_reservation_cache_log_microsec('after cache table query');
-
   $counter = 0;
   while ($result = $results->fetchObject()) {
     $counter ++;
@@ -408,6 +406,7 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
     $cache_ids[$index] = $result->cache_id;
     
   }
-  cma_reservation_cache_log_microsec('after sorting ' . $counter . " items.");
+  cma_reservation_cache_log_microsec('after finding ' . $counter .
+				     " existing slots.");
   return $cache_ids;  
 }

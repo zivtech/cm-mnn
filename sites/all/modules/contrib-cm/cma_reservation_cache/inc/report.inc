@@ -55,7 +55,7 @@ function cma_reservation_cache_report_submit($form, $form_state) {
   $content_types = reservations_content_types();
 
   $items = cma_reservation_cache_get_reservable_items();
-
+  
   //get the array of data from the reservation base level
   $db_rows = cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						       $cache_end_object,

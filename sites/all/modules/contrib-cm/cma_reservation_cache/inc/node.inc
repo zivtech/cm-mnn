@@ -13,6 +13,10 @@ function cma_reservation_cache_node_postsave($node, $op) {
 					    $content_types[$node->type]);
     cma_reservation_cache_log_microsec('finished postsave for reservble item');
   }
+  else if ($node->type == 'reservations_reservation') {
+    $rows = cma_reservation_get_reservation_rows_for_insert($node);
+    cma_reservation_cache_insert_and_update_db_rows($rows);
+  }
 }
 
 /**
@@ -83,9 +87,6 @@ function cma_reservation_cache_update_item_cache($node, $op,
 						       $cache_end_object,
 						       $content_types,
 						       $items);
-
-  //FIXME only here fore testing
-  return;
   
   //pass the data from the base level to the function that groups
   //inserts and delete statements and then executes them in the db

@@ -16,7 +16,7 @@ function cma_reservation_cache_reserved_timeslots($start_object,
      n.type as placeholder_type,  field_reservations_date_value as res_start,
      field_reservations_date_value2 as res_end,
      reservations_item_nid as item_nid ";
-
+  
   //IF WE SET A PROJECT FIELD ON THE RESERVATION VIA THE CONFIG PAGE, ADD
   //IT TO SELECT CLAUSE
   $project_field = variable_get('cma_reservation_cache_project_field', '');
@@ -30,7 +30,7 @@ function cma_reservation_cache_reserved_timeslots($start_object,
     "FROM {field_data_field_reservations_date} d 
      INNER JOIN {reservations_reservation_detail} rd on rd.vid=d.revision_id
      INNER JOIN {node} n on n.nid=rd.reservations_placeholder_nid ";
-
+  
   //IF WE SET A PROJECT FIELD ON THE RESERVATION VIA THE CONFIG PAGE, ADD
   //IT TO WHERE CLAUSE
   if ($project_field) {
@@ -38,43 +38,54 @@ function cma_reservation_cache_reserved_timeslots($start_object,
       "LEFT JOIN {og_membership} og ON d.entity_id = og.etid ". 
       "LEFT JOIN {node} pn ON pn.nid=og.gid ";
   }
-
+  
   //START THE WHERE CLAUSE WITH START AND END DATES
   $query .=
     "WHERE field_reservations_date_value2 >= :start
      AND field_reservations_date_value <= :end ";
-
+  
   //START THE ARGS ARRAY
   $args = array(':start' => $start_object->format('Y-m-d H:i:s'),
 		":end" => $end_object->format('Y-m-d H:i:s'));
 
   //IF WE PASSED IN CONTENT TYPES, FILTER BY THEM
   if (!empty($content_types)) {
+    $query .= " AND ( ";
     $index = 0;
+    $is_first = TRUE;
     foreach($content_types as $name=>$data) {
+      if ($index > 0) {
+	$query .= " OR ";
+      }
       $index++;
       $arg_name = ':type_' . $index;
-      $query .= " and n.type = " . $arg_name;
+      $query .= " n.type = " . $arg_name;
       $args[$arg_name] = $name;
     }
+    $query .= " ) ";
   }
-
+  
+  
   //IF WE PASSED IN ITEMS, FILTER BY THEM
   if (!empty($items)) {
     $index = 0;
+    $query .= " AND ( ";
     foreach($items as $data) {
+      if ($index > 0) {
+	$query .= " OR ";
+      }
       $index++;
       $arg_name = ':nid_' . $index;
-      $query .= " and reservations_item_nid = " . $arg_name;
+      $query .= " reservations_item_nid = " . $arg_name;
       $args[$arg_name] = $data['nid'];
     }
+    $query .= " ) ";
   }
+  
   $query .= " ORDER BY field_reservations_date_value ";
-
-  mnn_data_massage_log_query($query, $args);
-  cma_reservation_cache_log_microsec('got reserved time slots');
+  
   $results = db_query($query, $args);
-
+  
   $reserved_timeslots = array();
   $cached_reservations = array();
   $increment = cma_reservation_cache_date_field_increment();
@@ -138,6 +149,54 @@ function cma_reservation_cache_reserved_timeslots($start_object,
       $prev_object = clone $next_object;
     }
   }
+}
+
+/**
+ * Funciton will return an array of rows that will be inserted into the cache
+ * table
+ */
+function cma_reservation_get_reservation_rows_for_insert($reservation) {
+  //set the date objects, adjusting times and timezones
+  $date_field = $reservation->field_reservations_date[LANGUAGE_NONE][0];
+  $start_object =
+    new DateTime($date_field['value'], 
+		 new DateTimeZone($date_field['timezone_db']));
+  
+  $start_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+  
+  $end_object =
+    new DateTime($date_field['value2'], 
+		 new DateTimeZone($date_field['timezone_db']));
+    
+  $end_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+
+  //find all the items tied to this reservations
+  //START BUILDING QUERY TO FIND ALL RESERVED ITEMS IN TIME FRAME
+  $query =
+    "SELECT n.type, reservations_item_nid 
+     FROM {node} res 
+     INNER JOIN {reservations_reservation_detail} ON rd.vid =res.vid
+     INNER JOIN {node} n on n.nid=rd.reservations_placeholder_nid 
+     WHERE res.nid = :res_nid";
+  $args = array(':res_nid' => $reservation->nid);
+  $results = db_query($query, $args);
+
+  $reservable_content_types = reservations_content_types();
+  $items = $content_types = array();
+  while ($result = $results->fetchObject()) {
+    $content_types[$result->type] = $reservable_content_types[$result->type];
+    if (!empty($result->reservations_item_nid)) {
+      $item = node_load($result->reservations_item_nid);
+      if ($item) {
+	$items[$item->nid] =
+	  cma_reservation_cache_node_availability_array($item);
+      }
+    }
+  }
+  return cma_reservation_cache_get_rows_for_insert($cache_start_object,
+						   $cache_end_object,
+						   $content_types,
+						   $items);
 }
 
 /**
@@ -452,7 +511,9 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
       $index++;
     }
   }
-
+  else {
+    $content_types = reservations_content_types();
+  }
   $query .= "ORDER BY n.type ASC, n.nid DESC";
   $results = db_query($query, $args);
 

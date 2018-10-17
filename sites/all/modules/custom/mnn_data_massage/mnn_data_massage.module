@@ -3760,8 +3760,11 @@ function mnn_data_massage_hms($seconds) {
     return "$hours:$minutes:$seconds";
 }
 function mnn_data_massage_log_query($sql, $args) {
+  krsort($args);
   $ms = str_replace('{', '', $sql);
   $ms = str_replace('}', '', $ms);
+
+  
   foreach ($args as $i=>$j) {
     if (is_numeric($j)) {
       $j = $j;
