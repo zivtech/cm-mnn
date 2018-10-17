@@ -172,7 +172,6 @@ function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
   
   //args for our loop
   $is_first_insert_row = $is_first_update_row = TRUE;
-  $has_inserts = $has_updates = FALSE;
   $insert_args = $update_args = array();
   $insert_counter = $update_counter = 0;
   //FIXME, ADD TO CONFIG PAGE
@@ -182,7 +181,6 @@ function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
   //loop over the rows we will be deleting and inserting 
   foreach($db_rows as $row) {
     if (empty($row['cache_id'])) {
-      $has_inserts = TRUE;
       cma_reservation_cache_add_values_to_query($row,
 						$insert_fields,
 						$is_first_insert_row,
@@ -191,7 +189,6 @@ function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
 						$insert_counter);
     }
     else {
-      $has_updates = TRUE;
       cma_reservation_cache_add_values_to_query($row,
 						$update_fields,
 						$is_first_update_row,
@@ -226,14 +223,14 @@ function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
     }
   }//end of loop
 
-  if ($has_updates) {
+  if ($update_counter > 0) {
     $update_sql .= $duplicate_key_update;
     //mnn_data_massage_log_query($update_sql, $update_args);
     db_query($update_sql, $update_args);
     cma_reservation_cache_log_microsec('after last update of ' .
 				       $update_counter);
   }
-  if ($has_inserts) {
+  if ($insert_counter > 0) {
     db_query($insert_sql, $insert_args);
     //mnn_data_massage_log_query($insert_sql, $insert_args);
     cma_reservation_cache_log_microsec('after last insert of ' .
