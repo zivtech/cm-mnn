@@ -27,16 +27,16 @@ function cma_reservation_cache_reserved_timeslots($start_object,
   
   //START THE FROM CLAUSE
   $query .= 
-    "FROM field_data_field_reservations_date d 
-     INNER JOIN reservations_reservation_detail rd on rd.vid=d.revision_id
-     INNER JOIN node n on n.nid=rd.reservations_placeholder_nid ";
+    "FROM {field_data_field_reservations_date} d 
+     INNER JOIN {reservations_reservation_detail} rd on rd.vid=d.revision_id
+     INNER JOIN {node} n on n.nid=rd.reservations_placeholder_nid ";
 
   //IF WE SET A PROJECT FIELD ON THE RESERVATION VIA THE CONFIG PAGE, ADD
   //IT TO WHERE CLAUSE
   if ($project_field) {
     $query .=
       "LEFT JOIN {og_membership} og ON d.entity_id = og.etid ". 
-      "LEFT JOIN node pn ON pn.nid=og.gid ";
+      "LEFT JOIN {node} pn ON pn.nid=og.gid ";
   }
 
   //START THE WHERE CLAUSE WITH START AND END DATES
@@ -71,7 +71,8 @@ function cma_reservation_cache_reserved_timeslots($start_object,
   }
   $query .= " ORDER BY field_reservations_date_value ";
 
-  //mnn_data_massage_log_query($query, $args);
+  mnn_data_massage_log_query($query, $args);
+  cma_reservation_cache_log_microsec('got reserved time slots');
   $results = db_query($query, $args);
 
   $reserved_timeslots = array();
@@ -176,6 +177,9 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
   //all of the fields on the reservations content type
   $reservation_fields =
     field_info_instances('node', 'reservations_reservation');
+
+  $bucket_category_weights =
+    cma_reservation_cache_get_bucket_category_weights();
 
   //loop over all of the items/slots (no times though)
   foreach($items as $item) {

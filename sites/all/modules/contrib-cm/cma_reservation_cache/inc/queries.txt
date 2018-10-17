@@ -1,0 +1,17 @@
+1. get individual reserved items  within time period for content type
+
+SELECT d.entity_id as res_id,
+rd.reservations_placeholder_nid as placeholder_nid,
+n.type as placeholder_type,  field_reservations_date_value as res_start,
+field_reservations_date_value2 as res_end,
+reservations_item_nid as item_nid , pn.title as project_title,
+og.gid as project_nid
+FROM field_data_field_reservations_date d
+INNER JOIN reservations_reservation_detail rd on rd.vid=d.revision_id
+INNER JOIN node n on n.nid=rd.reservations_placeholder_nid
+LEFT JOIN og_membership og ON d.entity_id = og.etid
+LEFT JOIN node pn ON pn.nid=og.gid
+WHERE field_reservations_date_value2 >= '2018-10-17 00:00:00'
+AND field_reservations_date_value <= '2018-11-14 23:59:59'
+and n.type = 'sennheiser_ek100_wireless_pack_p'
+ORDER BY field_reservations_date_value 

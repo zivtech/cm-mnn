@@ -3763,6 +3763,15 @@ function mnn_data_massage_log_query($sql, $args) {
   $ms = str_replace('{', '', $sql);
   $ms = str_replace('}', '', $ms);
   foreach ($args as $i=>$j) {
+    if (is_numeric($j)) {
+      $j = $j;
+    }
+    else if (is_string($j)) {
+      $j = "'$j'";
+    }
+    else if (empty($j)) {
+      $j = 'NULL';
+    }
     $ms = str_replace($i, $j, $ms);
   }
   dsm($ms);

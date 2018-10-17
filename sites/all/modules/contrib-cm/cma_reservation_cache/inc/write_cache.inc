@@ -151,7 +151,7 @@ function cma_reservation_cache_update_options_cache($type,
  * It will also group deletes and queries by a configuration setting, will
  * default to 5K
  */
-function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
+function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
   //find the db fields
   $cache_fields = cma_reservation_cache_read_fields_from_db();
   
