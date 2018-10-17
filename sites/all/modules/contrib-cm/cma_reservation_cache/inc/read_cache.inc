@@ -353,3 +353,61 @@ function cma_reservation_cache_get_max_cache_date($item_nid = NULL) {
 
   return db_query($sql, array(':item_nid' => $item_nid))->fetchField();
 }
+
+/**
+ * function returns an array of cache id's indexed by item nid plus timestamp
+ * for resources and content type plus bucket slot id plus timestamp for 
+ * buckets
+ */
+function cma_reservation_cache_get_cache_ids($cache_start_object,
+					     $cache_end_object,
+					     $content_types){
+
+  $cache_ids = array();
+  $args = array();
+  
+  $sql =
+    "SELECT cache_id, cache_slot_start_time, " .
+    "content_type_machine_name, bucket_slot_id, item_nid " .
+    "FROM cma_reservation_cache " .
+    "WHERE  cache_slot_start_time >= :start " .
+    "AND cache_slot_start_time < :end ";
+
+  $args[':start'] = $cache_start_object->getTimestamp();
+  $args[':end'] = $cache_end_object->getTimestamp();
+
+  if (!empty($content_types)) {
+    $sql .= " AND (";
+    $first = TRUE;
+    foreach ($content_types as $name => $data) {
+      if ($first) {
+	$first = FALSE;
+      }
+      else {
+	$sql .= " OR "; 
+      }
+      $sql .=  " content_type_machine_name = " . ':type_' . $name ." ";
+      $args[':type_' . $name] = $name;
+    }
+    $sql .= " ) ";
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  //EXECUTE THE SQL QUERY
+  $results = db_query($sql, $args);
+
+  cma_reservation_cache_log_microsec('after cache table query');
+
+  $counter = 0;
+  while ($result = $results->fetchObject()) {
+    $counter ++;
+    $index = cma_reservation_slot_index($result->content_type_machine_name,
+					$result->bucket_slot_id,
+					$result->item_nid,
+					$result->cache_slot_start_time);
+    $cache_ids[$index] = $result->cache_id;
+    
+  }
+  cma_reservation_cache_log_microsec('after sorting ' . $counter . " items.");
+  return $cache_ids;  
+}

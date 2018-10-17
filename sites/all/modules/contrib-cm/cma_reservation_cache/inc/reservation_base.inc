@@ -156,6 +156,8 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
   $prev_content_type == NULL;
   $increment = cma_reservation_cache_date_field_increment();
 
+  //an array of cache time slots that have a reservation and an array of
+  //all of the cached reservations during the time period
   $reserved_timeslots = $cached_reservations = array();
   cma_reservation_cache_reserved_timeslots($cache_start_object,
 					   $cache_end_object,
@@ -165,6 +167,13 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 					   $cached_reservations);
   cma_reservation_cache_log_microsec('got reserved time slots');
 
+
+  //get array of cache id's for the relevant timeslots
+  $cache_ids = cma_reservation_cache_get_cache_ids($cache_start_object,
+						   $cache_end_object,
+						   $content_types,
+						   $items);
+  //all of the fields on the reservations content type
   $reservation_fields =
     field_info_instances('node', 'reservations_reservation');
 
@@ -192,14 +201,6 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
       $prev_ts = $prev_object->getTimestamp();
       $next_ts = $next_object->getTimestamp();
       
-      /**
-      dsm($prev_object->format('Y-m-d H:i:s'), 'prev');
-      dsm($next_object->format('Y-m-d H:i:s'), 'next');
-      dsm($prev_ts, 'prev');
-      dsm($next_ts, 'next');
-      */
-      
-      
       //LOOK UP ANY RESERVATIONS FOR THIS TIMESLOT AND CONTENT TYPE
       $reservation_result = NULL;
       $reservation_node = NULL;
@@ -209,7 +210,6 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 	$reserved_timeslots[$prev_ts][$item['type']] :
 	array();
 
-      //dsm($reservations, 'find reservations?');
       if ($reservations) {	
 	if ($content_type['reservations_type_setting'] == 'bucket') {
 	  //POP AN ARRAY OFF THE STACK
@@ -230,12 +230,6 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 	    }
 	  }
 	}
-	/**
-	dsm($content_type, 'ct');
-	dsm($item, 'item');
-	dsm($reservation_result, 'result');
-	dsm($reservation_node, 'reservation');
-	**/
       }
       
       //DONE FETCHING ALL DATA INTO ARRAYS, NOW TIME TO BUILD A DB ROW
@@ -288,7 +282,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 	}
 	else {
 	  $db_row['item_nid'] = NULL;
-	}	
+	}
       }
       else if($content_type['reservations_type_setting'] == 'resource') {
 	$db_row['bucket_slot_id'] = 0;
@@ -296,7 +290,16 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 	$db_row['item_title'] = $item['title'];
 	$db_row['item_status'] = $item['status'];
       }
-      
+      //get unique index for this cache item time slot, then see if we
+      //have stored cache id for the slot
+      $index = cma_reservation_slot_index($item['type'],
+					  $db_row['bucket_slot_id'],
+					  $item['nid'],
+					  $prev_object->getTimestamp());
+      if (!empty($cache_ids[$index])) {
+	$db_row['cache_id'] = $cache_ids[$index];
+      }
+
       if ($reservation_node) {
 	$db_row['reservation_nid'] = $reservation_node->nid;
 	$db_row['reservation_uid'] = $reservation_node->uid;

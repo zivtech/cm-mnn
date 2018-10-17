@@ -1,5 +1,85 @@
 <?php
 /**
+ * Function will be passed in a set of information for a cache item slot time
+ * This will construct a unique identifier from the information for the slot
+ * For Resource items, it will be item nid plus the start time of the slot.
+ * For Bucket items, it will be content type plus bucket slot id plus start 
+ * time of the slot
+ */
+function cma_reservation_slot_index($content_type_machine_name,
+				    $bucket_slot_id,
+				    $item_nid,
+				    $cache_slot_start_time) {
+
+  if ($bucket_slot_id > 0) {
+    $index = $content_type_machine_name . "||" . $bucket_slot_id . "||" .
+      $cache_slot_start_time;
+  }
+  else {
+    $index = $item_nid. "||" . $cache_slot_start_time;
+  }
+  
+  return $index;
+}
+/**
+ * Function add the " ON DUPLICATE KEY UPDATE" part of an Insert sql statement
+ */
+function cma_reservation_cache_duplicate_key_update($insert_fields) {
+
+  $ret = " ON DUPLICATE KEY UPDATE ";
+
+  $is_first_field = TRUE;
+  foreach($insert_fields as $key=>$value) {
+    if ($is_first_field) {
+      $is_first_field = FALSE;
+    }
+    else {
+      $ret .= ", ";
+    }
+    $ret .= $value ."=VALUES(" . $value . ")";
+  }
+  return $ret;
+}
+/**
+ * Function will add sets VALUES to an INSERT statement
+ *
+ */
+function cma_reservation_cache_add_values_to_query($row,
+						   $fields,
+						   &$is_first_row,
+						   &$sql,
+						   &$args,
+						   &$counter) {
+
+  //add to insert sql and delete sql depending on first row or subsequent row
+  if ($is_first_row) {
+    $is_first_row = FALSE;
+  }
+  else {
+    $sql .= ", ";
+  }
+  
+  $sql .= " ( " ;
+  
+  $is_first_field = TRUE;
+  
+  //loop through all of our fields in the cache table and pluck values out
+  //of this $row
+  foreach($fields as $key=>$value) {
+    if ($is_first_field) {
+      $is_first_field = FALSE;
+    }
+    else {
+      $sql .= ", ";
+    }
+    $arg_name =  ':' . $value . '_' . $counter;
+    $sql .= $arg_name;
+    $args[$arg_name] = $row[$value];
+    }
+  $sql .= " ) ";
+  $counter ++;
+}
+/**
  * Function will set the two Datetime elements passed in by reference to
  * the correct start and end of a cache date range
  */

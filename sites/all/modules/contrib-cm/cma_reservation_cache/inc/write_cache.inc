@@ -149,109 +149,97 @@ function cma_reservation_cache_update_options_cache($type,
  * and insert new cache time slots.
  *
  * It will also group deletes and queries by a configuration setting, will
- * default to 1K
+ * default to 5K
  */
 function cma_reservation_cache_remove_and_replace_db_rows($db_rows) {
   //find the db fields
   $cache_fields = cma_reservation_cache_read_fields_from_db();
-
-  //remove the cache_id from fields as we won't insert a value for that column
-  $insert_fields = array_diff($cache_fields, array('cache_id'));
-
+  
   //start building the insert sql
   $insert_into = "INSERT INTO cma_reservation_cache ";
-  $field_names = " ( " . implode(',', $insert_fields) . " ) VALUES ";
-  $sql = $insert_into . $field_names;
+  //remove the cache_id from fields as we won't insert a value for that column
+  $insert_fields = array_diff($cache_fields, array('cache_id'));
+  $insert_field_names = " ( " . implode(',', $insert_fields) . " ) VALUES ";
+  $insert_sql = $insert_into . $insert_field_names;
 
-  //start building the delete sql
-  $delete_from = "DELETE FROM cma_reservation_cache ";
-  $delete_sql = $delete_from;
+  //start building the update sql
+  $update_fields = $cache_fields;
+  $update_field_names = " ( " . implode(',', $cache_fields) . " ) VALUES ";
+  $update_sql = $insert_into . $update_field_names;
+  $duplicate_key_update =
+    cma_reservation_cache_duplicate_key_update($insert_fields);
 
+  
   //args for our loop
-  $is_first_row = TRUE;
-  $args = $delete_args = array();
-  $insert_counter = 0;
+  $is_first_insert_row = $is_first_update_row = TRUE;
+  $has_inserts = $has_updates = FALSE;
+  $insert_args = $update_args = array();
+  $insert_counter = $update_counter = 0;
   //FIXME, ADD TO CONFIG PAGE
   $transaction_limit =
-    variable_get('cma_reservation_cache_query_bundle_size', 10000);
+    variable_get('cma_reservation_cache_query_bundle_size', 5000);
 
   //loop over the rows we will be deleting and inserting 
   foreach($db_rows as $row) {
-    //add to insert sql and delete sql depending on first row or subsequent row
-    if ($is_first_row) {
-      $is_first_row = FALSE;
-      $delete_sql .= "WHERE ";
+    if (empty($row['cache_id'])) {
+      $has_inserts = TRUE;
+      cma_reservation_cache_add_values_to_query($row,
+						$insert_fields,
+						$is_first_insert_row,
+						$insert_sql,
+						$insert_args,
+						$insert_counter);
     }
     else {
-      $sql .= ", ";
-      $delete_sql .= "OR ";
+      $has_updates = TRUE;
+      cma_reservation_cache_add_values_to_query($row,
+						$update_fields,
+						$is_first_update_row,
+						$update_sql,
+						$update_args,
+						$update_counter);
     }
+    if ($update_counter >= $transaction_limit) {
+      $update_sql .= $duplicate_key_update;
+      db_query($update_sql, $update_args);
+      //mnn_data_massage_log_query($update_sql, $update_args);
+      cma_reservation_cache_log_microsec('after an update');
       
-    $sql .= " ( " ;
-    $is_first_field = TRUE;
-
-    //loop through all of our fields in the cache table and pluck values out
-    //of this $row
-    foreach($insert_fields as $key=>$value) {
-      if ($is_first_field) {
-	$is_first_field = FALSE;
-      }
-      else {
-	$sql .= ", ";
-      }
-      $arg_name =  ':' . $value . '_' . $insert_counter;
-      $sql .= $arg_name;
-      $args[$arg_name] = $row[$value];
+      $is_first_update_row = TRUE;
+      $update_counter = 0;
+      $update_sql = $insert_into . $update_field_names;
+      $update_args = array();
+      continue;
     }
-    $sql .= " ) ";
-
-    //////////////////////////////////////////////////////////////////////
-    //ADD A CLAUSE TO THE WHERE FOR THE DELETE 
-    $delete_sql .= " ( " ;
-    //if we have a bucket slot id, its acting as a bucket, so look up by
-    //content type + bucket slot id
-    if ($row['bucket_slot_id'] > 0) {
-      $arg_name =  ':bucket_slot_id_' . $insert_counter;
-      $delete_sql .= " bucket_slot_id = $arg_name ";
-      $delete_args[$arg_name] = $row['bucket_slot_id'];
+    else if ($insert_counter >= $transaction_limit) {
+      db_query($insert_sql, $insert_args);
+      //mnn_data_massage_log_query($insert_sql, $insert_args);
+      cma_reservation_cache_log_microsec('after a insert');
       
-      $arg_name =  ':type_' . $insert_counter;
-      $delete_sql .= " AND content_type_machine_name = $arg_name ";
-      $delete_args[$arg_name] = $row['content_type_machine_name'];
+      //reset counters and queries
+      $is_first_insert_row = TRUE;
+      $insert_counter = 0;
+      $insert_sql = $insert_into . $insert_field_names;
+      $insert_args = array();
+      continue;
+      
     }
-    //we are dealing with a resource so look up by item_nid
-    else {
-      $arg_name =  ':item_nid_' . $insert_counter;
-      $delete_sql .= " item_nid = $arg_name";
-      $delete_args[$arg_name] = $row['item_nid'];
-    }
-    //add start time to delete where clause
-    $arg_name = ':start_' . $insert_counter;
-    $delete_sql .= " AND cache_slot_start_time = $arg_name";
-    $delete_args[$arg_name] =  $row['cache_slot_start_time'];
+  }//end of loop
 
-    //add end time to delete where clause
-    $arg_name = ':end_' . $insert_counter;
-    $delete_sql .= " AND cache_slot_end_time = $arg_name";
-    $delete_args[$arg_name] = $row['cache_slot_end_time'];
-    
-    $delete_sql .= " ) ";
-
-    $insert_counter ++;
-
-    if ($insert_counter >= $transaction_limit) {
-      //fixme, run query and requild sql
-      break;
-    }
+  if ($has_updates) {
+    $update_sql .= $duplicate_key_update;
+    //mnn_data_massage_log_query($update_sql, $update_args);
+    db_query($update_sql, $update_args);
+    cma_reservation_cache_log_microsec('after last update of ' .
+				       $update_counter);
   }
-  
-  cma_reservation_cache_log_microsec('after building sql');
-  db_query($delete_sql, $delete_args);
-  cma_reservation_cache_log_microsec('after delete');
-  db_query($sql, $args);
-  cma_reservation_cache_log_microsec('after insert');
+  if ($has_inserts) {
+    db_query($insert_sql, $insert_args);
+    //mnn_data_massage_log_query($insert_sql, $insert_args);
+    cma_reservation_cache_log_microsec('after last insert of ' .
+				       $insert_counter);
+  }
 }
-
 /**
  * Function will clear out hte options array in teh variable table
  */
