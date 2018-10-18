@@ -167,15 +167,15 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
   $end_object =
     new DateTime($date_field['value2'], 
 		 new DateTimeZone($date_field['timezone_db']));
-    
+  
   $end_object->setTimeZone(new DateTimeZone($date_field['timezone']));
-
+ 
   //find all the items tied to this reservations
   //START BUILDING QUERY TO FIND ALL RESERVED ITEMS IN TIME FRAME
   $query =
     "SELECT n.type, reservations_item_nid 
      FROM {node} res 
-     INNER JOIN {reservations_reservation_detail} ON rd.vid =res.vid
+     INNER JOIN {reservations_reservation_detail} rd ON rd.vid =res.vid
      INNER JOIN {node} n on n.nid=rd.reservations_placeholder_nid 
      WHERE res.nid = :res_nid";
   $args = array(':res_nid' => $reservation->nid);
@@ -193,8 +193,9 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
       }
     }
   }
-  return cma_reservation_cache_get_rows_for_insert($cache_start_object,
-						   $cache_end_object,
+
+  return cma_reservation_cache_get_rows_for_insert($start_object,
+						   $end_object,
 						   $content_types,
 						   $items);
 }

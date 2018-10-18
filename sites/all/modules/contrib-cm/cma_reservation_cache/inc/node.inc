@@ -14,6 +14,7 @@ function cma_reservation_cache_node_postsave($node, $op) {
     cma_reservation_cache_log_microsec('finished postsave for reservble item');
   }
   else if ($node->type == 'reservations_reservation') {
+    cma_reservation_cache_log_microsec('start postsave for a reservation');
     $rows = cma_reservation_get_reservation_rows_for_insert($node);
     cma_reservation_cache_insert_and_update_db_rows($rows);
   }
