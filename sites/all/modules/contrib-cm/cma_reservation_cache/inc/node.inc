@@ -8,15 +8,16 @@
 function cma_reservation_cache_node_postsave($node, $op) {
   $content_types = reservations_content_types();
   if (!empty($content_types[$node->type]) && $node->status > 0 ) {
-    cma_reservation_cache_log_microsec('start postsave for a reservable item');
+    cma_reservation_cache_log_microsec('Started postsave for reservable item');
     cma_reservation_cache_update_item_cache($node, $op,
 					    $content_types[$node->type]);
-    cma_reservation_cache_log_microsec('finished postsave for reservble item');
+    cma_reservation_cache_log_microsec('Finished postsave for reservble item');
   }
   else if ($node->type == 'reservations_reservation') {
-    cma_reservation_cache_log_microsec('start postsave for a reservation');
+    cma_reservation_cache_log_microsec('Started postsave for a reservation.');
     $rows = cma_reservation_get_reservation_rows_for_insert($node);
     cma_reservation_cache_insert_and_update_db_rows($rows);
+    cma_reservation_cache_log_microsec('Finished postsave for reservation.');
   }
 }
 

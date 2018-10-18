@@ -405,7 +405,7 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
     $cache_ids[$index] = $result;
     
   }
-  mnn_data_massage_log_query($sql, $args);
+  
   $msg = 'Found ' . $counter . " existing slots in the db for time range.";
   cma_reservation_cache_log_microsec($msg);
   return $cache_ids;  

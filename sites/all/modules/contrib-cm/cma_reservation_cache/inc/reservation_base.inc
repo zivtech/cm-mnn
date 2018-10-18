@@ -185,15 +185,22 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
   $items = $content_types = array();
   while ($result = $results->fetchObject()) {
     $content_types[$result->type] = $reservable_content_types[$result->type];
-    if (!empty($result->reservations_item_nid)) {
-      $item = node_load($result->reservations_item_nid);
-      if ($item) {
-	$items[$item->nid] =
-	  cma_reservation_cache_node_availability_array($item);
+    $res_type = $content_types[$result->type]['reservations_type_setting'];
+    if ($res_type == 'resource') {
+      //fill the $items array with just this single resource node
+      if (!empty($result->reservations_item_nid)) {
+	$resource = node_load($result->reservations_item_nid);
+	if ($resource) {
+	  $items[$resource->nid] =
+	    cma_reservation_cache_node_availability_array($resource);
+	}
       }
+      
+    }	      
+    else {
+      //we keep $items empty so that we update the whole content type
     }
   }
-
   return cma_reservation_cache_get_rows_for_insert($start_object,
 						   $end_object,
 						   $content_types,
@@ -207,7 +214,7 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
 function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						   $cache_end_object,
 						   $content_types,
-						   $items) {
+						   $items = array()) {
 
 
   //prepare variables for loop
@@ -226,7 +233,9 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 					   $items,
 					   $reserved_timeslots,
 					   $cached_reservations);
-  cma_reservation_cache_log_microsec('got reserved time slots');
+  $msg = "Found " . count($cached_reservations) . " reservations and " .
+    count($reserved_timeslots) . " timeslots.";
+  cma_reservation_cache_log_microsec($msg);
 
 
   //get array of cache id's for the relevant timeslots
@@ -244,6 +253,11 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
   //just for logging, it will keep track of the potential new rows we skip
   //on updates because the new row is the same as what is already in db
   $skip_counter = 0;
+
+  //if we don't have items because we are just dealing with buckets
+  if (empty($items)) {
+    $items = cma_reservation_cache_get_reservable_items($content_types);
+  }
   
   //loop over all of the items/slots (no times though)
   foreach($items as $item) {
@@ -526,13 +540,18 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
   //if we have passed in content types, limit which content types we fetch
   //items for
   if (!empty($content_types)) {
+    $query .= " AND (";
     $index = 0;
     foreach($content_types as $type=>$data) {
+      if ($index > 0) {
+	$query .= " OR ";
+      }
       $var_name = ":content_type_" . $index;
-      $query .= " AND n.type = " . $var_name . " ";
+      $query .= "n.type = " . $var_name . " ";
       $args[$var_name] = $type;
       $index++;
     }
+    $query .= ") ";
   }
   else {
     $content_types = reservations_content_types();
@@ -553,9 +572,11 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
 	    'status' => $result->reservations_default_availability,
 	    );
   }
-  cma_reservation_cache_log_microsec('returning ' .
-				     count($reservable_content_type_items).
-				     ' items for content type.');
+
+  //logging
+  $msg = 'Found ' . count($reservable_content_type_items) . ' items for ' .
+    "relevant content types";
+  cma_reservation_cache_log_microsec($msg);
  
   return $reservable_content_type_items;
 }
