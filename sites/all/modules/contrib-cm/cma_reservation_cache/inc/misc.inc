@@ -41,7 +41,7 @@ function cma_reservation_cache_duplicate_key_update($insert_fields) {
   return $ret;
 }
 /**
- * Function will add sets VALUES to an INSERT statement
+ * Function will add a set of VALUES to an INSERT statement
  *
  */
 function cma_reservation_cache_add_values_to_query($row,
@@ -94,19 +94,6 @@ function cma_reservation_cache_set_range_date_objects(&$cache_start_object,
   $cache_end = date('Y-m-d', $time) . " 23:59:59";
   $cache_start_object = new DateTime($cache_start);
   $cache_end_object = new DateTime($cache_end);
-}
-/**
- * Function will return the increcment value from the date field on the
- * reservation content type
- */
-function cma_reservation_cache_date_field_increment() {
-  $reservation_fields =
-    field_info_instances('node', 'reservations_reservation');
-
-  $increment = $reservation_fields['field_reservations_date']
-    ['widget']['settings']['increment'];
-
-  return $increment;
 }
 /**
  * Function finds the unique item identifier, whether its a bucket or 
@@ -183,27 +170,6 @@ function cma_reservation_cache_options_suffix($options) {
   }
   return $suffix;
 }
-
-
-/**
- * Function will return array of bucket categories sorted with their weight 
- * as array index
- */
-function cma_reservation_cache_get_bucket_category_weights() {
-
-  $vid = variable_get('reservations_grouping_vid', 0);
-  $terms = taxonomy_get_tree($vid);
-  $bucket_categories = array();
-  //set to arbitrarly large number for terms that haven't yet been weighted
-  //on the config page admin/config/cma_reservation_cache/default
-  $default_index = 1000000;
-  foreach ($terms as $term) {
-    $weight = variable_get($term->tid.'_rank_weight', $default_index++);
-    $bucket_categories[$term->tid] = $weight;
-  }
-  return $bucket_categories;
-}
-
 /** 
  * Function will return all of the fields in the cache table
  */
@@ -217,34 +183,50 @@ function cma_reservation_cache_db_table_columns() {
   }
   return $cma_reservation_cache_cache_table_fields;
 }
-
-function cma_reservation_cache_log_microsec($label = 'Microseconds expired:') {
+/**
+ * Logger function
+ */
+function cma_reservation_cache_log_microsec($log_item) {
   global $prev_microsec_time_log;
   global $total_microsec_time_log;
-  
-  $current = round(microtime(true) * 1000);
-  $total_microsec_time_log = empty($prev_microsec_time_log) ?
-    0 : $total_microsec_time_log;
 
-  $prev_microsec_time_log = empty($prev_microsec_time_log) ?
-    $current : $prev_microsec_time_log;
-
-  $microsecs = $current - $prev_microsec_time_log;
+  //FIXME ADD A FORM ELEMENT TO THE CONFIG PAGE FOR THIS VARIABLE
+  if (variable_get('cma_reservation_cache_logging_enabled', TRUE)) {
     
-  $total_microsec_time_log += $microsecs;
+    $current = round(microtime(true) * 1000);
+    $total_microsec_time_log = empty($prev_microsec_time_log) ?
+      0 : $total_microsec_time_log;
 
-  dsm("$microsecs of $total_microsec_time_log microseconds", $label);
-  $prev_microsec_time_log = $current;
-}
-/**
- * Function will build a simple node array for use in caching actions
- */
-function cma_reservation_cache_node_availability_array($node) {
-  return array('nid' => $node->nid,
-	       'title' => $node->title,
-	       'type' => $node->type,
-	       'status' =>$node->reservations_default_availability,
-	       );
+    $prev_microsec_time_log = empty($prev_microsec_time_log) ?
+      $current : $prev_microsec_time_log;
+    
+    $microsecs = $current - $prev_microsec_time_log;
+    
+    $total_microsec_time_log += $microsecs;
+    
+    if ($microsecs > 120000) {
+      $msg = round($microsecs/60000, 1) . " minutes ";
+    }
+    else if ($microsecs > 2000) {
+      $msg = round($microsecs/1000, 1) . " seconds ";
+    }
+    else {
+      $msg = $microsecs . " microseconds ";
+    }
+
+    $msg .= "of total ";
+    if ($total_microsec_time_log > 120000) {
+      $msg .= round($total_microsec_time_log/60000, 1) . " minutes ";
+    }
+    else if ($total_microsec_time_log > 2000) {
+      $msg .= round($total_microsec_time_log/1000, 1) . " seconds ";
+    }
+    else {
+      $msg .= $total_microsec_time_log . " microseconds ";
+    }
+    dsm($log_item, $msg);
+    $prev_microsec_time_log = $current;
+  }
 }
 /**
  * Function will be passed two cache db rows, if they are different return
@@ -304,37 +286,6 @@ function cma_reservation_cache_hours_array() {
 	       );
 }
 
-/**
- * Function will return an array of inventories for a form
- */
-function cma_reservation_cache_inventories_array() {
-  $inventories = array();
-
-  $vid = variable_get('reservations_inventory_vid', 0); 
-  $tree = taxonomy_get_tree($vid);
-  foreach ($tree as $term) {
-    $term = taxonomy_term_load($term->tid);
-    $inventories[$term->tid] = $term->name;
-  }
-  asort($inventories);
-  return $inventories;
-}
-
-/**
- * Function willl return an array of bucket categories 
- * (taxonomy terms applied to reservable content types
- */
-function cma_reservation_cache_bucket_categories_array() {
-  $vid = variable_get('reservations_grouping_vid', 0);
-  $terms = taxonomy_get_tree($vid);
-  $bucket_categories = array();
-  foreach ($terms as $term) {
-    $term = taxonomy_term_load($term->tid);
-    $bucket_categories[$term->tid] = $term->name;
-  }
-  asort($bucket_categories);
-  return $bucket_categories;
-}
 
 /**
  * Function will return an array of possible filters for the chart

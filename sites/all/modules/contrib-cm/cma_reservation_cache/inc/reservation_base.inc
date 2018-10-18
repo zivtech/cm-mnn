@@ -585,3 +585,74 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
  
   return $reservable_content_type_items;
 }
+/**
+ * Function will return the increcment value from the date field on the
+ * reservation content type
+ */
+function cma_reservation_cache_date_field_increment() {
+  $reservation_fields =
+    field_info_instances('node', 'reservations_reservation');
+
+  $increment = $reservation_fields['field_reservations_date']
+    ['widget']['settings']['increment'];
+
+  return $increment;
+}
+/**
+ * Function will return array of bucket categories sorted with their weight 
+ * as array index
+ */
+function cma_reservation_cache_get_bucket_category_weights() {
+
+  $vid = variable_get('reservations_grouping_vid', 0);
+  $terms = taxonomy_get_tree($vid);
+  $bucket_categories = array();
+  //set to arbitrarly large number for terms that haven't yet been weighted
+  //on the config page admin/config/cma_reservation_cache/default
+  $default_index = 1000000;
+  foreach ($terms as $term) {
+    $weight = variable_get($term->tid.'_rank_weight', $default_index++);
+    $bucket_categories[$term->tid] = $weight;
+  }
+  return $bucket_categories;
+}
+/**
+ * Function will build a simple node array for use in caching actions
+ */
+function cma_reservation_cache_node_availability_array($node) {
+  return array('nid' => $node->nid,
+	       'title' => $node->title,
+	       'type' => $node->type,
+	       'status' =>$node->reservations_default_availability,
+	       );
+}
+/**
+ * Function will return an array of inventories for a form
+ */
+function cma_reservation_cache_inventories_array() {
+  $inventories = array();
+
+  $vid = variable_get('reservations_inventory_vid', 0); 
+  $tree = taxonomy_get_tree($vid);
+  foreach ($tree as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $inventories[$term->tid] = $term->name;
+  }
+  asort($inventories);
+  return $inventories;
+}
+/**
+ * Function willl return an array of bucket categories 
+ * (taxonomy terms applied to reservable content types
+ */
+function cma_reservation_cache_bucket_categories_array() {
+  $vid = variable_get('reservations_grouping_vid', 0);
+  $terms = taxonomy_get_tree($vid);
+  $bucket_categories = array();
+  foreach ($terms as $term) {
+    $term = taxonomy_term_load($term->tid);
+    $bucket_categories[$term->tid] = $term->name;
+  }
+  asort($bucket_categories);
+  return $bucket_categories;
+}
