@@ -191,8 +191,13 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
       if (!empty($result->reservations_item_nid)) {
 	$resource = node_load($result->reservations_item_nid);
 	if ($resource) {
-	  $items[$resource->nid] =
-	    cma_reservation_cache_node_availability_array($resource);
+	  //FIXME THIS WON'T WORK CORRRCTLY WHEN RESERVATIONS HAVE BUCKETS
+	  //AND RESOURCES, SO UNFORTUNATELY WILL END UP DEALING WITH ALL
+	  //ITEMS IN THE CONTENT TYPE INSTEAD OF A SINGLE ONE. HOPEFULLY
+	  //THIS IS MITIGATED BY THE FACT THAT MOST RESOURCE RESERVATIONS ARE
+	  //SHORT.
+	  //$items[$resource->nid] =
+	  //  cma_reservation_cache_node_availability_array($resource);
 	}
       }
       
