@@ -367,8 +367,7 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
   $args = array();
   
   $sql =
-    "SELECT cache_id, cache_slot_start_time, " .
-    "content_type_machine_name, bucket_slot_id, item_nid " .
+    "SELECT * " .
     "FROM cma_reservation_cache " .
     "WHERE  cache_slot_start_time >= :start " .
     "AND cache_slot_start_time < :end ";
@@ -403,10 +402,11 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
 					$result->bucket_slot_id,
 					$result->item_nid,
 					$result->cache_slot_start_time);
-    $cache_ids[$index] = $result->cache_id;
+    $cache_ids[$index] = $result;
     
   }
-  cma_reservation_cache_log_microsec('after finding ' . $counter .
-				     " existing slots.");
+  mnn_data_massage_log_query($sql, $args);
+  $msg = 'Found ' . $counter . " existing slots in the db for time range.";
+  cma_reservation_cache_log_microsec($msg);
   return $cache_ids;  
 }

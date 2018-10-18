@@ -241,6 +241,10 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
   $bucket_category_weights =
     cma_reservation_cache_get_bucket_category_weights();
 
+  //just for logging, it will keep track of the potential new rows we skip
+  //on updates because the new row is the same as what is already in db
+  $skip_counter = 0;
+  
   //loop over all of the items/slots (no times though)
   foreach($items as $item) {
     //GET CONTENT TYPE INFO
@@ -356,12 +360,12 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
       }
       //get unique index for this cache item time slot, then see if we
       //have stored cache id for the slot
-      $index = cma_reservation_slot_index($item['type'],
+      $slot_index = cma_reservation_slot_index($item['type'],
 					  $db_row['bucket_slot_id'],
 					  $item['nid'],
 					  $prev_object->getTimestamp());
-      if (!empty($cache_ids[$index])) {
-	$db_row['cache_id'] = $cache_ids[$index];
+      if (!empty($cache_ids[$slot_index])) {
+	$db_row['cache_id'] = $cache_ids[$slot_index]->cache_id;
       }
 
       if ($reservation_node) {
@@ -477,12 +481,30 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 	$db_row['project_nid'] = $reservation_result->project_nid;
 	$db_row['project_title'] = $reservation_result->project_title;
       }
-      $db_rows[] = $db_row;
+      
+      $row_changed =
+	cma_reservation_cache_row_changed($db_row, $cache_ids[$slot_index]);
+      //only store the row if it has changed compared to what is already in
+      //the cache db table
+      if ($row_changed) {
+	$db_rows[] = $db_row;
+      }
+      else {
+	//just for logging
+	$skip_counter ++;
+      }
+
       $prev_object = clone $next_object;
     } //done looping through the item for all time blocks
   }
-  cma_reservation_cache_log_microsec('returning ' . count($db_rows).
-				     ' rows to be inserted.');
+
+  //THIS IS JUST LOGGING
+  $insert_update_count = count($db_rows);
+  $msg = "Inserted/Updated " . $insert_update_count ." rows and ignored " .
+    $skip_counter . " unchanged rows. Total(" .
+    ($insert_update_count + $skip_counter) . ")";
+
+  cma_reservation_cache_log_microsec($msg);
   return $db_rows;
 }
 

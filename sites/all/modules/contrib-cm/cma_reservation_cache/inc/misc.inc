@@ -247,6 +247,31 @@ function cma_reservation_cache_node_availability_array($node) {
 	       );
 }
 /**
+ * Function will be passed two cache db rows, if they are different return
+ * true
+ */
+function cma_reservation_cache_row_changed($new_row, $db_result) {
+  //array of keys from the new row that we won't compare against the db result
+  $skip_keys = array(
+		     'cache_time',
+		     'cache_slot_start_time_formatted',
+		     'cache_slot_end_time_formatted',
+		     );
+  //loop through all the keys in our new row
+  foreach ($new_row as $key=>$value) {
+    //if both are empty, or we are skipping this key,  continue
+    if ((empty($db_result->{$key}) && empty($value)) ||
+	(in_array($key, $skip_keys))) {
+      continue;
+    }
+    //check to see if a real diff, once we fine one difference we return true
+    else if ($db_result->{$key} != $value) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+/**
  * Function will return an array of hours in day
  */
 function cma_reservation_cache_hours_array() {
