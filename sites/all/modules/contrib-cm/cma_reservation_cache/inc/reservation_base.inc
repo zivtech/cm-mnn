@@ -519,8 +519,8 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 
   //THIS IS JUST LOGGING
   $insert_update_count = count($db_rows);
-  $msg = "Inserted/Updated " . $insert_update_count ." rows and ignored " .
-    $skip_counter . " unchanged rows. Total(" .
+  $msg = "Prepared " . $insert_update_count ." rows for Insert/Update " .
+    "and ignored " .  $skip_counter . " unchanged rows. Total(" .
     ($insert_update_count + $skip_counter) . ")";
 
   cma_reservation_cache_log_microsec($msg);

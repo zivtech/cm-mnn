@@ -9,6 +9,13 @@
 function cma_reservation_cache_report($form) {
   $form = array();
 
+  $min = cma_reservation_cache_get_min_cache_date();
+  $max = cma_reservation_cache_get_max_cache_date();
+
+  $msg = "<h2>Report</h2>";
+  $msg .= "From " . date('Y-m-d H:i', $min) . " to " . date('Y-m-d H:i', $max);
+  $form['cache']['header'] = array('#markup' => $msg ."<br/><br/>");
+								     
   //number of content types
   //number of bucket slots
   //number of resource items

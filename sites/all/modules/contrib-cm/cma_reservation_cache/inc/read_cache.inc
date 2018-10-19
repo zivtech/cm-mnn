@@ -38,7 +38,6 @@ function cma_reservation_cache_get_available_inventories() {
     array() : $options_cache[$variable_name];
   
   if (empty($ret)) {
-    dsm('no cache found for ' .$variable_name.", rebuilding");
     $ret = cma_reservation_cache_update_options_cache('inventory',
 						      $options_cache,
 						      $variable_name); 
@@ -62,7 +61,6 @@ function cma_reservation_cache_get_available_categories($inventories =
     array() : $options_cache[$variable_name];
   
   if (empty($ret)) {
-    dsm('no cache found for ' .$variable_name);
     $ret = cma_reservation_cache_update_options_cache('category',
 						      $options_cache,
 						      $variable_name,
@@ -88,7 +86,6 @@ function cma_reservation_cache_get_available_content_types($inventories =
     array() : $options_cache[$variable_name];
   
   if (empty($ret)) {
-    dsm('no cache found for ' .$variable_name);
     $ret = cma_reservation_cache_update_options_cache('content_type',
 						      $options_cache,
 						      $variable_name,
@@ -114,7 +111,6 @@ function cma_reservation_cache_get_available_resources($inventories = array(),
     array() : $options_cache[$variable_name];
 
   if (empty($ret)) {
-    dsm('no cache found for ' .$variable_name);
     $ret = cma_reservation_cache_update_options_cache('resource',
 						      $options_cache,
 						      $variable_name,
@@ -345,6 +341,21 @@ function cma_reservation_cache_get_max_cache_date($item_nid = NULL) {
   
   //find last cache slot time
   $sql = "SELECT max(cache_slot_start_time) " .
+    "FROM {cma_reservation_cache} ";
+
+  if (!empty($item_nid)) {
+    $sql .= "WHERE item_nid = :item_nid ";
+  }
+
+  return db_query($sql, array(':item_nid' => $item_nid))->fetchField();
+}
+/**
+ * function returns the final start time of the cache
+ */
+function cma_reservation_cache_get_min_cache_date($item_nid = NULL) {
+  
+  //find last cache slot time
+  $sql = "SELECT min(cache_slot_start_time) " .
     "FROM {cma_reservation_cache} ";
 
   if (!empty($item_nid)) {
