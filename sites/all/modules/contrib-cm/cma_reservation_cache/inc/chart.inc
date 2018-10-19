@@ -530,6 +530,12 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
 	 '<div class="cma_reservation_cache_chart_header_cell" '.
 	'style="background-color:black;"></div>';
       }
+      if (!empty($reservation_slots)) {
+	$temp_slot = array_pop($reservation_slots);
+	$row_html .=
+	  cma_reservation_cache_reservation_slots_html($reservation_slots);
+	$reservation_slots = array($temp_slot);
+      }
       $row_html .=
       '<div class="cma_reservation_cache_chart_cell" '.
       	'style="background-color:black;"></div>';	
@@ -695,9 +701,7 @@ function cma_reservation_cache_reservation_slots_html($slots) {
   }
   
   $index = 0;
-  dsm("(((((((((((((((((((((((((((((((((");
   foreach ($slots as $slot) {
-    dsm($slot, date('m-d H:i', $slot->cache_slot_start_time));
     $classes = "cma_reservation_cache_chart_cell";
     $hover = cma_reservation_cache_chart_slot_hover($slot);
 
