@@ -503,6 +503,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     //look to see if a reservation block started and if it needs to be
     //added to or ended and renewed
     if (!empty($prev_res_nid) && empty($res_nid)) {
+      dsm('1');
       $row_html .=
 	cma_reservation_cache_reservation_slots_html($reservation_slots);
       $reservation_slots = array();

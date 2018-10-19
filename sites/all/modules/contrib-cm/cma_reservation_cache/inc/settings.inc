@@ -82,7 +82,8 @@ function cma_reservation_cache_settings_form($form) {
   $data=array();
 
 
-  //BUCKET CATEGORIES  
+  //BUCKET CATEGORIES
+  cma_reservation_cache_update_bucket_weights();
   $vid = variable_get('reservations_grouping_vid', 0);
   $terms = taxonomy_get_tree($vid);
   $bucket_categories = array();
