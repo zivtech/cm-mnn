@@ -402,7 +402,7 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
   //////////////////////////////////////////////////////////////////////////
   //EXECUTE THE SQL QUERY
   $results = db_query($sql, $args);
-
+    
   $counter = 0;
   while ($result = $results->fetchObject()) {
     $counter ++;

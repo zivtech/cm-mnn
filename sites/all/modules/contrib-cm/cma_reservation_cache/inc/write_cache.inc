@@ -247,3 +247,14 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
 function cma_reservation_cache_reset_chart_options() {
   variable_set(CMA_RESERVATION_CACHE_CHART_OPTIONS, array());
 }
+
+/**
+ * Function will remove a content type from the cache table
+ */
+function cma_reservation_cache_remove_content_type($type) {
+  $sql =
+    "delete from {cma_reservation_cache} " .
+    "where content_type_machine_name = :type";
+
+  db_query($sql, array(':type' => $type));
+}

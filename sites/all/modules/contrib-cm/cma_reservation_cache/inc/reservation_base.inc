@@ -221,7 +221,22 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						   $content_types,
 						   $items = array()) {
 
+  $msg = "Preparing cache update from " . $cache_start_object->format('Y-m-d').
+    " through " . $cache_start_object->format('Y-m-d');
 
+  if (count($items) == 1) {
+    foreach($items as $nid=>$item) {
+      $msg .= " for resource: " . $item['title'];
+    }
+  }
+  else if (count($content_types) == 1) {
+    foreach($content_types as $name=>$content_type) {
+      $msg .= " for content type: " . $content_type['type'];
+    }
+  }
+  cma_reservation_cache_log_microsec($msg);
+
+  
   //prepare variables for loop
   $db_rows = array();
   $row_counter = 0;
@@ -263,7 +278,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
   if (empty($items)) {
     $items = cma_reservation_cache_get_reservable_items($content_types);
   }
-  
+
   //loop over all of the items/slots (no times though)
   foreach($items as $item) {
     //GET CONTENT TYPE INFO
