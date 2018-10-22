@@ -311,7 +311,7 @@ function cma_reservation_cache_get_item_time_slots($filter_values) {
   
   //mnn_data_massage_log_query($sql, $args);
   $results = db_query($sql, $args);
-  cma_reservation_cache_log_microsec('Completed Cache Table Query');
+  cma_reservation_cache_log_time('Completed Cache Table Query');
 
   return $results;
 }
@@ -415,6 +415,6 @@ function cma_reservation_cache_get_cache_ids($cache_start_object,
   }
   
   $msg = 'Found ' . $counter . " existing slots in the db for time range.";
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
   return $cache_ids;  
 }

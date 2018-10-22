@@ -234,7 +234,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
       $msg .= " for content type: " . $content_type['type'];
     }
   }
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
 
   
   //prepare variables for loop
@@ -255,7 +255,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 					   $cached_reservations);
   $msg = "Found " . count($cached_reservations) . " reservations and " .
     count($reserved_timeslots) . " timeslots.";
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
 
 
   //get array of cache id's for the relevant timeslots
@@ -538,7 +538,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
     "and ignored " .  $skip_counter . " unchanged rows. Total(" .
     ($insert_update_count + $skip_counter) . ")";
 
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
   return $db_rows;
 }
 
@@ -596,7 +596,7 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
   //logging
   $msg = 'Found ' . count($reservable_content_type_items) . ' items for ' .
     "relevant content types";
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
  
   return $reservable_content_type_items;
 }

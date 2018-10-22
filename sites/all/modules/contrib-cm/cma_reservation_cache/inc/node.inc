@@ -9,17 +9,17 @@ function cma_reservation_cache_node_postsave($node, $op) {
   $content_types = reservations_content_types();
   if (!empty($content_types[$node->type]) && $node->status > 0 ) {
     $msg = '------------Started postsave for reservable item: ' . $node->title;
-    cma_reservation_cache_log_microsec($msg);
+    cma_reservation_cache_log_time($msg);
     cma_reservation_cache_update_item_cache($node, $op,
 					    $content_types[$node->type]);
-    cma_reservation_cache_log_microsec('Finished postsave for reservble item');
+    cma_reservation_cache_log_time('Finished postsave for reservble item');
   }
   else if ($node->type == 'reservations_reservation') {
     $msg = '-----------Started postsave for a reservation.';
-    cma_reservation_cache_log_microsec($msg);
+    cma_reservation_cache_log_time($msg);
     $rows = cma_reservation_get_reservation_rows_for_insert($node);
     cma_reservation_cache_insert_and_update_db_rows($rows);
-    cma_reservation_cache_log_microsec('Finished postsave for reservation.');
+    cma_reservation_cache_log_time('Finished postsave for reservation.');
   }
 }
 
@@ -147,7 +147,7 @@ function cma_reservation_cache_node_type_postsave($info) {
   $msg =
     '------------Started postsave for content type: ' . $content_type['name'];
   
-  cma_reservation_cache_log_microsec($msg);
+  cma_reservation_cache_log_time($msg);
   
   if ($content_type) {
     $content_types = array($info->type => $content_type);

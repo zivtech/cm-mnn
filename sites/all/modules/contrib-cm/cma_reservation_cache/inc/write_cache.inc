@@ -6,7 +6,7 @@
 function cma_reservation_cache_delete_item_time_slots($node) {
   $sql = "DELETE FROM {cma_reservation_cache} WHERE item_nid = :item_nid";
   db_query($sql, array(':item_nid' => $node->nid));
-  cma_reservation_cache_log_microsec('deleted all rows for '.$node->title);
+  cma_reservation_cache_log_time('deleted all rows for '.$node->title);
 }
 
 /**
@@ -200,10 +200,10 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
       $update_sql .= $duplicate_key_update;
       db_query($update_sql, $update_args);
       //mnn_data_massage_log_query($update_sql, $update_args);
-      cma_reservation_cache_log_microsec('Updated ' . $update_counter .
+      cma_reservation_cache_log_time('Updated ' . $update_counter .
 					 " rows.");
 
-      cma_reservation_cache_log_microsec('after an update');
+      cma_reservation_cache_log_time('after an update');
       
       $is_first_update_row = TRUE;
       $update_counter = 0;
@@ -214,7 +214,7 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
     else if ($insert_counter >= $transaction_limit) {
       db_query($insert_sql, $insert_args);
       //mnn_data_massage_log_query($insert_sql, $insert_args);
-      cma_reservation_cache_log_microsec('Inserted ' . $insert_counter .
+      cma_reservation_cache_log_time('Inserted ' . $insert_counter .
 					 " rows.");
       
       //reset counters and queries
@@ -231,13 +231,13 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
     $update_sql .= $duplicate_key_update;
     //mnn_data_massage_log_query($update_sql, $update_args);
     db_query($update_sql, $update_args);
-    cma_reservation_cache_log_microsec('Ran final update of ' .
+    cma_reservation_cache_log_time('Ran final update of ' .
 				       $update_counter . " rows.");
   }
   if ($insert_counter > 0) {
     db_query($insert_sql, $insert_args);
     //mnn_data_massage_log_query($insert_sql, $insert_args);
-    cma_reservation_cache_log_microsec('Ran final insert of ' .
+    cma_reservation_cache_log_time('Ran final insert of ' .
 				       $insert_counter . " rows.");
   }
 }

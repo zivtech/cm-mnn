@@ -186,7 +186,16 @@ function cma_reservation_cache_db_table_columns() {
 /**
  * Logger function
  */
-function cma_reservation_cache_log_microsec($log_item) {
+function cma_reservation_cache_log_query($sql, $args) {
+  //FIXME ADD VARIABLE SETTING FOR THIS.
+  if (variable_get('cma_reservation_cache_logging_enabled', TRUE)) {
+
+  }
+}
+/**
+ * Logger function
+ */
+function cma_reservation_cache_log_time($log_item) {
   global $prev_microsec_time_log;
   global $total_microsec_time_log;
 

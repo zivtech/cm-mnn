@@ -5,7 +5,7 @@
  * resesrvations. This function is called from menu item "reservations/chart"
  */
 function cma_reservation_cache_chart_form($form, $form_state) {
-  cma_reservation_cache_log_microsec('-----------------------beginning of ' .
+  cma_reservation_cache_log_time('-----------------------beginning of ' .
 				     'cma_reservation_cache_chart_form');
 
   $form = array();
@@ -41,7 +41,7 @@ function cma_reservation_cache_chart_form($form, $form_state) {
     //ADD THE HTML TO THE FORM AS MARKUP
     $form['chart'] = array('#markup'=> $chart_display);
   }
-  cma_reservation_cache_log_microsec('Finished Processing Form and Chart');
+  cma_reservation_cache_log_time('Finished Processing Form and Chart');
   
   return $form;
 }
@@ -59,7 +59,7 @@ function cma_reservation_cache_chart_form_validate($form, &$form_state) {
     //dsm($form_state['values'][$filter], 'my value for ' . $filter);
     //form_set_error($filter, t('error!'));
   }
-  cma_reservation_cache_log_microsec('done with form_validate()');
+  cma_reservation_cache_log_time('done with form_validate()');
 }
 /**
  */
@@ -87,7 +87,7 @@ function cma_reservation_cache_chart_form_submit($form, &$form_state) {
     }
   
   }
-  cma_reservation_cache_log_microsec('done with form_submit()');
+  cma_reservation_cache_log_time('done with form_submit()');
 
   //forward to the original url with a new set of query args
   drupal_goto($url,  array("query" => $args));
@@ -292,7 +292,7 @@ function cma_reservation_cache_chart_add_filters_to_form(&$form, $values) {
 					  '#type' => 'submit',
 					  '#value' => t('Clear Filters'),
 					  );
-  cma_reservation_cache_log_microsec("Finished building filters");
+  cma_reservation_cache_log_time("Finished building filters");
     
 }
 
@@ -592,7 +592,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
 			 "Either change filters or reset them to display " .
 			 "the chart."), 'error');
   }
-  cma_reservation_cache_log_microsec("finished building chart html " .
+  cma_reservation_cache_log_time("finished building chart html " .
 				     "with $counter item time slots");
   return $chart_display;
 }
