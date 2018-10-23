@@ -85,6 +85,8 @@ function cma_reservation_cache_reserved_timeslots($start_object,
   $query .= " ORDER BY field_reservations_date_value ";
   
   $results = db_query($query, $args);
+  cma_reservation_cache_log_time('Finished query for reservations');
+  cma_reservation_cache_log_query($query, $args);
   
   $reserved_timeslots = array();
   $cached_reservations = array();
@@ -180,7 +182,8 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
      WHERE res.nid = :res_nid";
   $args = array(':res_nid' => $reservation->nid);
   $results = db_query($query, $args);
-
+  cma_reservation_cache_log_query($query, $args);
+  
   $reservable_content_types = reservations_content_types();
   $items = $content_types = array();
   while ($result = $results->fetchObject()) {
@@ -578,7 +581,7 @@ function cma_reservation_cache_get_reservable_items($content_types = array()){
   }
   $query .= "ORDER BY n.type ASC, n.nid DESC";
   $results = db_query($query, $args);
-
+  cma_reservation_cache_log_query($query, $args);
   $reservable_content_type_items = array();
 
   while ($result = $results->fetchObject()) {

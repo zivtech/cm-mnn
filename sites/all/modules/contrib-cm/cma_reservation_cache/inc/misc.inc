@@ -188,8 +188,27 @@ function cma_reservation_cache_db_table_columns() {
  */
 function cma_reservation_cache_log_query($sql, $args) {
   //FIXME ADD VARIABLE SETTING FOR THIS.
-  if (variable_get('cma_reservation_cache_logging_enabled', TRUE)) {
 
+  if (variable_get('cma_reservation_cache_query_logging_enabled', FALSE)) {
+    krsort($args);
+    $ms = str_replace('{', '', $sql);
+    $ms = str_replace('}', '', $ms);
+    
+  
+    foreach ($args as $i=>$j) {
+      if (is_numeric($j)) {
+	$j = $j;
+      }
+      else if (is_string($j)) {
+	$j = "'$j'";
+      }
+      else if (empty($j)) {
+	$j = 'NULL';
+      }
+      $ms = str_replace($i, $j, $ms);
+    }
+    dsm($ms);
+    dsm($args);
   }
 }
 /**

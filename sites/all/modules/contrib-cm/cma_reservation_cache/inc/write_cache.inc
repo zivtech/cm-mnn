@@ -130,6 +130,9 @@ function cma_reservation_cache_update_options_cache($type,
   /////////////////////////////////////////////////////////////////////////
   //run query and inventories into an array with the tid as the key
   $results = db_query($sql, $args);
+  //logging
+  cma_reservation_cache_log_query($sql, $args);
+  
   while ($result = $results->fetchObject()) {
     if (!empty($result->value)) {
       $options[$result->id] = $result->value;
@@ -139,6 +142,7 @@ function cma_reservation_cache_update_options_cache($type,
   $options_cache[$variable_name] = $options;
 
   variable_set(CMA_RESERVATION_CACHE_CHART_OPTIONS, $options_cache);
+
   return $options;
   
 }
@@ -199,12 +203,10 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
     if ($update_counter >= $transaction_limit) {
       $update_sql .= $duplicate_key_update;
       db_query($update_sql, $update_args);
-      //mnn_data_massage_log_query($update_sql, $update_args);
-      cma_reservation_cache_log_time('Updated ' . $update_counter .
-					 " rows.");
+      //logging
+      cma_reservation_cache_log_time('Updated ' . $update_counter . " rows.");
 
-      cma_reservation_cache_log_time('after an update');
-      
+      //reset counters and queries
       $is_first_update_row = TRUE;
       $update_counter = 0;
       $update_sql = $insert_into . $update_field_names;
@@ -213,32 +215,33 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
     }
     else if ($insert_counter >= $transaction_limit) {
       db_query($insert_sql, $insert_args);
-      //mnn_data_massage_log_query($insert_sql, $insert_args);
-      cma_reservation_cache_log_time('Inserted ' . $insert_counter .
-					 " rows.");
+      //logging
+      cma_reservation_cache_log_time('Inserted ' . $insert_counter ." rows.");
       
       //reset counters and queries
       $is_first_insert_row = TRUE;
       $insert_counter = 0;
       $insert_sql = $insert_into . $insert_field_names;
       $insert_args = array();
-      continue;
-      
+      continue;      
     }
   }//end of loop
 
   if ($update_counter > 0) {
     $update_sql .= $duplicate_key_update;
-    //mnn_data_massage_log_query($update_sql, $update_args);
     db_query($update_sql, $update_args);
-    cma_reservation_cache_log_time('Ran final update of ' .
-				       $update_counter . " rows.");
+    //logging
+    cma_reservation_cache_log_query($update_sql, $update_args);
+    cma_reservation_cache_log_time('Ran final update of ' . $update_counter .
+				   " rows.");
   }
+
   if ($insert_counter > 0) {
     db_query($insert_sql, $insert_args);
-    //mnn_data_massage_log_query($insert_sql, $insert_args);
-    cma_reservation_cache_log_time('Ran final insert of ' .
-				       $insert_counter . " rows.");
+    //logging
+    cma_reservation_cache_log_query($insert_sql, $insert_args);
+    cma_reservation_cache_log_time('Ran final insert of ' . $insert_counter .
+				   " rows.");
   }
 }
 /**

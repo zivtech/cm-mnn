@@ -399,7 +399,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
   //item (which will have its own unique $identifier).
   //it will also
   $counter =  $res_nid = $prev_res_nid = $prev_slot = 0;
-  $reservation_slots = array();
+  $reservation_slots = $identifiers = array();
   $chart_display = $charts_html = $chart_html = $row_html = $rows_html =
     $header_row_html = $identifier = $prev_identifier = $first_day = '';
   $has_slots = FALSE;
@@ -413,6 +413,7 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
     }
     
     $identifier = cma_reservation_cache_slot_identifier($slot);    
+    $identifiers[] = $identifier;
     $res_nid = $slot->reservation_nid;
 
     //if we have no html at all yet, we are starting first row of first chart
@@ -592,8 +593,12 @@ function cma_reservation_cache_get_chart_display($item_time_slots,
 			 "Either change filters or reset them to display " .
 			 "the chart."), 'error');
   }
-  cma_reservation_cache_log_time("finished building chart html " .
-				     "with $counter item time slots");
+  //LOGGING
+  $msg =
+    "finished building chart html with " . count(array_unique($identifiers)).
+    " resource/bucket items and " . $counter ." item time slots";
+  cma_reservation_cache_log_time($msg);
+
   return $chart_display;
 }
 
