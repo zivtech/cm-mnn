@@ -225,7 +225,7 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						   $items = array()) {
 
   $msg = "Preparing cache update from " . $cache_start_object->format('Y-m-d').
-    " through " . $cache_start_object->format('Y-m-d');
+    " through " . $cache_end_object->format('Y-m-d');
 
   if (count($items) == 1) {
     foreach($items as $nid=>$item) {
