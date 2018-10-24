@@ -12,7 +12,7 @@ function cma_reservation_cache_node_postsave($node, $op) {
     cma_reservation_cache_log_time($msg);
     cma_reservation_cache_update_item_cache($node, $op,
 					    $content_types[$node->type]);
-    cma_reservation_cache_log_time('Finished postsave for reservble item');
+    cma_reservation_cache_log_time('Finished postsave for reservable item');
   }
   else if ($node->type == 'reservations_reservation') {
     $msg = '-----------Started postsave for a reservation.';

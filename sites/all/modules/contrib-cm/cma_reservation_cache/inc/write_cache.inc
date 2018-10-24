@@ -231,7 +231,7 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
     $update_sql .= $duplicate_key_update;
     db_query($update_sql, $update_args);
     //logging
-    cma_reservation_cache_log_query($update_sql, $update_args);
+    //cma_reservation_cache_log_query($update_sql, $update_args);
     cma_reservation_cache_log_time('Ran final update of ' . $update_counter .
 				   " rows.");
   }
@@ -239,7 +239,7 @@ function cma_reservation_cache_insert_and_update_db_rows($db_rows) {
   if ($insert_counter > 0) {
     db_query($insert_sql, $insert_args);
     //logging
-    cma_reservation_cache_log_query($insert_sql, $insert_args);
+    //cma_reservation_cache_log_query($insert_sql, $insert_args);
     cma_reservation_cache_log_time('Ran final insert of ' . $insert_counter .
 				   " rows.");
   }

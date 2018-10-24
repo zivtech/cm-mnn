@@ -50,7 +50,7 @@ function cma_reservation_cache_report($form) {
 }
 
 /**
- *
+ * Submit function that inserts/updates cache values for 1 to many days
  */
 function cma_reservation_cache_report_submit($form, $form_state) {
   //get start and end from the submitted form values
@@ -61,13 +61,10 @@ function cma_reservation_cache_report_submit($form, $form_state) {
 
   $content_types = reservations_content_types();
 
-  $items = cma_reservation_cache_get_reservable_items();
-  
   //get the array of data from the reservation base level
   $db_rows = cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						       $cache_end_object,
-						       $content_types,
-						       $items);
+						       $content_types);
 
   //pass the data from the base level to the function that groups
   //inserts and delete statements and then executes them in the db
