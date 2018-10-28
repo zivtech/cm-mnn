@@ -230,7 +230,7 @@ function reservations_inventory_form_reservations_reservation_node_form_alter(&$
  * Implements hook_form_FORM_ID_alter().
  */
 function reservations_inventory_form_node_type_form_alter(&$form, &$form_state) {
-  
+  unset($form['auto_nodetitle']);
   // Reservation content type can't used for other Reservations functionality.
   if (isset($form['#node_type']->type) && $form['#node_type']->type == 'reservations_reservation') {
     return;

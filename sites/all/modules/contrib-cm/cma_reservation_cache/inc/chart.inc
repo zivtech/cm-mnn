@@ -388,7 +388,6 @@ function cma_reservation_cache_chart_filter_values() {
  */
 function cma_reservation_cache_get_chart_display($item_time_slots,
 						 $filter_values) {
-  $offset = cma_reservation_cache_get_offset();
   $separate_charts =
     !empty($filter_values[CMA_RESERVATION_CACHE_SEPARATE_CHARTS]);
 

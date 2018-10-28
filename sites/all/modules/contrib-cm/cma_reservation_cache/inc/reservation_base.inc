@@ -43,10 +43,16 @@ function cma_reservation_cache_reserved_timeslots($start_object,
   $query .=
     "WHERE field_reservations_date_value2 >= :start
      AND field_reservations_date_value <= :end ";
+
+  $offset = cma_reservation_cache_get_offset();
+  $adjusted_start =
+    date('Y-m-d H:i:s', $start_object->getTimestamp() - $offset);
+  $adjusted_end =
+    date('Y-m-d H:i:s', $end_object->getTimestamp() - $offset);
   
   //START THE ARGS ARRAY
-  $args = array(':start' => $start_object->format('Y-m-d H:i:s'),
-		":end" => $end_object->format('Y-m-d H:i:s'));
+  $args = array(':start' => $adjusted_start,
+		":end" => $adjusted_end);
 
   //IF WE PASSED IN CONTENT TYPES, FILTER BY THEM
   if (!empty($content_types)) {
@@ -171,7 +177,7 @@ function cma_reservation_get_reservation_rows_for_insert($reservation) {
 		 new DateTimeZone($date_field['timezone_db']));
   
   $end_object->setTimeZone(new DateTimeZone($date_field['timezone']));
- 
+
   //find all the items tied to this reservations
   //START BUILDING QUERY TO FIND ALL RESERVED ITEMS IN TIME FRAME
   $query =
@@ -224,8 +230,9 @@ function cma_reservation_cache_get_rows_for_insert($cache_start_object,
 						   $content_types,
 						   $items = array()) {
 
-  $msg = "Preparing cache update from " . $cache_start_object->format('Y-m-d').
-    " through " . $cache_end_object->format('Y-m-d');
+  $msg = "Preparing cache update from " .
+    $cache_start_object->format('Y-m-d h:ia').
+    " through " . $cache_end_object->format('Y-m-d h:ia');
 
   if (count($items) == 1) {
     foreach($items as $nid=>$item) {
