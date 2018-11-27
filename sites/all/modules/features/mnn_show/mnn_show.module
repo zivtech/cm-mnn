@@ -249,6 +249,9 @@ function mnn_show_node_presave($node) {
       $node->field_show_premiere_date[LANGUAGE_NONE][0]['value'] =
 	$date;
     }
+
+    
+    $node->uid = $project->uid;
   }
 }
 
