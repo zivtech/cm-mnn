@@ -440,7 +440,8 @@ function civicrm_multiday_event_node_presave($node) {
     //FALL BACK TO PREVIOUS TITLE, THEREFORE WE CACHE IT SO WE CAN ACTUALLY
     //SET A CUSTOM TITLE WHEN WE NEED TO
     global $civicrm_multiday_event_cached_title;
-    if (!isset($civicrm_multiday_event_cached_title)) {
+    if (!isset($civicrm_multiday_event_cached_title) ||
+	!$civicrm_multiday_event_cached_title) {
       $civicrm_multiday_event_cached_title = $node->title;
     }
     else {

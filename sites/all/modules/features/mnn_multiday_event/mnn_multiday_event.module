@@ -21,7 +21,12 @@ function computed_field_field_civicrm_multiday_small_compute(&$entity_field,
 
 
 
+  $value = mnn_multiday_event_get_small_dates($entity);
+  $entity_field[0]['value'] = $value;
+  return $value;
+}
 
+function mnn_multiday_event_get_small_dates($entity){
   $output_array = array();
   if ($entity->field_civicrm_multiday_session &&
       isset($entity->field_civicrm_multiday_session[LANGUAGE_NONE]) &&
@@ -30,11 +35,29 @@ function computed_field_field_civicrm_multiday_small_compute(&$entity_field,
     foreach($sessions as $info) {
       $session = field_collection_item_load($info['value']);
 
+      $date_field = $session->field_session_date[LANGUAGE_NONE][0];
+      if (!$date_field['value']) {
+	return '';
+      }
+      $start_object =
+	new DateTime($date_field['value'], 
+		     new DateTimeZone($date_field['timezone_db']));
+      
+      $start_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+      $start_day = $start_object->format('d');
 
-      $start = strtotime($session->field_session_date[LANGUAGE_NONE][0]
-			 ['value']);
-      $end = strtotime($session->field_session_date[LANGUAGE_NONE][0]
-		       ['value2']);
+      if (!$date_field['value2']) {
+	$end_object = clone $start_object;
+      }
+      else {
+	$end_object =
+	  new DateTime($date_field['value2'], 
+		       new DateTimeZone($date_field['timezone_db']));
+	
+	$end_object->setTimeZone(new DateTimeZone($date_field['timezone']));
+      }
+      $start = $start_object->getTimestamp();
+      $end = $end_object->getTimestamp();
       
       $timerange = date('g:ia', $start) . ' - ' . date('g:ia', $end);
       $output_array[$timerange] = isset($output_array[$timerange]) ?
@@ -82,7 +105,7 @@ function computed_field_field_civicrm_multiday_small_compute(&$entity_field,
 
     if (date('F', $info['first']) == date('F', $info['last'])) {
       if (date('j', $info['first']) == date('j', $info['last'])) {
-	$month_day = date('F, j', $info['first']);
+	$month_day = date('F j', $info['first']);
       }
       else {
 	$month_day = date('F', $info['first']) . ' ' .
@@ -92,15 +115,13 @@ function computed_field_field_civicrm_multiday_small_compute(&$entity_field,
 
     }
     else {
-      $month_day = date('F, j', $info['first']) . ' - ' .
-	date('F, j', $info['last']);
+      $month_day = date('F j', $info['first']) . ' - ' .
+	date('F j', $info['last']);
     }
     
     
     $value .= $timerange . ', ' . implode(' & ', array_keys($info['days'])) .
       ', '. $month_day;
   }
-
-  $entity_field[0]['value'] = $value;
   return $value;
 }

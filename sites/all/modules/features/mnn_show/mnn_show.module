@@ -81,6 +81,28 @@ function mnn_show_form_alter(&$form, &$form_state, $form_id) {
 	      "<h2>".t('Air Date')."</h2>",
 	      '#suffix' => '</div>',
 	      );
+      if (module_exists('mnn_qnap_show')) {
+	$results = db_query("SELECT xid, filename FROM mnn_qnap_show ".
+			    "WHERE show_nid IS NULL ");
+	while ($result = $results->fetchObject()) {
+	  $xml_files[$result->xid] = $result->filename;
+	}
+	$xml_files = $xml_files +
+	  array( 0 =>'- Select -') +
+	  array('exact' => 'Exact Match:') +
+	  array('project' => 'Project Matches:') +
+	  array('orphan' => 'Unmatched Files:');
+
+	$form['mnn_cm_xml_files'] = 
+	  array(
+		'#type' => 'select',
+		'#options'=> $xml_files,
+		'#prefix' => '<div id="mnn_cm_xml_wrapper" class="cm-box">'.
+		"<h2>".t('XML File on QNAP')."</h2>",
+		'#suffix' => '</div>',
+		);
+      }
+      
     }
     if (!$show_node) {
       $episode_number = mnn_show_get_next_episode_number($project_id);
@@ -187,8 +209,10 @@ function mnn_show_og_node2_callback($form, $form_state) {
 function mnn_show_node_presave($node) {
   if ($node->type=='cm_show') {
     //SET THE TITLE
-    $short_description = $node->field_short_description ?
-      $node->field_short_description[LANGUAGE_NONE][0]['value'] : "";
+    //FIXME USE PUBLIC TITLE INSTEAD)
+    $public_title = mnn_show_get_single_field_value($node,
+						    'field_show_public_title',
+						    'value');
     $episode_number = $node->field_episode_number ?
       $node->field_episode_number[LANGUAGE_NONE][0]['value'] : "";
     $project_id = $node->{MNN_PROJECT_OG_FIELD_FOR_SHOW} ?
@@ -196,8 +220,8 @@ function mnn_show_node_presave($node) {
     $project = node_load($project_id);
     $project_title = $project->title;
 
-    $node->title = ($short_description) ? 
-      $project->title." Episode ".$episode_number.": ".$short_description :
+    $node->title = ($public_title) ? 
+      $project->title." Episode ".$episode_number.": ".$public_title :
       $project->title." Episode ".$episode_number;
 
     $node->title = substr($node->title, 0, 254);
@@ -244,6 +268,23 @@ function mnn_show_node_insert($node) {
 	$airing->cm_use_auto_endtime = TRUE;
 	$airing->cm_newly_created_show = $node;
         entity_save('airing', $airing);
+      }
+      if (module_exists('mnn_qnap_show')) {
+	global $user;
+	
+	$xid = (isset($node->mnn_cm_xml_files) && $node->mnn_cm_xml_files) ?
+	  $node->mnn_cm_xml_files : NULL;
+
+	$record = mnn_qnap_show_get_record($xid);
+	$record['project_nid'] =
+	  $airing->field_airing_project_ref[LANGUAGE_NONE][0]['target_id'];
+	
+	$record['show_nid'] = $node->nid;
+	$record['airing_id'] = $airing_id;
+	$record['status'] = MNN_QNAP_SHOW_QUEUED;
+	$record['uid'] = $user->uid;
+
+	mnn_qnap_write_records(array($xid=>$record), TRUE, $node);
       }
     }
   }

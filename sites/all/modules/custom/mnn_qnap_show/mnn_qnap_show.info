@@ -3,3 +3,4 @@ project = mnn_qnap_show
 description = "Functions that query QNAP for show data"
 core = 7.x
 
+scripts[] = mnn_qnap_show.js

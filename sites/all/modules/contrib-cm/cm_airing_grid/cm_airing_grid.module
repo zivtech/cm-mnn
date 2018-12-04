@@ -127,6 +127,9 @@ function cm_airing_grid_create_live_show_for_airing($livefeed_tid, $airing_id){
   $project_format = $project->field_format[LANGUAGE_NONE][0]['tid'];
   $project_rating= $project->field_pbcore_fcc_ratings[LANGUAGE_NONE][0]['tid'];
   $project_type = $project->taxonomy_cm_project_types[LANGUAGE_NONE][0]['tid'];
+  $project_neighborhood =
+    $project->field_show_neighborhood[LANGUAGE_NONE][0]['tid'];
+  $project_theme = $project->field_show_theme[LANGUAGE_NONE][0]['tid'];
 
   if (!$project_runtime && !$project_format && !$project_type){
     drupal_set_message("Missing category, project must have runtime, format,
@@ -147,6 +150,14 @@ function cm_airing_grid_create_live_show_for_airing($livefeed_tid, $airing_id){
   if ($project_rating) {
     $show->field_pbcore_fcc_ratings[LANGUAGE_NONE][0]['tid'] = $project_rating;
   }
+  if ($project_neighborhood) {
+    $show->field_show_neighborhood[LANGUAGE_NONE][0]['tid'] =
+      $project_neighborhood;
+  }
+  if ($project_theme) {
+    $show->field_show_theme[LANGUAGE_NONE][0]['tid'] = $project_theme;
+  }
+
   $show->field_device[LANGUAGE_NONE][0]['tid'] = $livefeed_tid;
   $show->og_node2[LANGUAGE_NONE][0]['target_id'] = $project_id;
   $show->field_episode_number[LANGUAGE_NONE][0]['value'] = 
