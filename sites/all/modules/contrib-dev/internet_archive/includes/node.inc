@@ -326,7 +326,7 @@ function internet_archive_node_fields($node) {
   $node_fields = array();
   if ($fields) {
     foreach ($fields as $field_name => $info) {
-      if ($node->{$field_name}) {
+      if (isset($node->{$field_name}) && $node->{$field_name}) {
         $node_fields[] = $field_name;
       }
     }

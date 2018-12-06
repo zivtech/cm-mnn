@@ -4,6 +4,7 @@ description = "A module to provide a caching layer to work with the reservations
 
 core = 7.x
 
+dependencies[] = multiselect
 dependencies[] = reservations
 dependencies[] = reservations_inventory
 dependencies[] = reservations_staff
@@ -11,6 +12,16 @@ dependencies[] = views
 
 
 files[] = cma_reservation_cache.module
+files[] = cma_reservation_cache.css
+
+files[] = inc/chart.inc
+files[] = inc/misc.inc
+files[] = inc/node.inc
+files[] = inc/read_cache.inc
+files[] = inc/report.inc
+files[] = inc/reservation_base.inc
+files[] = inc/settings.inc
+files[] = inc/write_cache.inc
 
 configure = admin/config/cma_reservation_cache
 

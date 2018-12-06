@@ -50,7 +50,8 @@ function cm_inventory_adder_form_alter(&$form, &$form_state, $form_id) {
 
 function cm_inventory_adder_node_validate($node, $form, &$form_state) {
   //get content type
-  $type = $node->mnn_inventory_content_type;
+  $type = isset($node->mnn_inventory_content_type) ?
+    $node->mnn_inventory_content_type : NULL;
 
   if ($type) {
     $type_inventory = cm_inventory_adder_get_inventory_for_type($type);
@@ -91,8 +92,9 @@ function cm_inventory_adder_node_validate($node, $form, &$form_state) {
 }
 
 function cm_inventory_adder_node_presave($node) {
-  $type = $node->mnn_inventory_content_type;
-
+  $type = isset($node->mnn_inventory_content_type) ?
+    $node->mnn_inventory_content_type : NULL;
+  
   if ($type) {
     $node->type = $type;
   }
