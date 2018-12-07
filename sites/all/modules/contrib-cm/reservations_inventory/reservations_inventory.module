@@ -213,9 +213,9 @@ function reservations_inventory_form_reservations_reservation_node_form_alter(&$
   if(!$form['field_reservations_inventory'][$language]['#default_value']) {
 
     $inventory = reservations_inventory_set_inventory();
-    
     $form['field_reservations_inventory']['#type'] = 'hidden';
     $form['field_reservations_inventory'][$language]['#default_value'] = $inventory;
+    $form['field_reservations_inventory'][$language]['#value'] = $inventory;
   } else {
     if (user_access('manage reservations')) {
       //can see but no longer edit?
@@ -224,6 +224,7 @@ function reservations_inventory_form_reservations_reservation_node_form_alter(&$
       $form['field_reservations_inventory']['#type'] = 'hidden';
     }
   }
+
 }
 
 /**
