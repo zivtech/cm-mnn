@@ -244,7 +244,9 @@ function mnn_show_node_presave($node) {
     //SET PREMIERE DATE AND CHANNELS FIELDS AS WE WILL AUTO SET THEM
     $node->field_show_channels[LANGUAGE_NONE][0]['value'] =
       mnn_show_get_channels($node);
-    $date = mnn_show_get_premiere_date($show);
+//dsm($node);
+//dsm($show);
+    $date = mnn_show_get_premiere_date($node);
     if ($date) {
       $node->field_show_premiere_date[LANGUAGE_NONE][0]['value'] =
 	$date;
