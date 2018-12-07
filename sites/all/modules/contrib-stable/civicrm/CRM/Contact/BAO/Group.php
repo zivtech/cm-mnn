@@ -448,8 +448,11 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
     }
 
     if (!empty($params['organization_id'])) {
-      $groupOrg = $params;
-      $groupOrg['group_id'] = $group->id;
+      // dev/core#382 Keeping the id here can cause db errors as it tries to update the wrong record in the Organization table
+      $groupOrg = [
+        'group_id' => $group->id,
+        'organization_id' => $params['organization_id'],
+      ];
       CRM_Contact_BAO_GroupOrganization::add($groupOrg);
     }
 
@@ -539,8 +542,8 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
    * @param bool $isActive
    *   Value we want to set the is_active field.
    *
-   * @return CRM_Core_DAO|null
-   *   DAO object on success, NULL otherwise
+   * @return bool
+   *   true if we found and updated the object, else false
    */
   public static function setIsActive($id, $isActive) {
     return CRM_Core_DAO::setFieldValue('CRM_Contact_DAO_Group', $id, 'is_active', $isActive);
@@ -882,7 +885,7 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
     // CRM-9936
     $reservedPermission = CRM_Core_Permission::check('administer reserved groups');
 
-    $links = self::actionLinks();
+    $links = self::actionLinks($params);
 
     $allTypes = CRM_Core_OptionGroup::values('group_type');
     $values = array();
@@ -1254,12 +1257,17 @@ WHERE {$whereClause}";
    * @return array
    *   array of action links
    */
-  public static function actionLinks() {
+  public static function actionLinks($params) {
+    // If component_mode is set we change the "View" link to match the requested component type
+    if (!isset($params['component_mode'])) {
+      $params['component_mode'] = CRM_Contact_BAO_Query::MODE_CONTACTS;
+    }
+    $modeValue = CRM_Contact_Form_Search::getModeValue($params['component_mode']);
     $links = array(
       CRM_Core_Action::VIEW => array(
-        'name' => ts('Contacts'),
+        'name' => $modeValue['selectorLabel'],
         'url' => 'civicrm/group/search',
-        'qs' => 'reset=1&force=1&context=smog&gid=%%id%%',
+        'qs' => 'reset=1&force=1&context=smog&gid=%%id%%&component_mode=' . $params['component_mode'],
         'title' => ts('Group Contacts'),
       ),
       CRM_Core_Action::UPDATE => array(
