@@ -177,7 +177,7 @@ function mnn_programming_exports_req_media_table($results,$have=TRUE) {
       if ($cnt==1) {
 	$header[]="<u><b>$key</b></u><br/>";
       }
-      $row_vals[]=array('data' => ereg_replace("\n","",$value)."<br/>");
+      $row_vals[]=array('data' => ereg_replace("/\n/","",$value)."<br/>");
     }
     if ($cnt == 1) {
       $header[]="<u><b>Alt Episode</b></u>";
