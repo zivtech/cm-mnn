@@ -279,6 +279,11 @@ function civicrm_multiday_event_form_alter(&$form, &$form_state, $form_id) {
     $form['field_date_of_first_session']['#type'] = 'hidden';
     $form['field_date_of_first_session'][LANGUAGE_NONE][0]['#type'] = 'hidden';
 
+    //NEED TO SET VALUE FOR HIDDEN FIELD EVEN THOUGH IT GETS SET IN PRESAVE
+    //WITHOUT THIS IT THROWS AN ERROR WITH PHP 7.1
+    $form['field_date_of_first_session'][LANGUAGE_NONE][0]['#value'] =
+    '01/01/1969';
+
     $templates = array();
     $templates['_none'] = '- None -';
 
