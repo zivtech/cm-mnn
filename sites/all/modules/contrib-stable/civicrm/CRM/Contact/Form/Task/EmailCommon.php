@@ -89,7 +89,11 @@ class CRM_Contact_Form_Task_EmailCommon {
     }
 
     $form->_emails = $fromEmailValues;
+    $defaults = array();
     $form->_fromEmails = $fromEmailValues;
+    if (!Civi::settings()->get('allow_mail_from_logged_in_contact')) {
+      $defaults['from_email_address'] = current(CRM_Core_BAO_Domain::getNameAndEmail(FALSE, TRUE));
+    }
     if (is_numeric(key($form->_fromEmails))) {
       // Add signature
       $defaultEmail = civicrm_api3('email', 'getsingle', array('id' => key($form->_fromEmails)));
@@ -100,8 +104,8 @@ class CRM_Contact_Form_Task_EmailCommon {
       if (!empty($defaultEmail['signature_text'])) {
         $defaults['text_message'] = "\n\n--\n" . $defaultEmail['signature_text'];
       }
-      $form->setDefaults($defaults);
     }
+    $form->setDefaults($defaults);
   }
 
   /**
@@ -392,6 +396,16 @@ class CRM_Contact_Form_Task_EmailCommon {
     self::saveMessageTemplate($formValues);
 
     $from = CRM_Utils_Array::value('from_email_address', $formValues);
+    // dev/core#357 User Emails are keyed by their id so that the Signature is able to be added
+    // If we have had a contact email used here the value returned from the line above will be the
+    // numerical key where as $from for use in the sendEmail in Activity needs to be of format of "To Name" <toemailaddress>
+    if (is_numeric($from)) {
+      $result = civicrm_api3('Email', 'get', [
+        'id' => $from,
+        'return' => ['contact_id.display_name', 'email'],
+      ]);
+      $from = '"' . $result['values'][$from]['contact_id.display_name'] . '" <' . $result['values'][$from]['email'] . '>';
+    }
     $subject = $formValues['subject'];
 
     // CRM-13378: Append CC and BCC information at the end of Activity Details and format cc and bcc fields

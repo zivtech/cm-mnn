@@ -76,7 +76,7 @@ function mnn_airing_access_menu_tab($node) {
 
 function mnn_airing_form_alter(&$form, &$form_state, $form_id) {
   if ($form_id == 'cm_airing_form') {
-
+dsm($form);
     //FETCH THE QUERY ARGS THAT WERE PASSED TO THE PROJECT PICKER AND STORED
     //IN THE SESSION BY THE PROJECT PICKER
     $query_args = $_SESSION[CM_PROJECT_PICKET_QUERY_ARGUMENT_SESSION_VARIABLE];
@@ -88,7 +88,7 @@ function mnn_airing_form_alter(&$form, &$form_state, $form_id) {
       $_SESSION[MNN_AIRING_FILL_DEST] = FALSE;
     }
     //HIDE AND SET THE TITLE TO A TEMP VALUE, THIS WILL BE SET IN THE presave()
-    $form['field_airing_title']['#type'] = "hidden";
+    $form['field_airing_title']['#access'] = FALSE;
     $form['field_airing_title'][LANGUAGE_NONE][0]['value']['#default_value']=
       "temp title";
     
@@ -111,7 +111,7 @@ function mnn_airing_form_alter(&$form, &$form_state, $form_id) {
     
     //REPLACE THE PROVIDED AUTOCOMPLETE OF SHOWS WITH A DROPDOWN OF THE 
     //SHOWS FOR THE PARTICULAR PROJECT
-    $form['field_airing_show_ref']['#type'] = "hidden";  
+    $form['field_airing_show_ref']['#access'] = FALSE;  
     if ($project_id && ($query_args['mode'] != 'series')) {
       $shows = mnn_airing_get_shows_for_project_airing($project_id);
     }
