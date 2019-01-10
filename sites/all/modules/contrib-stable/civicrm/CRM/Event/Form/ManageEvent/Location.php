@@ -72,6 +72,7 @@ class CRM_Event_Form_ManageEvent_Location extends CRM_Event_Form_ManageEvent {
    */
   public function preProcess() {
     parent::preProcess();
+    $this->assign('selectedChild', 'location');
 
     $this->_values = $this->get('values');
     if ($this->_id && empty($this->_values)) {
@@ -225,10 +226,9 @@ class CRM_Event_Form_ManageEvent_Location extends CRM_Event_Form_ManageEvent {
       CRM_Core_DAO::setFieldValue('CRM_Event_DAO_Event', $this->_id,
         'loc_block_id', 'null'
       );
-
-      $this->_values['address'] = array();
     }
 
+    $this->_values['address'] = array();
     // if 'create new loc' optioin is selected OR selected new loc is different
     // from old one, go ahead and delete the old loc provided thats not being
     // used by any other event
