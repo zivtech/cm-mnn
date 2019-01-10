@@ -42,6 +42,10 @@ function civicrm_api3_financial_type_create($params) {
   return _civicrm_api3_basic_create(_civicrm_api3_get_BAO(__FUNCTION__), $params, 'FinancialType');
 }
 
+function _civicrm_api3_financial_type_create_spec(&$params) {
+  $params['name']['api.required'] = 1;
+}
+
 /**
  * Get a FinancialType.
  *
