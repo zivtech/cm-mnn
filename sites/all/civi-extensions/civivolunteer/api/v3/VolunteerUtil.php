@@ -10,6 +10,20 @@
  */
 
 /**
+ * @deprecated api notice
+ * @return array
+ *   Array of deprecated actions
+ */
+function _civicrm_api3_volunteer_util_deprecation() {
+  return array(
+    'getbeneficiaries' => 'VolunteerUtil API "getbeneficiaries" action is '
+    . 'deprecated in favor of api.VolunteerProjectContacts.getList. Set the '
+    . '"params" parameter to array("relationship_type_id" => "volunteer_beneficiary") '
+    . 'to replace calls to api.VolunteerUtil.getbeneficiaries.',
+  );
+}
+
+/**
  * This function will return the needed pieces to load up the backbone/
  * marionette project backend from within an angular page.
  *
@@ -142,6 +156,9 @@ function civicrm_api3_volunteer_util_getsupportingdata($params) {
     $results['relationship_types'] = $relTypes['values'];
 
     $results['phone_types'] = CRM_Core_OptionGroup::values("phone_type", FALSE, FALSE, TRUE);
+    $results['volunteer_general_project_settings_help_text'] = civicrm_api3('Setting', 'getvalue', array(
+      'name' => "volunteer_general_project_settings_help_text",
+    ));
 
     //Fetch the Defaults from saved settings.
     $defaults = CRM_Volunteer_BAO_Project::composeDefaultSettingsArray();
@@ -171,6 +188,10 @@ function civicrm_api3_volunteer_util_getsupportingdata($params) {
 
 /**
  * This method returns a list of beneficiaries
+ *
+ * @deprecated since version 2.3
+ *   api.VolunteerProjectContacts.getList serves the same purpose and is both
+ *   more efficient more versatile.
  *
  * @param array $params
  *   Not presently used.

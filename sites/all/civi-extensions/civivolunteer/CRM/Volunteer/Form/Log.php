@@ -84,12 +84,11 @@ class CRM_Volunteer_Form_Log extends CRM_Core_Form {
       $this->_title .= ' )';
     }
 
-    /*
-     * Because CiviCRM's asset management framework isn't mature yet (e.g., adding
-     * assets to forms rendered in pop-ups using CRM_Core_Resources doesn't work),
-     * we pass a URL fragment to the template and include them via HTML.
-     */
-    $this->assign('extResourceURL', CRM_Core_Resources::singleton()->getUrl('org.civicrm.volunteer'));
+    CRM_Core_Resources::singleton()
+        ->addScriptFile('org.civicrm.volunteer', 'js/CRM_Volunteer_Form_Log.js')
+        ->addStyleFile('org.civicrm.volunteer', 'css/commendation.css')
+        ->addScriptFile('org.civicrm.volunteer', 'js/commendation.js');
+
     $this->assign('vid', $this->_vid);
   }
 
@@ -140,6 +139,8 @@ class CRM_Volunteer_Form_Log extends CRM_Core_Form {
       );
       $isRequired = FALSE;
       $contactField = $this->addEntityRef("field[$rowNumber][contact_id]", '', $entityRefParams, $isRequired);
+
+      $datePickerAttr = array('formatType' => 'activityDateTime');
       if ($rowNumber <= $count) {
         // readonly for some fields
         $contactField->freeze();
@@ -148,15 +149,15 @@ class CRM_Volunteer_Form_Log extends CRM_Core_Form {
           'style' => "background-color:#EBECE4",
           'disabled' => 'disabled'
         );
+        $datePickerAttr += $extra;
 
-        $this->add('text', "field[$rowNumber][start_date]", '', $extra);
         $this->add('text', "field[$rowNumber][volunteer_role]", '', array_merge($attributes, $extra));
       }
       else {
-        $this->addDateTime("field[$rowNumber][start_date]", '', FALSE, array('formatType' => 'activityDateTime'));
         $this->add('select', "field[$rowNumber][volunteer_role]", '', array('' => ts('-select-', array('domain' => 'org.civicrm.volunteer'))) + $volunteerRole);
       }
 
+      $this->add('datepicker', "field[$rowNumber][start_date]", '', $datePickerAttr);
       $this->add('select', "field[$rowNumber][volunteer_status]", '', $volunteerStatus);
       $this->add('text', "field[$rowNumber][scheduled_duration]", '', array_merge($attributes, $extra));
       $durationAttr = array_merge($attributes, array('class' => 'required'));
@@ -237,7 +238,7 @@ class CRM_Volunteer_Form_Log extends CRM_Core_Form {
       $defaults['field'][$i]['volunteer_role'] = CRM_Utils_Array::value($data['volunteer_role_id'], $volunteerRole);
       $defaults['field'][$i]['volunteer_status'] = $data['status_id'];
       $defaults['field'][$i]['activity_id'] = $data['id'];
-      $defaults['field'][$i]['start_date'] = CRM_Utils_Date::customFormat($data['activity_date_time'], "%m/%E/%Y %l:%M %P");
+      $defaults['field'][$i]['start_date'] = $data['activity_date_time'];
       $defaults['field'][$i]["contact_id"] = $data['contact_id'];
       $i++;
     }
