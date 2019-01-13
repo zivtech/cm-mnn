@@ -769,9 +769,11 @@ function reservations_resource_chart_inventory_check($type_inventory_tids,
   if (!$arg_inventory_tids[0]) {
     return TRUE;
   }
-  foreach($type_inventory_tids as $tid) {
-    if(in_array($tid, $arg_inventory_tids)){
-      return TRUE;
+  if (!empty($type_inventory_tids)) {
+    foreach($type_inventory_tids as $tid) {
+      if(in_array($tid, $arg_inventory_tids)){
+	return TRUE;
+      }
     }
   }
   return FALSE;
@@ -1400,6 +1402,27 @@ function reservations_resource_chart_get_item_reservations($day,
 	reservations_resource_chart_get_single_field_value($project,
 							   'field_device',
 							   'tid');
+      //IF WE DON'T HAVE A LIVEFEED OFF PROJECT, LOOK FOR AN AIRING TIED TO
+      //A LIVE SHOW THAT OVERLAPS THE RESERVATION TIMES.
+      if (!$livefeed) {
+	$airing =
+	  reservations_resource_chart_get_reservation_airing($pid,
+					     $result->start_time,
+					     $result->end_time);
+	if ($airing) {
+	  $show_id =
+	    reservations_resource_chart_get_single_field_value($airing,
+						       'field_airing_show_ref',
+							       'target_id');
+	  $show = empty($show_id) ? NULL : node_load($show_id);
+	  if ($show) {
+	    $livefeed =
+	      reservations_resource_chart_get_single_field_value($show,
+							        'field_device',
+								 'tid');
+	  }
+	}
+      }
     }
     else {
       $livefeed = NULL;
@@ -1965,3 +1988,33 @@ function reservations_resource_chart_get_single_field_value($entity,
   return NULL;
 }
 
+/**
+ * Function looks for an airing with the project occuring during reservation
+ * times
+ */
+function reservations_resource_chart_get_reservation_airing($pid,
+							    $start,
+							    $end) {
+  $sql =
+    "SELECT d.entity_id " .
+    "FROM {field_data_field_airing_date} d " .      
+    "INNER JOIN field_data_field_airing_project_ref p " .
+    "ON p.entity_id = d.entity_id " .
+    "WHERE p.field_airing_project_ref_target_id = :pid " .
+    "AND d.field_airing_date_value <= :end " .
+    "AND d.field_airing_date_value2 >= :start ";
+
+  $args = array(':pid' => $pid,
+		':start' => $start,
+		':end' => $end);
+
+  $results = db_query($sql, $args);
+  while($result = $results->fetchObject()) {
+    $airings = entity_load('airing', array($result->entity_id));
+    if ($airings) {
+      $airing = array_shift($airings);
+      return $airing;
+    }
+  }
+  return NULL;
+}
