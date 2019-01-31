@@ -45,7 +45,7 @@ function mnn_project_export_project_page() {
       'results_per_page' => variable_get('mnn_project_export_project_limit', 400),
     );
     // This is cached for 12 hours.
-    cache_set($cache_id, $data, 'cache', 43200);
+    cache_set($cache_id, $data, 'cache', REQUEST_TIME + 43200);
   }
   else {
     $data = $cache->data;
@@ -80,7 +80,7 @@ function mnn_project_export_show_page() {
       'results_per_page' => variable_get('mnn_project_export_project_limit', 400),
     );
     // This is cached for 12 hours.
-    cache_set($cache_id, $data, 'cache', 43200);
+    cache_set($cache_id, $data, 'cache', REQUEST_TIME + 43200);
   }
   else {
     $data = $cache->data;
@@ -265,6 +265,7 @@ function mnn_project_export_get_shows_count($filters) {
  */
 function mnn_project_export_get_shows_query($filters) {
   // get all public shows related to a project that is listed and not unpublished
+  $public_path =  variable_get('file_public_path', conf_path() . '/files') . '/';
   $query = db_select('og_membership', 'ogm');
   $query->innerJoin('node', 'project', 'ogm.gid = project.nid');
   $query->innerJoin('node', 'cm_show', 'ogm.etid = cm_show.nid');
@@ -276,6 +277,7 @@ function mnn_project_export_get_shows_query($filters) {
     'field_show_channels',
     'field_show_premiere_date',
     'field_show_public_title',
+    'field_internet_archive_thumb',
   ) as $field_name) {
     $field = field_info_field($field_name);
     $table_name = 'field_data_' . $field_name;
@@ -306,6 +308,8 @@ function mnn_project_export_get_shows_query($filters) {
   // to see if this could be a problem.
   $query->innerJoin('internet_archive', 'arch', 'cm_show.nid = arch.nid');
   $query->addExpression('arch.item', 'archive_item_name');
+  $query->leftJoin('file_managed', 'fm', 'fm.fid = field_internet_archive_thumb.field_internet_archive_thumb_fid');
+  $query->addExpression("REPLACE(fm.uri, 'public://', '" . $public_path . "')", 'archive_item_thumb');
 
   // Allow filtering
   if (!empty($filters['date_modified'])) {
