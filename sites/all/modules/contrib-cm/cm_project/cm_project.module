@@ -159,6 +159,7 @@ function cm_project_display_show_tab($node) {
  * if criteria from cm_project_access_shows_tab returns TRUE
  */
 function cm_project_shows($node) {
+  $output = '';
   //TODO FIXME TO WORK WITH USER SUBMITTED SHOWS
   //SPECIFICALLY PERMISSIONS TO ADD AND VIEW
   //BASED ON USER ROLE AND PROJECT STATUS
@@ -168,12 +169,13 @@ function cm_project_shows($node) {
   // check to see if the current user is a member of the project
   // AND has permission to create Show
   // OR has permission to manage Show
-  
-  $output = '<ul class="action-links">';
-  $output .= '<li>'; 
-  $output .= l('Add Show', 'node/add/cm-show', array('query' => $query));
-  $output .= '</li>';
-  $output .= '</ul>';
+  if (user_access('create cm_show content')) {
+    $output .= '<ul class="action-links">';
+    $output .= '<li>'; 
+    $output .= l('Add Show', 'node/add/cm-show', array('query' => $query));
+    $output .= '</li>';
+    $output .= '</ul>';
+  }
   
   $view = views_get_view('cm_project_shows');
   $output .= $view->execute_display('default');
