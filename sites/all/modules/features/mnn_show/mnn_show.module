@@ -39,12 +39,11 @@ function mnn_show_form_alter(&$form, &$form_state, $form_id) {
     $project_widget = &$form[MNN_PROJECT_OG_FIELD_FOR_SHOW][LANGUAGE_NONE][0];
     $default_sub_field =  &$project_widget['default'][0]['target_id'];
     $admin_sub_field =  &$project_widget['admin'][0]['target_id'];
-    
     if ($default_project_for_show) {
       $form['title']['#type'] = "hidden";
       $form['title']['#value'] = NULL;
 
-      $default_sub_field['#value'] = NULL;
+      $default_sub_field['#value'] = $default_project_for_show;;
       $admin_sub_field['#value'] = $default_project_for_show;
       $default_sub_field['#type'] = "hidden";
       $admin_sub_field['#type'] = "hidden";
