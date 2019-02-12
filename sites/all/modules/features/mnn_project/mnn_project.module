@@ -453,3 +453,47 @@ function mnn_project_node_access($node, $op, $account) {
   
   return NODE_ACCESS_IGNORE;
 }
+
+/**
+ *  Validate hook for projects. 
+ */
+function mnn_project_node_validate($node, $form, &$form_state) {
+  if ($node->type=='cm_project') {
+    $inactive_reason =
+      mnn_show_get_single_field_value($node,
+				      'field_reason_not_active',
+				      'tid');
+
+    $new_status = $node->status;
+
+    //reload node to get original status
+    $node = node_load($node->nid);
+
+    $old_status = $node->status;
+
+    if ($new_status == 1 &&
+	$old_status != $new_status &&
+	!empty($inactive_reason)) {
+      form_set_error('status', 
+		     t("You cannot make this project published since there is".
+		       " a value chosen for 'Reason Project Not Active'. "));
+
+    }
+  }
+}
+
+/**
+ * hook is for the presave for a project
+ */
+function mnn_project_node_presave($node) {
+  if ($node->type=='cm_project') {
+    $inactive_reason =
+      mnn_show_get_single_field_value($node,
+				      'field_reason_not_active',
+				      'tid');
+
+    if (!empty($inactive_reason)) {
+      $node->status = 0;
+    }
+  }
+}

@@ -253,7 +253,9 @@ function mnn_internet_archive_views_api() {
  *
  */
 function mnn_internet_archive_internet_archive_process_remote($files){
-
+  //add thumbnails to thumbless shows
+  mnn_internet_archive_process_thumbs();
+  
   foreach($files as $file) {
     $pathinfo = pathinfo($file);
     $name = $pathinfo['filename'];
@@ -304,6 +306,79 @@ function mnn_internet_archive_internet_archive_process_remote($files){
     }	
   }
 }
+/**
+ * Function will grab all the thumbs from the qnap files directory
+ */
+function mnn_internet_archive_process_thumbs() {
+  //build url to the files directory
+  $prefix = variable_get('internet_archive_remote_prefix', FALSE);
+  $remote_url = variable_get('internet_archive_server_url', FALSE);
+  if (!$remote_url) {
+    return;
+  }
+  
+  $url_parts = parse_url($remote_url);
+  $remote_file_directory_url = "http://" . $url_parts['host'] . '/' . $prefix;
+
+  //grab all file names from directory
+  $html = file_get_contents($remote_file_directory_url);
+  //parse the html
+  $count = preg_match_all('/<a href=\"([^\"]*)\">(.*)<\/a>/iU',
+			  $html, $files);
+
+  //iterate over all the files, trying to find images
+  for ($i = 0; $i < $count; ++$i) {
+
+    $file = $files[1][$i];
+    if (ctype_alnum(substr($file, 0, 1))) {
+      $pathinfo = pathinfo($file);
+      if ($pathinfo['extension'] == 'jpg' || 
+	  $pathinfo['extension'] == 'png' ||
+	  $pathinfo['extension'] == 'jpeg')  {
+	$image =
+	  file_get_contents($remote_file_directory_url . '/' . $file);
+
+	$name = $pathinfo['filename'];
+
+	$parts = explode('_', $name);
+	if ($parts[0] == 'mnn') {
+	  $project_id = $parts[1];
+	  $episode_number = $parts[2];
+	}
+	else {
+	  $project_id = $parts[0];
+	  $episode_number = $parts[1];
+	}
+
+	if (ctype_digit($project_id) && ctype_digit($episode_number)) {
+	  $project = node_load($project_id);
+	  $show_nid =
+	    mnn_show_get_existing_show_for_episode_number($project_id,
+							  NULL,
+							  $episode_number);
+	  if ($show_nid) {
+	    $show = node_load($show_nid);
+	    $field_name = 'field_internet_archive_thumb';
+	    $thumb_field =
+	      mnn_internet_archive_get_single_field_value($show,
+							  $field_name,
+							  'fid');
+	    if (!$thumb_field) {
+	      $new_file = file_save_data($image, 'public://archive_thumbs/' .
+					 $file, FILE_EXISTS_RENAME);
+	      $new_file->display = 1;
+	      $show->field_internet_archive_thumb[LANGUAGE_NONE][0] =
+		(array)$new_file;
+	      node_save($show);
+	    }
+	  }
+	}
+      }
+    }
+  }
+}
+
+  
 
 /**
  * Function providing json via http API calls
