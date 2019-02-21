@@ -18,7 +18,7 @@ function cm_crew_connect_project_alert_content($row) {
   return $content;
 }
 
-function cm_crew_connect_sign_up_to_crew_link($row, $label) {
+function cm_crew_connect_sign_up_to_crew_link($row, $label = null) {
   global $user;
 
   $label = $label ? $label : t("More Info");
