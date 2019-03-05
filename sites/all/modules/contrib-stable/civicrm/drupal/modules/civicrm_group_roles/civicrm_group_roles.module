@@ -673,28 +673,11 @@ function civicrm_group_roles_manual_sync() {
     '#type' => 'fieldset',
     '#title' => t('Manual Synchronization'),
     '#description' => t('Manually synchronize CiviCRM group membership and Drupal roles according to the current association rules. This process may take a long time.'),
-
-  );
-    $possible_syncs = civicrm_group_roles_show_rules();
-  foreach ($possible_syncs['data']['#rows'] as $possible_sync) {
-//  dsm($possible_sync['rid']);
-  $group_roles[$possible_sync['rid']] = $possible_sync['name'];
- // $group_rids[] = $possible_sync['rid'];
-  }
-  $form['manual_sync']['groups'] = array(
-  '#title' => t('Select Groups to Sync'),
-  '#type' => 'checkboxes',
-  '#description' => t('Select Groups to Sync'),
-  '#options' => $group_roles,
-//  '#values' => $group_rids,
   );
   $form['manual_sync']['manual_sync_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Synchronize now'),
   );
-// dsm(civicrm_group_roles_show_rules());
-
-  
 
   return $form;
 }
@@ -708,20 +691,17 @@ function civicrm_group_roles_manual_sync_submit($form, &$form_state) {
   if (!civicrm_initialize()) {
     return;
   }
-//  dsm($form_state);
-  $group_role_ids = array_filter($form_state['values']['groups']);
 
-//watchdog("openflows-dev", '<pre>' . print_r($group_role_ids, true) . '</pre>');
-  return civicrm_group_roles_batch_init($group_role_ids);
+  return civicrm_group_roles_batch_init();
 }
 
 /**
  * Batch functions to manually update large number of users
  */
-function civicrm_group_roles_batch_init($group_role_ids) {
+function civicrm_group_roles_batch_init() {
 
   $batch = array(
-    'title' => t('Updating Users...')." in roles ".implode(" ",$group_role_ids),
+    'title' => t('Updating Users...'),
     'operations' => array(),
     'init_message' => t('Starting Update'),
     'progress_message' => t('Processed @current out of @total.'),
@@ -730,60 +710,11 @@ function civicrm_group_roles_batch_init($group_role_ids) {
     'progressive' => FALSE,
   );
 
-  // get civicrm group id
-  $full_result_cids= array();
-  $groupcounter=0;
-  foreach($group_role_ids as $group_role_id){
-    $group_id = db_query('SELECT group_id FROM {civicrm_group_roles_rules} WHERE id = '.$group_role_id);
-//  dsm($group_id,"id");
-//  $group_id .= ", ";
-  // get the group name
-
-    foreach($group_id as $gid){
-
-      $group_name = civicrm_api3('Group', 'get', [
-        'sequential' => 1,
-        'return' => ["name"],
-        'id' => $gid->group_id,
-      ]);
-//        dsm($group_name,"name array");
-      $group_name = $group_name['values'][0]['name'];
-//      dsm($group_name,"name string");
   // Find all existing users
-      $result_cids = civicrm_api3('GroupContact', 'get', [
-        'sequential' => 1,
-        'return' => "contact_id",
-        'group_id' => $group_name,
-        'status' => "Added",
-        'options' => ['limit' => 0],
-      ]);
-//      dsm($result_cids);
+  $result = db_query('SELECT uid FROM {users}');
 
-      if ($groupcounter == 0){
-        $full_result_cids = $result_cids['values'];
-//        dsm($groupcounter);
-      }
-      if ($groupcounter >= 1){
-        $full_result_cids = array_merge($full_result_cids,$result_cids['values']);
-//        dsm($groupcounter);
-      }
-      $groupcounter = $groupcounter +1;
- //   dsm($groupcounter);
-//      dsm($full_result_cids);
-    }
-
-  }
-
-  foreach($full_result_cids as $full_result_cid) {
-    $newuid = CRM_Core_BAO_UFMatch::getUFId($full_result_cid['contact_id']);
-    $full_result_uids[]['uid'] = $newuid;
-  }    
-  
-//  dsm($full_result_uids);
-//  $result = db_query('SELECT uid FROM {users} WHERE uid < 200');
-
-  foreach ($full_result_uids as $record) {
-    $batch['operations'][] = array('civicrm_group_roles_batch_worker', array($record[uid]));
+  foreach ($result as $record) {
+    $batch['operations'][] = array('civicrm_group_roles_batch_worker', array($record->uid));
   }
 
   batch_set($batch);
