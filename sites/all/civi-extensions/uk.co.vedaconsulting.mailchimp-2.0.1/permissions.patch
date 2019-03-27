@@ -1,0 +1,21 @@
+diff --git a/sites/all/civi-extensions/uk.co.vedaconsulting.mailchimp-2.0.1/CRM/Mailchimp/Permission.php b/sites/all/civi-extensions/uk.co.vedaconsulting.mailchimp-2.0.1/CRM/Mailchimp/Permission.php
+index 5b82f65e..76c816dc 100644
+--- a/uk.co.vedaconsulting.mailchimp-2.0.1/CRM/Mailchimp/Permission.php
++++ b/uk.co.vedaconsulting.mailchimp-2.0.1/CRM/Mailchimp/Permission.php
+@@ -1,6 +1,6 @@
+ <?php
+ 
+-class CRM_Mailchimp_Permission extends CRM_Core_Permission {
++class CRM_Mailchimp_Permission {
+ 
+   /**
+    * Returns an array of permissions defined by this extension. Modeled off of
+@@ -35,6 +35,6 @@ class CRM_Mailchimp_Permission extends CRM_Core_Permission {
+         }
+       });
+     }
+-    return parent::check($permissions);
++    return CRM_Core_Permission::check($permissions,NULL);
+   }
+ }
+\ No newline at end of file
