@@ -264,6 +264,12 @@ function mnn_internet_archive_internet_archive_process_remote($files){
     if ($pathinfo['extension'] == 'mp4')  {
       continue;
     }
+
+    //ignoring thumb images
+    if ($pathinfo['extension'] == 'jpg' ||
+	$pathinfo['extension'] == 'JPG')  {
+      continue;
+    }
     
     $parts = explode('_', $name);
     if ($parts[0] == 'mnn') {
@@ -443,7 +449,10 @@ function mnn_internet_archive_file_status_value($file) {
     }
     else if ($local_status == ARCHIVE_FAILED &&
 	     $attempts >= variable_get('internet_archive_queue_attempts', 0)) {
-      $return_status = 'failed';
+      //$return_status = 'failed';
+      //changing return value so that we don't delete file
+      $return_status = 'queued';
+
     }
     else if ($local_status == ARCHIVE_FAILED) {
       $return_status = 'queued';
