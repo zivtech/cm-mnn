@@ -149,12 +149,12 @@ function mnn_programming_exports_load_log_table($results,$have=TRUE) {
 	}
       }
       if ( $key == 'Title' ) {
-	$title = ereg_replace("/\n/","",$value);
+	$title = preg_replace("/\n/","",$value);
 	$row_vals[] = array('data' => $title, 'colspan' => 2);
 	continue;
       }
       else {
-	$row_vals[]=array('data' => ereg_replace("/\n/","",$value));
+	$row_vals[]=array('data' => preg_replace("/\n/","",$value));
       }
     }
     

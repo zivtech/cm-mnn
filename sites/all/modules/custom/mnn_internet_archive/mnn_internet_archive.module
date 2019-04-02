@@ -429,7 +429,7 @@ function mnn_internet_archive_file_status_value($file) {
     return $statuses['initial'];
   }
   //look up file name from internet archive table
-  $data = internet_archive_load_data($file);
+  $data = internet_archive_load_data($file,NULL);
   $local_status = $data['status'];
   $attempts = $data['attempts'];
   
