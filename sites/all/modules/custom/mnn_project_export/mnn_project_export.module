@@ -338,6 +338,7 @@ function mnn_project_export_get_shows_query($filters) {
     ->condition('ogm.field_name', 'og_node2')
     ->condition('arch.field_name', array('field_internet_archive_remote', 'field_internet_archive_local'), 'IN')
     ->condition('field_show_premiere_date.field_show_premiere_date_value', gmdate('Y-m-d h:i:s'), '<')
+    ->condition('arch.status', 'derived')
     ->isNotNull('arch.item')
     ->condition('tos.field_internet_archive_tos_value', 1);
   return $query;
